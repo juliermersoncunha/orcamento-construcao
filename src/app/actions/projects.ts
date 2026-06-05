@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
-import { ProjectType } from "@/generated/prisma";
+import { ProjectType } from "@/generated/prisma/index";
 
 const CreateProjectSchema = z.object({
   name: z.string().min(2, { error: "Nome deve ter ao menos 2 caracteres." }).trim(),

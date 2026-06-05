@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, HardHat, TrendingUp, Receipt, BarChart3 } from "lucide-react";
 import Link from "next/link";
-import { PhaseType, LaborModel } from "@/generated/prisma";
+import { PhaseType, LaborModel } from "@/generated/prisma/index";
 import { validateBudgetAgainstCaixa } from "@/lib/caixa-validation";
 import { CaixaValidationPanel } from "@/components/caixa-validation-panel";
 

@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
-import { Role } from "@/generated/prisma";
+import { Role } from "@/generated/prisma/index";
 
 async function checkAdmin() {
   const session = await getSession();

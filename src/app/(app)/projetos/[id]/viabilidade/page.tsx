@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, BarChart3 } from "lucide-react";
 import Link from "next/link";
 import { ViabilidadeForm } from "./viabilidade-form";
-import { LaborModel } from "@/generated/prisma";
+import { LaborModel } from "@/generated/prisma/index";
 
 function computeMO(model: LaborModel, value: number, phaseMat: number, area: number): number {
   if (model === "FIXED") return value;

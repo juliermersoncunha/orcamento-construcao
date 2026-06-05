@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
-import { MaterialCategory } from "@/generated/prisma";
+import { MaterialCategory } from "@/generated/prisma/index";
 
 async function requireAdmin() {
   const session = await getSession();

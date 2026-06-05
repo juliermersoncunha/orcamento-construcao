@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { redirect } from "next/navigation";
-import { PhaseType } from "@/generated/prisma";
+import { PhaseType } from "@/generated/prisma/index";
 
 // Default distribution from the user's spreadsheet
 const DEFAULT_DISTRIBUTION: Record<string, Record<number, number>> = {

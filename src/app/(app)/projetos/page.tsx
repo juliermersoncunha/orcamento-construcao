@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/utils";
 import { Plus, HardHat, ChevronRight, Calendar, User } from "lucide-react";
-import { ProjectStatus } from "@/generated/prisma";
+import { ProjectStatus } from "@/generated/prisma/index";
 
 const statusLabel: Record<ProjectStatus, string> = {
   RASCUNHO: "Rascunho",

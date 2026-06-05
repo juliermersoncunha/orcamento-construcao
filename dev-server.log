@@ -6,3 +6,7 @@
 
 (node:13972) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
 (Use `node --trace-deprecation ...` to show where the warning was created)
+ GET /login 200 in 1292ms (next.js: 672ms, proxy.ts: 23ms, application-code: 597ms)
+ GET /projetos 200 in 923ms (next.js: 225ms, proxy.ts: 26ms, application-code: 671ms)
+ POST /login 303 in 3.8s (next.js: 13ms, proxy.ts: 21ms, application-code: 3.8s)
+  └─ ƒ login({}, {}) in 2451ms src/app/actions/auth.ts

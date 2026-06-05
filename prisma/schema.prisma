@@ -1,0 +1,326 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  MEMBER
+}
+
+enum ProjectType {
+  NOVA_CONSTRUCAO
+  REFORMA
+  AMPLIACAO
+}
+
+enum ProjectStatus {
+  RASCUNHO
+  FINALIZADO
+  ENVIADO
+}
+
+enum PhaseType {
+  TERRAPLENAGEM
+  FUNDACAO
+  ESTRUTURA_ALVENARIA
+  LAJE
+  INSTALACOES_ELETRICAS
+  INSTALACOES_HIDROSSANITARIAS
+  ESCADA
+  REVESTIMENTOS
+  PINTURA
+  COBERTURA
+  ACABAMENTO
+  OUTROS
+}
+
+enum LaborModel {
+  FIXED
+  PER_M2
+  PERCENT
+}
+
+enum MaterialCategory {
+  TERRAPLENAGEM
+  FUNDACAO
+  LAJE
+  PINTURA
+  ACABAMENTO
+  ESTRUTURA
+  ALVENARIA
+  COBERTURA
+  ELETRICA
+  HIDRAULICA
+  REVESTIMENTO
+  ESQUADRIA
+  OUTROS
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      Role     @default(MEMBER)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  projects     Project[]
+  priceChanges PriceHistory[]
+}
+
+model Project {
+  id           String        @id @default(cuid())
+  name         String
+  clientName   String
+  clientPhone  String?
+  clientEmail  String?
+  address      String?
+  city         String?
+  state        String?
+  type         ProjectType
+  status       ProjectStatus @default(RASCUNHO)
+  notes        String?
+  wizardStep   Int           @default(1)
+  userId       String
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  user          User                  @relation(fields: [userId], references: [id])
+  rooms         Room[]
+  structure     ProjectStructure?
+  roofing       ProjectRoofing?
+  installations ProjectInstallations?
+  finishes      ProjectFinishes?
+  budgetItems   BudgetItem[]
+  laborConfig     LaborConfig?
+  cashFlowEntries CashFlowEntry[]
+  walls           ProjectWall[]
+  indirectCosts   IndirectCost[]
+  viability       ProjectViability?
+}
+
+model Room {
+  id        String @id @default(cuid())
+  projectId String
+  name      String
+  width     Float
+  length    Float
+  height    Float  @default(2.8)
+  order     Int    @default(0)
+
+  project          Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  electricalPoints ElectricalPoint[]
+  hydraulicPoints  HydraulicPoint[]
+  roomFinishes     RoomFinish[]
+}
+
+model ProjectStructure {
+  id             String  @id @default(cuid())
+  projectId      String  @unique
+  foundationType String  @default("sapata_corrida")
+  structureType  String  @default("concreto_armado")
+  blockType      String  @default("tijolo_furado")
+  floors         Int     @default(1)
+  hasLaje        Boolean @default(false)
+  hasEscada      Boolean @default(false)
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model ProjectRoofing {
+  id          String  @id @default(cuid())
+  projectId   String  @unique
+  roofType    String  @default("duas_aguas")
+  tileType    String  @default("ceramica")
+  inclination Float   @default(30)
+  hasRoof     Boolean @default(true)
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model ProjectInstallations {
+  id          String @id @default(cuid())
+  projectId   String @unique
+  heatingType String @default("eletrico")
+
+  project          Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  electricalPoints ElectricalPoint[]
+  hydraulicPoints  HydraulicPoint[]
+}
+
+model ElectricalPoint {
+  id              String @id @default(cuid())
+  installationsId String
+  roomId          String
+  outlets         Int    @default(2)
+  switches        Int    @default(1)
+  lightPoints     Int    @default(1)
+
+  installations ProjectInstallations @relation(fields: [installationsId], references: [id], onDelete: Cascade)
+  room          Room                 @relation(fields: [roomId], references: [id], onDelete: Cascade)
+}
+
+model HydraulicPoint {
+  id              String @id @default(cuid())
+  installationsId String
+  roomId          String
+  waterInlets     Int    @default(0)
+  drainPoints     Int    @default(0)
+
+  installations ProjectInstallations @relation(fields: [installationsId], references: [id], onDelete: Cascade)
+  room          Room                 @relation(fields: [roomId], references: [id], onDelete: Cascade)
+}
+
+model ProjectFinishes {
+  id            String @id @default(cuid())
+  projectId     String @unique
+  doors         Int    @default(0)
+  windows       Int    @default(0)
+  externalDoors Int    @default(1)
+
+  project      Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  roomFinishes RoomFinish[]
+}
+
+model RoomFinish {
+  id             String  @id @default(cuid())
+  finishesId     String
+  roomId         String
+  floorType      String  @default("ceramica")
+  wallTile       Boolean @default(false)
+  wallTileHeight Float   @default(1.5)
+  paintWalls     Boolean @default(true)
+
+  finishes ProjectFinishes @relation(fields: [finishesId], references: [id], onDelete: Cascade)
+  room     Room            @relation(fields: [roomId], references: [id], onDelete: Cascade)
+}
+
+model Material {
+  id           String           @id @default(cuid())
+  name         String
+  unit         String
+  category     MaterialCategory
+  currentPrice Float
+  active       Boolean          @default(true)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  priceHistory PriceHistory[]
+  budgetItems  BudgetItem[]
+}
+
+model PriceHistory {
+  id         String   @id @default(cuid())
+  materialId String
+  price      Float
+  changedAt  DateTime @default(now())
+  changedBy  String
+
+  material Material @relation(fields: [materialId], references: [id])
+  user     User     @relation(fields: [changedBy], references: [id])
+}
+
+model BudgetItem {
+  id                String    @id @default(cuid())
+  projectId         String
+  materialId        String
+  phase             PhaseType
+  quantity          Float
+  unitPriceSnapshot Float
+  createdAt         DateTime  @default(now())
+
+  project  Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  material Material @relation(fields: [materialId], references: [id])
+}
+
+model LaborConfig {
+  id        String     @id @default(cuid())
+  projectId String     @unique
+  model     LaborModel @default(PERCENT)
+
+  project Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  phases  LaborPhase[]
+}
+
+model LaborPhase {
+  id            String    @id @default(cuid())
+  laborConfigId String
+  phase         PhaseType
+  value         Float
+
+  laborConfig LaborConfig @relation(fields: [laborConfigId], references: [id], onDelete: Cascade)
+}
+
+model CashFlowEntry {
+  id        String    @id @default(cuid())
+  projectId String
+  phase     PhaseType
+  month     Int
+  percent   Float
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+// Premissas globais de cálculo (coeficientes editáveis pelo admin)
+model GlobalPremise {
+  id       String @id @default(cuid())
+  key      String @unique
+  label    String
+  value    Float
+  unit     String
+  category String
+}
+
+// Muros por lado do terreno
+model ProjectWall {
+  id        String  @id @default(cuid())
+  projectId String
+  side      String  // FRONT | BACK | LEFT | RIGHT
+  hasWall   Boolean @default(false)
+  length    Float   @default(0)
+  height    Float   @default(2.0)
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+// Custos indiretos e extras por projeto
+model IndirectCost {
+  id        String @id @default(cuid())
+  projectId String
+  label     String
+  category  String // PROJETO | REGULARIZACAO | AVERBACAO | OUTROS
+  value     Float
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+// Viabilidade financeira do projeto
+model ProjectViability {
+  id                 String   @id @default(cuid())
+  projectId          String   @unique
+  // construção
+  salePrice          Float    @default(0)
+  bdiPercent         Float    @default(0)
+  notes              String?
+  updatedAt          DateTime @updatedAt
+  // terreno
+  landValue          Float    @default(0)
+  landAppraisalValue Float    @default(0)
+  itivPercent        Float    @default(2)
+  landDocPercent     Float    @default(3.65)
+  // venda
+  hasSale            Boolean  @default(false)
+  venalValue         Float    @default(0)
+  saleDocPercent     Float    @default(7.5)
+  brokeragePercent   Float    @default(5)
+  irPercent          Float    @default(15)
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}

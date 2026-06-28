@@ -1,7 +1,7 @@
 import "server-only";
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
-import { Role } from "@/generated/prisma/index";
+import { Role } from "@prisma/client";
 
 export type SessionPayload = {
   userId: string;

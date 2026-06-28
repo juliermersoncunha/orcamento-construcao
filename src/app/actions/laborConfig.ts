@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { redirect } from "next/navigation";
-import { LaborModel, PhaseType } from "@/generated/prisma/index";
+import { LaborModel, PhaseType } from "@prisma/client";
 
 const PHASE_LABELS: Record<string, string> = {
   TERRAPLENAGEM: "Terraplenagem",

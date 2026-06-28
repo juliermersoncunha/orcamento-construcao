@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { UserPlus, KeyRound, ChevronDown, CheckCircle2 } from "lucide-react";
-import { Role } from "@/generated/prisma/index";
+import { Role } from "@prisma/client";
 
 type UserRow = {
   id: string;

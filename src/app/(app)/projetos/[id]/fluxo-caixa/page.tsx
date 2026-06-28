@@ -8,7 +8,7 @@ import Link from "next/link";
 import { initDefaultCashFlow } from "@/app/actions/cashFlow";
 import { FluxoCaixaTable } from "./fluxo-caixa-table";
 import { formatCurrency } from "@/lib/utils";
-import { LaborModel } from "@/generated/prisma/index";
+import { LaborModel } from "@prisma/client";
 import { getCaixaCurves } from "@/lib/caixa-curves";
 
 const PHASE_LABELS: Record<string, string> = {

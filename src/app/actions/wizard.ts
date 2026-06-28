@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { calculateMaterials } from "@/lib/calculations";
 import type { CalculationInput, RoomInput } from "@/lib/calculations";
-import { MaterialCategory, PhaseType } from "@/generated/prisma/index";
+import { MaterialCategory, PhaseType } from "@prisma/client";
 
 async function getProject(projectId: string) {
   const session = await getSession();

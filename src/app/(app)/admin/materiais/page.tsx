@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { formatCurrency } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { MaterialCategory } from "@/generated/prisma/index";
+import { MaterialCategory } from "@prisma/client";
 import { MaterialForm } from "./material-form";
 import { MaterialRow } from "./material-row";
 

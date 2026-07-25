@@ -81,6 +81,7 @@ export default async function MateriaisPage() {
                         <th className="text-left font-medium text-gray-500 py-2">Material</th>
                         <th className="text-center font-medium text-gray-500 py-2">Unidade</th>
                         <th className="text-right font-medium text-gray-500 py-2">Preço (R$)</th>
+                        <th className="text-center font-medium text-gray-500 py-2">Data do preço</th>
                         <th className="text-center font-medium text-gray-500 py-2">Status</th>
                         <th className="py-2"></th>
                       </tr>

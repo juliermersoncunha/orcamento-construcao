@@ -112,10 +112,11 @@ export function Step2Ambientes({ project }: { project: any }) {
 
           <form onSubmit={handleSubmit}>
             {/* Header row */}
-            <div className="grid grid-cols-[1fr_80px_80px_80px_40px] gap-2 mb-2 px-1">
+            <div className="grid grid-cols-[1fr_80px_80px_80px_80px_40px] gap-2 mb-2 px-1">
               <p className="text-xs font-medium text-gray-500">Cômodo</p>
               <p className="text-xs font-medium text-gray-500 text-center">Larg. (m)</p>
               <p className="text-xs font-medium text-gray-500 text-center">Comp. (m)</p>
+              <p className="text-xs font-medium text-gray-500 text-center">Pé dir. (m)</p>
               <p className="text-xs font-medium text-gray-500 text-center">Área (m²)</p>
               <div />
             </div>
@@ -126,7 +127,7 @@ export function Step2Ambientes({ project }: { project: any }) {
                 return (
                   <div
                     key={room.id}
-                    className="grid grid-cols-[1fr_80px_80px_80px_40px] gap-2 items-center"
+                    className="grid grid-cols-[1fr_80px_80px_80px_80px_40px] gap-2 items-center"
                   >
                     <input
                       value={room.name}
@@ -150,6 +151,16 @@ export function Step2Ambientes({ project }: { project: any }) {
                       value={room.length}
                       onChange={(e) => updateRoom(room.id, "length", e.target.value)}
                       placeholder="0,00"
+                      step="0.01"
+                      min="0"
+                      required
+                      className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    />
+                    <input
+                      type="number"
+                      value={room.height}
+                      onChange={(e) => updateRoom(room.id, "height", e.target.value)}
+                      placeholder="2,80"
                       step="0.01"
                       min="0"
                       required

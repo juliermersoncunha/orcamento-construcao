@@ -75,6 +75,15 @@ export function MaterialForm() {
                 error={state.errors?.category?.[0]}
               />
             </div>
+            <div className="flex-1">
+              <Input
+                id="priceDate"
+                name="priceDate"
+                type="date"
+                label="Data do preço"
+                error={state.errors?.priceDate?.[0]}
+              />
+            </div>
             <Button type="submit" disabled={isPending}>
               <Plus className="w-4 h-4" />
               {isPending ? "Adicionando..." : "Adicionar"}

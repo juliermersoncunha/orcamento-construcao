@@ -207,6 +207,7 @@ model Material {
   unit         String
   category     MaterialCategory
   currentPrice Float
+  priceDate    DateTime?
   active       Boolean          @default(true)
   createdAt    DateTime         @default(now())
   updatedAt    DateTime         @updatedAt

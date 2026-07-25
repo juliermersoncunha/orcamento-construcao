@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { Pool } from "pg";
+import { PrismaClient } from "@prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
 
 export const dynamic = "force-dynamic";
 
@@ -38,5 +40,31 @@ export async function GET() {
     connect = `FAIL:${err?.constructor?.name}:${err?.code ?? ""}:${err?.message}`;
   }
 
-  return NextResponse.json({ host, port, user, connect });
+  // Reproduce the exact Prisma-adapter path used by the login action.
+  let prismaResult = "not-attempted";
+  try {
+    const u = new URL(raw);
+    const pool = new Pool({
+      host: u.hostname,
+      port: Number(u.port) || 6543,
+      database: u.pathname.replace("/", ""),
+      user: decodeURIComponent(u.username),
+      password: decodeURIComponent(u.password),
+      ssl: { rejectUnauthorized: false },
+      max: 1,
+      connectionTimeoutMillis: 8000,
+    });
+    const adapter = new PrismaPg(pool);
+    const prisma = new PrismaClient({ adapter } as never);
+    const admin = await prisma.user.findUnique({
+      where: { email: "admin@obrafacil.com" },
+    });
+    prismaResult = `ok:found=${admin ? admin.email : "null"}`;
+    await prisma.$disconnect();
+  } catch (e: unknown) {
+    const err = e as { constructor?: { name?: string }; message?: string; code?: string };
+    prismaResult = `FAIL:${err?.constructor?.name}:${err?.code ?? ""}:${err?.message}`;
+  }
+
+  return NextResponse.json({ host, port, user, connect, prismaResult });
 }

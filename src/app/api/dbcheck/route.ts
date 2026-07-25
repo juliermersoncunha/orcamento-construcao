@@ -66,5 +66,18 @@ export async function GET() {
     prismaResult = `FAIL:${err?.constructor?.name}:${err?.code ?? ""}:${err?.message}`;
   }
 
-  return NextResponse.json({ host, port, user, connect, prismaResult });
+  // Same singleton the login server action uses.
+  let singletonResult = "not-attempted";
+  try {
+    const { prisma: shared } = await import("@/lib/prisma");
+    const admin = await shared.user.findUnique({
+      where: { email: "admin@obrafacil.com" },
+    });
+    singletonResult = `ok:found=${admin ? admin.email : "null"}`;
+  } catch (e: unknown) {
+    const err = e as { constructor?: { name?: string }; message?: string; code?: string };
+    singletonResult = `FAIL:${err?.constructor?.name}:${err?.code ?? ""}:${err?.message}`;
+  }
+
+  return NextResponse.json({ host, port, user, connect, prismaResult, singletonResult });
 }

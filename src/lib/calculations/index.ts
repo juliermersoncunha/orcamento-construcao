@@ -115,7 +115,7 @@ function calcFundacao(structure: StructureInput): MaterialResult[] {
 
   const results: MaterialResult[] = [
     ...concretoTraco123(vol, "FUNDACAO", "FUNDACAO"),
-    { name: "Aço CA-50 (vergalhão)", unit: "kg", quantity: Math.ceil(vol * 80), phase: "FUNDACAO", category: "FUNDACAO" },
+    { name: "Armação de Sapata", unit: "un", quantity: structure.sapataQtd, phase: "FUNDACAO", category: "FUNDACAO" },
     { name: "Fôrmas de Madeira (compensado 18mm)", unit: "m²", quantity: Math.ceil(vol * 10), phase: "FUNDACAO", category: "FUNDACAO" },
   ];
 
@@ -132,9 +132,14 @@ function calcEstrutura(structure: StructureInput): MaterialResult[] {
 
   const results: MaterialResult[] = [
     ...concretoTraco123(volTotal, "ESTRUTURA_ALVENARIA", "ESTRUTURA"),
-    { name: "Aço CA-50 (vergalhão)", unit: "kg", quantity: Math.ceil(volTotal * 80), phase: "ESTRUTURA_ALVENARIA", category: "ESTRUTURA" },
-    { name: "Fôrmas de Madeira (compensado 18mm)", unit: "m²", quantity: Math.ceil(volTotal * 10), phase: "ESTRUTURA_ALVENARIA", category: "ESTRUTURA" },
   ];
+  if (structure.pilarMetros > 0) {
+    results.push({ name: "Armação de Pilar", unit: "m", quantity: round1(structure.pilarMetros), phase: "ESTRUTURA_ALVENARIA", category: "ESTRUTURA" });
+  }
+  if (structure.vigaMetros > 0) {
+    results.push({ name: "Armação de Viga", unit: "m", quantity: round1(structure.vigaMetros), phase: "ESTRUTURA_ALVENARIA", category: "ESTRUTURA" });
+  }
+  results.push({ name: "Fôrmas de Madeira (compensado 18mm)", unit: "m²", quantity: Math.ceil(volTotal * 10), phase: "ESTRUTURA_ALVENARIA", category: "ESTRUTURA" });
 
   return results;
 }
@@ -197,7 +202,6 @@ function calcLaje(rooms: RoomInput[], structure: StructureInput): MaterialResult
   return [
     { name: "Laje pré-moldada treliçada", unit: "m²", quantity: Math.ceil(area), phase: "LAJE", category: "LAJE" },
     ...concretoTraco123(concreteVol, "LAJE", "LAJE"),
-    { name: "Aço CA-50 (vergalhão)", unit: "kg", quantity: Math.ceil(area * 4), phase: "LAJE", category: "LAJE" },
   ];
 }
 
@@ -209,7 +213,6 @@ function calcEscada(structure: StructureInput): MaterialResult[] {
   const vol = 2 * lances;
   return [
     ...concretoTraco123(vol, "ESCADA", "ESTRUTURA"),
-    { name: "Aço CA-50 (vergalhão)", unit: "kg", quantity: 150 * lances, phase: "ESCADA", category: "ESTRUTURA" },
     { name: "Fôrmas de Madeira (compensado 18mm)", unit: "m²", quantity: 15 * lances, phase: "ESCADA", category: "ESTRUTURA" },
   ];
 }

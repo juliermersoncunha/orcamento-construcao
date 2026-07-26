@@ -99,12 +99,12 @@ export function generateExplanations(
         },
         ...tracoExplanations(vol, "sapatas", "FUNDACAO"),
         {
-          materialName: "Aço CA-50 (vergalhão) – sapatas",
-          formula: `Volume concreto (${fmt(vol)} m³) × 80 kg/m³`,
-          result: `${fmt(vol * 80)} → ${Math.ceil(vol * 80)} kg`,
+          materialName: "Armação de Sapata",
+          formula: `${structure.sapataQtd} sapatas — peça fabricada`,
+          result: `${structure.sapataQtd} un`,
         },
         {
-          materialName: "Fôrmas de Madeira – sapatas",
+          materialName: "Fôrmas de Madeira (compensado 18mm)",
           formula: `Volume concreto (${fmt(vol)} m³) × 10 m²/m³`,
           result: `${fmt(vol * 10)} → ${Math.ceil(vol * 10)} m²`,
         },
@@ -145,17 +145,26 @@ export function generateExplanations(
 
       explanations.push(
         ...tracoExplanations(volTotal, "estrutura", "ESTRUTURA"),
-        {
-          materialName: "Aço CA-50 (vergalhão) – estrutura",
-          formula: `Volume concreto (${fmt(volTotal)} m³) × 80 kg/m³`,
-          result: `${fmt(volTotal * 80)} → ${Math.ceil(volTotal * 80)} kg`,
-        },
-        {
-          materialName: "Fôrmas de Madeira (compensado 18mm)",
-          formula: `Volume concreto (${fmt(volTotal)} m³) × 10 m²/m³`,
-          result: `${fmt(volTotal * 10)} → ${Math.ceil(volTotal * 10)} m²`,
-        },
       );
+      if (structure.pilarMetros > 0) {
+        explanations.push({
+          materialName: "Armação de Pilar",
+          formula: `${fmt(structure.pilarMetros)} metros lineares — peça fabricada`,
+          result: `${fmt(structure.pilarMetros)} m`,
+        });
+      }
+      if (structure.vigaMetros > 0) {
+        explanations.push({
+          materialName: "Armação de Viga",
+          formula: `${fmt(structure.vigaMetros)} metros lineares — peça fabricada`,
+          result: `${fmt(structure.vigaMetros)} m`,
+        });
+      }
+      explanations.push({
+        materialName: "Fôrmas de Madeira (compensado 18mm)",
+        formula: `Volume concreto (${fmt(volTotal)} m³) × 10 m²/m³`,
+        result: `${fmt(volTotal * 10)} → ${Math.ceil(volTotal * 10)} m²`,
+      });
 
       result["ESTRUTURA_ALVENARIA_ESTRUTURA"] = explanations;
     }
@@ -251,11 +260,6 @@ export function generateExplanations(
         result: `${fmt(lajeArea * 0.065)} → ${fmt(concreteVol)} m³`,
       },
       ...tracoExplanations(concreteVol, "laje", "LAJE"),
-      {
-        materialName: "Aço CA-50 (vergalhão) – laje",
-        formula: `Área laje (${fmt(lajeArea)} m²) × 4 kg/m²`,
-        result: `${fmt(lajeArea * 4)} → ${Math.ceil(lajeArea * 4)} kg`,
-      },
     ];
   }
 
@@ -270,11 +274,6 @@ export function generateExplanations(
         result: `${fmt(vol)} m³`,
       },
       ...tracoExplanations(vol, "escada", "ESCADA"),
-      {
-        materialName: "Aço CA-50 (vergalhão) – escada",
-        formula: `${lances} lance(s) × 150 kg/lance`,
-        result: `${150 * lances} kg`,
-      },
       {
         materialName: "Fôrmas de Madeira (escada)",
         formula: `${lances} lance(s) × 15 m²/lance`,

@@ -100,9 +100,10 @@ function calcFundacao(rooms: RoomInput[], structure: StructureInput): MaterialRe
   const area = totalFloorArea(rooms);
 
   const coefs: Record<string, { concrete: number; steel: number; forms: number }> = {
-    radier:        { concrete: 0.10, steel: 60, forms: 1.5 },
-    sapata_corrida: { concrete: 0.08, steel: 80, forms: 0.8 },
-    estaca:        { concrete: 0.10, steel: 100, forms: 0.5 },
+    radier:          { concrete: 0.10, steel: 60, forms: 1.5 },
+    sapata_corrida:  { concrete: 0.08, steel: 80, forms: 0.8 },
+    sapata_isolada:  { concrete: 0.08, steel: 80, forms: 0.8 },
+    estaca:          { concrete: 0.10, steel: 100, forms: 0.5 },
   };
 
   const c = coefs[structure.foundationType] ?? coefs.sapata_corrida;

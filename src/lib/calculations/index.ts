@@ -91,9 +91,9 @@ const TRACO_123 = {
 function concretoTraco123(volumeM3: number, phase: string, category: string): MaterialResult[] {
   if (volumeM3 <= 0) return [];
   return [
-    { name: "Cimento CP-II (50kg) – concreto", unit: "sc", quantity: Math.ceil(volumeM3 * TRACO_123.cimentoSc), phase, category },
-    { name: "Areia Média – concreto", unit: "m³", quantity: round1(volumeM3 * TRACO_123.areiaM3), phase, category },
-    { name: "Brita 1 – concreto", unit: "m³", quantity: round1(volumeM3 * TRACO_123.britaM3), phase, category },
+    { name: "Cimento CP-II (50kg)", unit: "sc", quantity: Math.ceil(volumeM3 * TRACO_123.cimentoSc), phase, category },
+    { name: "Areia Média", unit: "m³", quantity: round1(volumeM3 * TRACO_123.areiaM3), phase, category },
+    { name: "Brita 1", unit: "m³", quantity: round1(volumeM3 * TRACO_123.britaM3), phase, category },
   ];
 }
 
@@ -115,8 +115,8 @@ function calcFundacao(structure: StructureInput): MaterialResult[] {
 
   const results: MaterialResult[] = [
     ...concretoTraco123(vol, "FUNDACAO", "FUNDACAO"),
-    { name: "Aço CA-50 (vergalhão) – sapatas", unit: "kg", quantity: Math.ceil(vol * 80), phase: "FUNDACAO", category: "FUNDACAO" },
-    { name: "Fôrmas de Madeira – sapatas", unit: "m²", quantity: Math.ceil(vol * 10), phase: "FUNDACAO", category: "FUNDACAO" },
+    { name: "Aço CA-50 (vergalhão)", unit: "kg", quantity: Math.ceil(vol * 80), phase: "FUNDACAO", category: "FUNDACAO" },
+    { name: "Fôrmas de Madeira (compensado 18mm)", unit: "m²", quantity: Math.ceil(vol * 10), phase: "FUNDACAO", category: "FUNDACAO" },
   ];
 
   return results;
@@ -132,7 +132,7 @@ function calcEstrutura(structure: StructureInput): MaterialResult[] {
 
   const results: MaterialResult[] = [
     ...concretoTraco123(volTotal, "ESTRUTURA_ALVENARIA", "ESTRUTURA"),
-    { name: "Aço CA-50 (vergalhão) – estrutura", unit: "kg", quantity: Math.ceil(volTotal * 80), phase: "ESTRUTURA_ALVENARIA", category: "ESTRUTURA" },
+    { name: "Aço CA-50 (vergalhão)", unit: "kg", quantity: Math.ceil(volTotal * 80), phase: "ESTRUTURA_ALVENARIA", category: "ESTRUTURA" },
     { name: "Fôrmas de Madeira (compensado 18mm)", unit: "m²", quantity: Math.ceil(volTotal * 10), phase: "ESTRUTURA_ALVENARIA", category: "ESTRUTURA" },
   ];
 
@@ -175,14 +175,14 @@ function calcAlvenaria(
 
   return [
     { name: brickName, unit: "un", quantity: bricks, phase: "ESTRUTURA_ALVENARIA", category: "ALVENARIA" },
-    { name: "Cimento CP-II (50kg) – assentamento", unit: "sc", quantity: cimentoAssentamento, phase: "ESTRUTURA_ALVENARIA", category: "ALVENARIA" },
-    { name: "Areia Média – assentamento", unit: "m³", quantity: areiaAssentamento, phase: "ESTRUTURA_ALVENARIA", category: "ALVENARIA" },
-    { name: "Cimento CP-II (50kg) – chapisco", unit: "sc", quantity: cimentoChapisco, phase: "ESTRUTURA_ALVENARIA", category: "ALVENARIA" },
-    { name: "Areia Grossa – chapisco", unit: "m³", quantity: areiaChapisco, phase: "ESTRUTURA_ALVENARIA", category: "ALVENARIA" },
-    { name: "Cimento CP-II (50kg) – reboco interno", unit: "sc", quantity: cimentoRebrocoInt, phase: "ESTRUTURA_ALVENARIA", category: "ALVENARIA" },
-    { name: "Areia Fina – reboco interno", unit: "m³", quantity: areiaRebrocoInt, phase: "ESTRUTURA_ALVENARIA", category: "ALVENARIA" },
-    { name: "Cimento CP-II (50kg) – reboco externo", unit: "sc", quantity: cimentoRebrocoExt, phase: "ESTRUTURA_ALVENARIA", category: "ALVENARIA" },
-    { name: "Areia Fina – reboco externo", unit: "m³", quantity: areiaRebrocoExt, phase: "ESTRUTURA_ALVENARIA", category: "ALVENARIA" },
+    { name: "Cimento CP-II (50kg)", unit: "sc", quantity: cimentoAssentamento, phase: "ESTRUTURA_ALVENARIA", category: "ALVENARIA" },
+    { name: "Areia Média", unit: "m³", quantity: areiaAssentamento, phase: "ESTRUTURA_ALVENARIA", category: "ALVENARIA" },
+    { name: "Cimento CP-II (50kg)", unit: "sc", quantity: cimentoChapisco, phase: "ESTRUTURA_ALVENARIA", category: "ALVENARIA" },
+    { name: "Areia Grossa", unit: "m³", quantity: areiaChapisco, phase: "ESTRUTURA_ALVENARIA", category: "ALVENARIA" },
+    { name: "Cimento CP-II (50kg)", unit: "sc", quantity: cimentoRebrocoInt, phase: "ESTRUTURA_ALVENARIA", category: "ALVENARIA" },
+    { name: "Areia Fina", unit: "m³", quantity: areiaRebrocoInt, phase: "ESTRUTURA_ALVENARIA", category: "ALVENARIA" },
+    { name: "Cimento CP-II (50kg)", unit: "sc", quantity: cimentoRebrocoExt, phase: "ESTRUTURA_ALVENARIA", category: "ALVENARIA" },
+    { name: "Areia Fina", unit: "m³", quantity: areiaRebrocoExt, phase: "ESTRUTURA_ALVENARIA", category: "ALVENARIA" },
   ];
 }
 
@@ -197,7 +197,7 @@ function calcLaje(rooms: RoomInput[], structure: StructureInput): MaterialResult
   return [
     { name: "Laje pré-moldada treliçada", unit: "m²", quantity: Math.ceil(area), phase: "LAJE", category: "LAJE" },
     ...concretoTraco123(concreteVol, "LAJE", "LAJE"),
-    { name: "Aço CA-50 (vergalhão) – laje", unit: "kg", quantity: Math.ceil(area * 4), phase: "LAJE", category: "LAJE" },
+    { name: "Aço CA-50 (vergalhão)", unit: "kg", quantity: Math.ceil(area * 4), phase: "LAJE", category: "LAJE" },
   ];
 }
 
@@ -209,8 +209,8 @@ function calcEscada(structure: StructureInput): MaterialResult[] {
   const vol = 2 * lances;
   return [
     ...concretoTraco123(vol, "ESCADA", "ESTRUTURA"),
-    { name: "Aço CA-50 (vergalhão) – escada", unit: "kg", quantity: 150 * lances, phase: "ESCADA", category: "ESTRUTURA" },
-    { name: "Fôrmas de Madeira (escada)", unit: "m²", quantity: 15 * lances, phase: "ESCADA", category: "ESTRUTURA" },
+    { name: "Aço CA-50 (vergalhão)", unit: "kg", quantity: 150 * lances, phase: "ESCADA", category: "ESTRUTURA" },
+    { name: "Fôrmas de Madeira (compensado 18mm)", unit: "m²", quantity: 15 * lances, phase: "ESCADA", category: "ESTRUTURA" },
   ];
 }
 

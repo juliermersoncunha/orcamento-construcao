@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { updateMaterial, toggleMaterialActive } from "@/app/actions/materials";
+import { updateMaterial, toggleMaterialActive, deleteMaterial } from "@/app/actions/materials";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Check, X, Pencil } from "lucide-react";
+import { Check, X, Pencil, Trash2 } from "lucide-react";
 
 // Date <-> yyyy-MM-dd for <input type="date">, read in local time so the day doesn't shift.
 function toInputDate(value: Date | string | null | undefined) {
@@ -75,6 +75,14 @@ export function MaterialRow({ material }: { material: any }) {
 
   function toggleActive() {
     startTransition(() => toggleMaterialActive(material.id, !material.active));
+  }
+
+  function handleDelete() {
+    if (!confirm(`Excluir "${material.name}"? Esta ação não pode ser desfeita.`)) return;
+    startTransition(async () => {
+      const result = await deleteMaterial(material.id);
+      if (result?.error) setError(result.error);
+    });
   }
 
   const inputClass =
@@ -182,15 +190,26 @@ export function MaterialRow({ material }: { material: any }) {
         </Badge>
       </td>
       <td className="py-2 pl-2 text-right">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={toggleActive}
-          disabled={isPending}
-          className="text-xs"
-        >
-          {material.active ? "Desativar" : "Ativar"}
-        </Button>
+        <div className="flex items-center justify-end gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={toggleActive}
+            disabled={isPending}
+            className="text-xs"
+          >
+            {material.active ? "Desativar" : "Ativar"}
+          </Button>
+          <button
+            onClick={handleDelete}
+            disabled={isPending}
+            title="Excluir material"
+            className="p-1.5 rounded text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors disabled:opacity-40"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
+        {error && !editing && <p className="text-xs text-red-600 mt-1">{error}</p>}
       </td>
     </tr>
   );

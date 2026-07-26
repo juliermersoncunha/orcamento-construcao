@@ -90,3 +90,18 @@ export async function toggleMaterialActive(materialId: string, active: boolean) 
   await prisma.material.update({ where: { id: materialId }, data: { active } });
   revalidatePath("/admin/materiais");
 }
+
+export async function deleteMaterial(materialId: string) {
+  await requireAdmin();
+
+  const usedInBudget = await prisma.budgetItem.count({ where: { materialId } });
+  if (usedInBudget > 0) {
+    return { error: `Material usado em ${usedInBudget} item(ns) de orçamento. Desative-o em vez de excluir.` };
+  }
+
+  await prisma.priceHistory.deleteMany({ where: { materialId } });
+  await prisma.material.delete({ where: { id: materialId } });
+
+  revalidatePath("/admin/materiais");
+  return {};
+}

@@ -8,6 +8,7 @@ import Link from "next/link";
 import { LaborModel } from "@prisma/client";
 import { PrintButton } from "./memorial-print";
 import { generateExplanations } from "@/lib/calculations/memorial-calcs";
+import { calculateRoomMaterials } from "@/lib/calculations/per-room";
 import type { RoomInput, StructureInput, RoofingInput, FinishesInput } from "@/lib/calculations";
 
 const PHASE_LABELS: Record<string, string> = {
@@ -25,7 +26,7 @@ const PHASE_LABELS: Record<string, string> = {
   OUTROS: "Outros",
 };
 
-const PHASE_ORDER: string[] = [
+const GENERAL_PHASES = [
   "TERRAPLENAGEM",
   "FUNDACAO",
   "ESTRUTURA_ALVENARIA",
@@ -34,8 +35,21 @@ const PHASE_ORDER: string[] = [
   "COBERTURA",
   "INSTALACOES_ELETRICAS",
   "INSTALACOES_HIDROSSANITARIAS",
+  "ACABAMENTO",
+  "OUTROS",
+];
+
+const ALL_PHASES_ORDER = [
+  "TERRAPLENAGEM",
+  "FUNDACAO",
+  "ESTRUTURA_ALVENARIA",
+  "LAJE",
+  "ESCADA",
+  "COBERTURA",
   "REVESTIMENTOS",
   "PINTURA",
+  "INSTALACOES_ELETRICAS",
+  "INSTALACOES_HIDROSSANITARIAS",
   "ACABAMENTO",
   "OUTROS",
 ];
@@ -160,11 +174,6 @@ export default async function MemorialPage({
   const custoM2 = totalFloorArea > 0 ? totalGeral / totalFloorArea : 0;
   const hasMO = project.laborConfig !== null;
 
-  const orderedPhases = PHASE_ORDER.filter((p) => byPhase.has(p));
-  const extraPhases = Array.from(byPhase.keys()).filter(
-    (p) => !PHASE_ORDER.includes(p)
-  );
-
   const today = new Date().toLocaleDateString("pt-BR");
 
   // Build inputs for calculation explanations
@@ -246,7 +255,6 @@ export default async function MemorialPage({
 
   const explanations = generateExplanations(roomInputs, structureInput, roofingInput, finishesInput);
 
-  // Map phase to its calc explanations (Estrutura+Alvenaria share a phase)
   function getExplanationsForPhase(phase: string) {
     if (phase === "ESTRUTURA_ALVENARIA") {
       return [
@@ -262,9 +270,47 @@ export default async function MemorialPage({
     return sum + perimeter * r.height;
   }, 0);
 
+  // ── Per-room materials ──
+  const priceLookup = new Map<string, number>();
+  for (const item of project.budgetItems) {
+    if (!priceLookup.has(item.material.name)) {
+      priceLookup.set(item.material.name, item.unitPriceSnapshot);
+    }
+  }
+
+  const roomMaterials = roomInputs.map((room) => ({
+    roomName: room.name,
+    items: calculateRoomMaterials(room),
+  }));
+
+  // ── Consolidated material list (shopping list) ──
+  const consolidatedMap = new Map<string, { unit: string; quantity: number; price: number }>();
+  for (const item of project.budgetItems) {
+    const key = item.material.name;
+    const existing = consolidatedMap.get(key);
+    if (existing) {
+      existing.quantity += item.quantity;
+    } else {
+      consolidatedMap.set(key, {
+        unit: item.material.unit,
+        quantity: item.quantity,
+        price: item.unitPriceSnapshot,
+      });
+    }
+  }
+  const consolidatedList = Array.from(consolidatedMap.entries())
+    .map(([name, data]) => ({ name, ...data }))
+    .sort((a, b) => (b.quantity * b.price) - (a.quantity * a.price));
+
+  // ── Phase ordering ──
+  const generalPhases = GENERAL_PHASES.filter((p) => byPhase.has(p));
+  const extraPhases = Array.from(byPhase.keys()).filter(
+    (p) => !ALL_PHASES_ORDER.includes(p)
+  );
+
   return (
     <div className="p-8 max-w-4xl mx-auto">
-      {/* Action bar — hidden on print */}
+      {/* Action bar */}
       <div className="flex items-center justify-between mb-6 print:hidden">
         <Link href={`/projetos/${id}/orcamento`}>
           <Button variant="ghost" size="sm">
@@ -275,9 +321,8 @@ export default async function MemorialPage({
         <PrintButton />
       </div>
 
-      {/* Report content */}
       <div className="print:p-0">
-        {/* Header */}
+        {/* ═══ 1. HEADER ═══ */}
         <div className="text-center mb-8 border-b-2 border-gray-800 pb-4">
           <h1 className="text-2xl font-bold text-gray-900 uppercase tracking-wide">
             Memorial Descritivo de Materiais
@@ -285,7 +330,7 @@ export default async function MemorialPage({
           <p className="text-sm text-gray-600 mt-1">Orçamento de Construção — Memória de Cálculo</p>
         </div>
 
-        {/* Project info */}
+        {/* ═══ 2. DADOS DO PROJETO ═══ */}
         <div className="mb-6 grid grid-cols-2 gap-x-8 gap-y-1 text-sm">
           <div>
             <span className="font-semibold text-gray-700">Projeto:</span>{" "}
@@ -320,7 +365,7 @@ export default async function MemorialPage({
           </div>
         </div>
 
-        {/* Premissas — resumo das configurações usadas */}
+        {/* ═══ 3. PREMISSAS ═══ */}
         <div className="mb-6">
           <h2 className="text-sm font-bold text-gray-800 uppercase tracking-wide border-b border-gray-300 pb-1 mb-2">
             Premissas do Projeto
@@ -376,7 +421,7 @@ export default async function MemorialPage({
           </div>
         </div>
 
-        {/* Rooms summary */}
+        {/* ═══ 4. AMBIENTES ═══ */}
         {project.rooms.length > 0 && (
           <div className="mb-6">
             <h2 className="text-sm font-bold text-gray-800 uppercase tracking-wide border-b border-gray-300 pb-1 mb-2">
@@ -430,12 +475,95 @@ export default async function MemorialPage({
           </div>
         )}
 
-        {/* Materials by phase with calculation breakdown */}
+        {/* ═══ 5. MATERIAIS POR AMBIENTE ═══ */}
+        {roomMaterials.length > 0 && (
+          <div className="mb-6">
+            <h2 className="text-sm font-bold text-gray-800 uppercase tracking-wide border-b border-gray-300 pb-1 mb-4">
+              Materiais por Ambiente
+            </h2>
+
+            {roomMaterials.map((rm) => {
+              if (rm.items.length === 0) return null;
+
+              const categories = [...new Set(rm.items.map((i) => i.category))];
+              let roomTotal = 0;
+
+              return (
+                <div key={rm.roomName} className="mb-5 break-inside-avoid">
+                  <h3 className="text-sm font-bold text-gray-800 bg-green-50 border border-green-200 px-2 py-1 rounded mb-1">
+                    {rm.roomName}
+                  </h3>
+
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-gray-200">
+                        <th className="text-left font-medium text-gray-600 py-1">Categoria</th>
+                        <th className="text-left font-medium text-gray-600 py-1">Material</th>
+                        <th className="text-center font-medium text-gray-600 py-1">Qtd</th>
+                        <th className="text-center font-medium text-gray-600 py-1">Un</th>
+                        <th className="text-right font-medium text-gray-600 py-1">Preço Unit.</th>
+                        <th className="text-right font-medium text-gray-600 py-1">Total</th>
+                        <th className="text-left font-medium text-gray-600 py-1 pl-2">Memória de Cálculo</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {categories.map((cat) => {
+                        const catItems = rm.items.filter((i) => i.category === cat);
+                        return catItems.map((item, idx) => {
+                          const price = priceLookup.get(item.name) ?? 0;
+                          const total = item.quantity * price;
+                          roomTotal += total;
+                          return (
+                            <tr key={`${cat}-${idx}`} className="border-b border-gray-50">
+                              {idx === 0 && (
+                                <td
+                                  rowSpan={catItems.length}
+                                  className="py-1 text-gray-500 text-xs font-medium align-top"
+                                >
+                                  {cat}
+                                </td>
+                              )}
+                              <td className="py-1 text-gray-800">{item.name}</td>
+                              <td className="py-1 text-center text-gray-600">
+                                {formatNumber(item.quantity)}
+                              </td>
+                              <td className="py-1 text-center text-gray-500">{item.unit}</td>
+                              <td className="py-1 text-right text-gray-600">
+                                {price > 0 ? formatCurrency(price) : "—"}
+                              </td>
+                              <td className="py-1 text-right font-medium text-gray-800">
+                                {price > 0 ? formatCurrency(total) : "—"}
+                              </td>
+                              <td className="py-1 text-left text-xs text-gray-500 pl-2">
+                                {item.formula}
+                              </td>
+                            </tr>
+                          );
+                        });
+                      })}
+                      <tr className="border-t border-gray-300">
+                        <td colSpan={5} className="py-1 text-right font-semibold text-gray-700">
+                          Subtotal {rm.roomName}:
+                        </td>
+                        <td className="py-1 text-right font-bold text-gray-900">
+                          {formatCurrency(roomTotal)}
+                        </td>
+                        <td />
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* ═══ 6. MATERIAIS GERAIS POR ETAPA ═══ */}
         <h2 className="text-sm font-bold text-gray-800 uppercase tracking-wide border-b border-gray-300 pb-1 mb-4">
-          Materiais por Etapa — Memória de Cálculo
+          Materiais Gerais por Etapa — Memória de Cálculo
         </h2>
 
-        {[...orderedPhases, ...extraPhases].map((phase) => {
+        {[...generalPhases, ...extraPhases].map((phase) => {
           const items = byPhase.get(phase);
           if (!items || items.length === 0) return null;
 
@@ -449,7 +577,6 @@ export default async function MemorialPage({
                 {PHASE_LABELS[phase] ?? phase}
               </h3>
 
-              {/* Calculation explanation */}
               {phaseExplanations.length > 0 && (
                 <div className="mb-2 px-2 py-2 bg-blue-50 border border-blue-200 rounded text-xs">
                   <p className="font-semibold text-blue-800 mb-1">Memória de cálculo:</p>
@@ -473,7 +600,6 @@ export default async function MemorialPage({
                 </div>
               )}
 
-              {/* Material items table */}
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-200">
@@ -524,7 +650,50 @@ export default async function MemorialPage({
           );
         })}
 
-        {/* Grand totals */}
+        {/* ═══ 7. CONSOLIDADO GERAL ═══ */}
+        <div className="mb-6">
+          <h2 className="text-sm font-bold text-gray-800 uppercase tracking-wide border-b border-gray-300 pb-1 mb-2">
+            Consolidado Geral — Lista de Compras
+          </h2>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-200">
+                <th className="text-left font-medium text-gray-600 py-1">Material</th>
+                <th className="text-center font-medium text-gray-600 py-1">Qtd Total</th>
+                <th className="text-center font-medium text-gray-600 py-1">Un</th>
+                <th className="text-right font-medium text-gray-600 py-1">Preço Unit.</th>
+                <th className="text-right font-medium text-gray-600 py-1">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {consolidatedList.map((item) => (
+                <tr key={item.name} className="border-b border-gray-50">
+                  <td className="py-1 text-gray-800">{item.name}</td>
+                  <td className="py-1 text-center text-gray-600">
+                    {formatNumber(item.quantity)}
+                  </td>
+                  <td className="py-1 text-center text-gray-500">{item.unit}</td>
+                  <td className="py-1 text-right text-gray-600">
+                    {formatCurrency(item.price)}
+                  </td>
+                  <td className="py-1 text-right font-medium text-gray-800">
+                    {formatCurrency(item.quantity * item.price)}
+                  </td>
+                </tr>
+              ))}
+              <tr className="border-t border-gray-300">
+                <td colSpan={4} className="py-1 text-right font-semibold text-gray-700">
+                  Total Materiais:
+                </td>
+                <td className="py-1 text-right font-bold text-gray-900">
+                  {formatCurrency(totalMat)}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        {/* ═══ 8–10. TOTAIS ═══ */}
         <div className="mt-6 border-t-2 border-gray-800 pt-4">
           <table className="w-full text-sm">
             <tbody>

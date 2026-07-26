@@ -324,9 +324,9 @@ export async function calculateAndSaveBudget(projectId: string) {
   if (wallArea > 0) {
     // Muro alvenaria coefficients (mirrors GlobalPremise seed values)
     const muroMats = [
-      { name: "Tijolo furado 9×19×19", unit: "un", category: "ALVENARIA", qty: wallArea * 25 * 1.10 },
-      { name: "Cimento CP-II",         unit: "sc", category: "ESTRUTURA",  qty: wallArea * 0.07 * 1.05 },
-      { name: "Areia grossa",          unit: "m³", category: "ESTRUTURA",  qty: wallArea * 0.01 * 1.05 },
+      { name: "Tijolo Cerâmico Furado 9x19x19", unit: "un", category: "ALVENARIA", qty: wallArea * 25 * 1.10 },
+      { name: "Cimento CP-II (50kg)",            unit: "sc", category: "ALVENARIA", qty: wallArea * 0.07 * 1.05 },
+      { name: "Areia Grossa",                    unit: "m³", category: "ALVENARIA", qty: wallArea * 0.01 * 1.05 },
     ];
     materials.push(
       ...muroMats.map((m) => ({

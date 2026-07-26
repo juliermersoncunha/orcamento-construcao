@@ -350,6 +350,7 @@ model RoomJoinery {
   quantity           Int         @default(1)
   prefinished        Boolean     @default(false)
   includedComponents String[]    @default([])
+  configJson         String?
 
   room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
 }

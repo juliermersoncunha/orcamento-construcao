@@ -7,7 +7,7 @@
 // Does NOT touch existing per-phase calculations. The room-aware report merges
 // these items into "Materiais por Ambiente"; consolidation happens on the report side.
 
-import { BATHROOM_FIXTURES, BATHROOM_DOOR_DEPENDENCIES, BATHROOM_ACCESSORY_DEPENDENCIES, IMPERM_SYSTEMS } from "@/lib/fixture-library/bathroom";
+import { BATHROOM_FIXTURES, BATHROOM_DOOR_DEPENDENCIES, BATHROOM_WINDOW_DEPENDENCIES, BATHROOM_ACCESSORY_DEPENDENCIES, IMPERM_SYSTEMS } from "@/lib/fixture-library/bathroom";
 import type { FixtureQuantity, DependencySpec, MaterialResolver } from "@/lib/fixture-library/types";
 
 // ── Inputs to the engine ───────────────────────────────────────────────────
@@ -30,6 +30,9 @@ export type RoomJoineryInput = {
   subtype: string;
   quantity: number;
   includedComponents: string[];
+  width?: number;
+  height?: number;
+  configJson?: string | null;
 };
 
 export type AccessoryInput = {
@@ -135,6 +138,8 @@ function computeValue(name: string, config: Record<string, unknown>): number {
     case "chuveiro.cableTerra":   return distance;
     case "chuveiro.eletroduto":   return distance; // scaled by CHUVEIRO_ELETRODUTO_MULT
     case "exaustor.duto":         return ductLength; // scaled by EXAUSTOR_DUTO_MULT
+    case "window.width":          return width;
+    case "window.area":           return width * height;
     default:                       return 0;
   }
 }
@@ -226,23 +231,40 @@ function safeJson(s: string): Record<string, unknown> {
   try { return JSON.parse(s); } catch { return {}; }
 }
 
-// ── Expand a bathroom door ─────────────────────────────────────────────────
+// ── Expand a bathroom joinery (door or window) ─────────────────────────────
 
-function expandBathroomDoor(
+function expandBathroomJoinery(
   joinery: RoomJoineryInput,
   room: RoomEngineInput,
   premises: PremiseValue[]
 ): FixtureMaterialItem[] {
-  // Only bathroom doors get privacy lock; other subtypes fall back to generic (calcAcabamento)
+  // Only bathroom joineries are handled here; other subtypes fall back to the
+  // generic per-total calc (calcAcabamento).
   if (joinery.subtype !== "banheiro") return [];
+
+  const isWindow = joinery.joineryType === "JANELA";
+  const deps = isWindow ? BATHROOM_WINDOW_DEPENDENCIES : BATHROOM_DOOR_DEPENDENCIES;
+  const sourceLabel = isWindow ? "Janela de banheiro" : "Porta de banheiro";
+
+  // Config: window dimensions + options (tela mosquiteira). Doors use empty config.
+  const parsed = joinery.configJson ? safeJson(joinery.configJson) : {};
+  const config: Record<string, unknown> = {
+    ...parsed,
+    width: joinery.width ?? parsed.width ?? 0,
+    height: joinery.height ?? parsed.height ?? 0,
+  };
+
   const included = new Set(joinery.includedComponents ?? []);
   const items: FixtureMaterialItem[] = [];
-  const config = {};
-  for (const dep of BATHROOM_DOOR_DEPENDENCIES) {
+  for (const dep of deps) {
+    if (dep.onlyIf && !dep.onlyIf(config)) continue;
     const materialName = resolveMaterialName(dep.material as MaterialResolver, config);
     if (dep.canBeIncluded && included.has(materialName)) continue;
     const { value, label } = resolveQuantity(dep.quantity as FixtureQuantity, config, premises, joinery.quantity);
     if (value <= 0) continue;
+    const rawFormula = typeof dep.formulaLabel === "function"
+      ? dep.formulaLabel(config)
+      : dep.formulaLabel ?? label;
     items.push({
       materialName,
       unit: dep.unit,
@@ -253,8 +275,8 @@ function expandBathroomDoor(
       roomName: room.name,
       sourceKind: "JOINERY",
       sourceId: joinery.id,
-      sourceLabel: "Porta de banheiro",
-      formula: label,
+      sourceLabel,
+      formula: rawFormula,
     });
   }
   return items;
@@ -375,7 +397,7 @@ export function resolveRoomFixtures(
   const items: FixtureMaterialItem[] = [];
   for (const room of rooms) {
     for (const fx of room.fixtures) items.push(...expandFixture(fx, room, premises, warnings));
-    for (const j of room.joineries) items.push(...expandBathroomDoor(j, room, premises));
+    for (const j of room.joineries) items.push(...expandBathroomJoinery(j, room, premises));
     for (const a of room.accessories) items.push(...expandAccessory(a, room, premises));
     if (room.imperm) items.push(...expandImperm(room.imperm, room, premises, warnings));
   }

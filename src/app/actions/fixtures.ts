@@ -28,6 +28,11 @@ export type RoomEquipmentPayload = {
     material: string;
     includedComponents: string[];
   } | null;
+  window: {
+    width: number;
+    height: number;
+    telaMosquiteira: boolean;
+  } | null;
   accessories: { accessoryType: string; quantity: number }[];
   imperm: {
     scope: string;
@@ -77,7 +82,7 @@ export async function saveRoomEquipment(roomId: string, payload: RoomEquipmentPa
       });
     }
 
-    // 3. Bathroom door — replace the "banheiro" joinery only
+    // 3. Bathroom door + window — replace the "banheiro" joineries only
     await tx.roomJoinery.deleteMany({ where: { roomId, subtype: "banheiro" } });
     if (payload.door) {
       await tx.roomJoinery.create({
@@ -91,6 +96,22 @@ export async function saveRoomEquipment(roomId: string, payload: RoomEquipmentPa
           quantity: 1,
           prefinished: false,
           includedComponents: payload.door.includedComponents ?? [],
+        },
+      });
+    }
+    if (payload.window) {
+      await tx.roomJoinery.create({
+        data: {
+          roomId,
+          joineryType: JoineryType.JANELA,
+          subtype: "banheiro",
+          width: payload.window.width,
+          height: payload.window.height,
+          material: "aluminio",
+          quantity: 1,
+          prefinished: false,
+          includedComponents: [],
+          configJson: JSON.stringify({ telaMosquiteira: payload.window.telaMosquiteira }),
         },
       });
     }

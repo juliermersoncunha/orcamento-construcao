@@ -30,6 +30,13 @@ type DoorState = {
   includedComponents: string[];
 };
 
+type WindowState = {
+  enabled: boolean;
+  width: number;
+  height: number;
+  telaMosquiteira: boolean;
+};
+
 type ImpermState = {
   scope: string;
   area: number;
@@ -91,12 +98,20 @@ export function BathroomCard({ room }: { room: any }) {
     }))
   );
 
-  const existingDoor = (room.joineries ?? []).find((j: any) => j.subtype === "banheiro");
+  const existingDoor = (room.joineries ?? []).find((j: any) => j.subtype === "banheiro" && j.joineryType === "PORTA_INTERNA");
   const [door, setDoor] = useState<DoorState>({
     enabled: !!existingDoor,
     width: existingDoor?.width ?? 0.7,
     height: existingDoor?.height ?? 2.1,
     includedComponents: existingDoor?.includedComponents ?? [],
+  });
+
+  const existingWindow = (room.joineries ?? []).find((j: any) => j.subtype === "banheiro" && j.joineryType === "JANELA");
+  const [win, setWin] = useState<WindowState>({
+    enabled: !!existingWindow,
+    width: existingWindow?.width ?? 0.6,
+    height: existingWindow?.height ?? 0.6,
+    telaMosquiteira: existingWindow?.configJson ? !!safeParse(existingWindow.configJson).telaMosquiteira : false,
   });
 
   const [accessories, setAccessories] = useState<Record<string, number>>(() => {
@@ -194,6 +209,9 @@ export function BathroomCard({ room }: { room: any }) {
       })),
       door: door.enabled
         ? { subtype: "banheiro", width: door.width, height: door.height, material: "madeira", includedComponents: door.includedComponents }
+        : null,
+      window: win.enabled
+        ? { width: win.width, height: win.height, telaMosquiteira: win.telaMosquiteira }
         : null,
       accessories: Object.entries(accessories)
         .filter(([, q]) => q > 0)
@@ -296,6 +314,37 @@ export function BathroomCard({ room }: { room: any }) {
           <div className="grid grid-cols-2 gap-2 mt-2 pl-6">
             <NumField label="Largura (m)" value={door.width} onChange={(v) => { setDoor((d) => ({ ...d, width: v })); setSaved(false); }} step={0.05} />
             <NumField label="Altura (m)" value={door.height} onChange={(v) => { setDoor((d) => ({ ...d, height: v })); setSaved(false); }} step={0.05} />
+          </div>
+        )}
+      </div>
+
+      {/* Window */}
+      <div className="mb-3 rounded-md bg-white border border-gray-200 p-3">
+        <label className="flex items-center gap-2 text-sm font-medium text-gray-700 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={win.enabled}
+            onChange={(e) => { setWin((w) => ({ ...w, enabled: e.target.checked })); setSaved(false); }}
+            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+          />
+          Janela de banheiro (peitoril, fixação e selante)
+        </label>
+        {win.enabled && (
+          <div className="grid grid-cols-2 gap-2 mt-2 pl-6">
+            <NumField label="Largura (m)" value={win.width} onChange={(v) => { setWin((w) => ({ ...w, width: v })); setSaved(false); }} step={0.05} />
+            <NumField label="Altura (m)" value={win.height} onChange={(v) => { setWin((w) => ({ ...w, height: v })); setSaved(false); }} step={0.05} />
+            <label className="flex items-center gap-1.5 text-xs text-gray-600 col-span-2">
+              <input
+                type="checkbox"
+                checked={win.telaMosquiteira}
+                onChange={(e) => { setWin((w) => ({ ...w, telaMosquiteira: e.target.checked })); setSaved(false); }}
+                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              Incluir tela mosquiteira
+            </label>
+            <p className="text-[11px] text-gray-400 col-span-2">
+              Sem ventilação natural? Adicione o equipamento &quot;Exaustor de banheiro&quot; acima.
+            </p>
           </div>
         )}
       </div>

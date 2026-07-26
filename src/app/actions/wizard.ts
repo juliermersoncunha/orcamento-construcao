@@ -25,7 +25,8 @@ async function getProject(projectId: string) {
 export async function saveStep2Rooms(projectId: string, formData: FormData) {
   const { project } = await getProject(projectId);
 
-  // Parse rooms from formData — expects roomName[], roomWidth[], roomLength[], roomHeight[]
+  // Parse rooms from formData — expects roomId[], roomName[], roomWidth[], roomLength[], roomHeight[]
+  const ids = formData.getAll("roomId") as string[];
   const names = formData.getAll("roomName") as string[];
   const widths = formData.getAll("roomWidth") as string[];
   const lengths = formData.getAll("roomLength") as string[];
@@ -33,6 +34,7 @@ export async function saveStep2Rooms(projectId: string, formData: FormData) {
 
   const rooms = names
     .map((name, i) => ({
+      id: ids[i] ?? "",
       name,
       width: parseFloat(widths[i]) || 0,
       length: parseFloat(lengths[i]) || 0,
@@ -40,18 +42,41 @@ export async function saveStep2Rooms(projectId: string, formData: FormData) {
     }))
     .filter((r) => r.name && r.width > 0 && r.length > 0);
 
-  await prisma.$transaction([
-    prisma.room.deleteMany({ where: { projectId } }),
-    ...rooms.map((room, i) =>
-      prisma.room.create({
-        data: { projectId, ...room, order: i },
-      })
-    ),
-    prisma.project.update({
+  // Update rooms in place (match by id) so linked data — fixtures, joineries,
+  // accessories, impermeabilization, points, finishes — survives edits.
+  // Only removed rooms are deleted; only added rooms are created.
+  const existing = await prisma.room.findMany({
+    where: { projectId },
+    select: { id: true },
+  });
+  const existingIds = new Set(existing.map((r) => r.id));
+  const submittedExistingIds = new Set(
+    rooms.map((r) => r.id).filter((id) => existingIds.has(id))
+  );
+  const toDelete = [...existingIds].filter((id) => !submittedExistingIds.has(id));
+
+  await prisma.$transaction(async (tx) => {
+    if (toDelete.length > 0) {
+      await tx.room.deleteMany({ where: { id: { in: toDelete } } });
+    }
+    for (let i = 0; i < rooms.length; i++) {
+      const r = rooms[i];
+      if (existingIds.has(r.id)) {
+        await tx.room.update({
+          where: { id: r.id },
+          data: { name: r.name, width: r.width, length: r.length, height: r.height, order: i },
+        });
+      } else {
+        await tx.room.create({
+          data: { projectId, name: r.name, width: r.width, length: r.length, height: r.height, order: i },
+        });
+      }
+    }
+    await tx.project.update({
       where: { id: projectId },
       data: { wizardStep: Math.max(project.wizardStep, 3) },
-    }),
-  ]);
+    });
+  });
 
   revalidatePath(`/projetos/${projectId}/wizard`);
   redirect(`/projetos/${projectId}/wizard?etapa=3`);
@@ -360,6 +385,7 @@ export async function calculateAndSaveBudget(projectId: string) {
     joineries: room.joineries.map((j) => ({
       id: j.id, roomId: j.roomId, joineryType: j.joineryType,
       subtype: j.subtype, quantity: j.quantity, includedComponents: j.includedComponents,
+      width: j.width, height: j.height, configJson: j.configJson,
     })),
     accessories: room.accessories.map((a) => ({
       id: a.id, roomId: a.roomId, accessoryType: a.accessoryType, quantity: a.quantity,

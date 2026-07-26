@@ -70,6 +70,7 @@ export function Step2Ambientes({ project }: { project: any }) {
     setIsPending(true);
     const formData = new FormData();
     rooms.forEach((r) => {
+      formData.append("roomId", r.id);
       formData.append("roomName", r.name);
       formData.append("roomWidth", r.width);
       formData.append("roomLength", r.length);

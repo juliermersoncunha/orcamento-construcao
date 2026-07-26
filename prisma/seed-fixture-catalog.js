@@ -97,6 +97,12 @@ const MATERIALS = [
   { name: "Fechadura banheiro (privacidade)",         unit: "un",  category: "ESQUADRIA" },
   { name: "Kit parafusos e buchas para porta",       unit: "kit", category: "ESQUADRIA" },
   { name: "Espuma expansiva PU 500ml",                unit: "un",  category: "ESQUADRIA" },
+  // Esquadria — janela do banheiro
+  { name: "Janela de alumínio (banheiro)",            unit: "un",  category: "ESQUADRIA" },
+  { name: "Peitoril de granito",                      unit: "m",   category: "ESQUADRIA" },
+  { name: "Kit fixação de janela",                    unit: "kit", category: "ESQUADRIA" },
+  { name: "Selante PU 400ml",                         unit: "un",  category: "ESQUADRIA" },
+  { name: "Tela mosquiteira",                         unit: "m²",  category: "ESQUADRIA" },
 
   // Elétrica — chuveiro / exaustor
   { name: "Chuveiro elétrico",                       unit: "un",  category: "ELETRICA" },
@@ -118,6 +124,7 @@ const MATERIALS = [
 // key, label, value (initial coefficient), unit, category
 const PREMISES = [
   { key: "ESPUMA_POR_PORTA",              label: "Espuma expansiva por porta",              value: 0.5,  unit: "tubo/porta",     category: "ESQUADRIAS" },
+  { key: "SELANTE_POR_JANELA",            label: "Selante PU por janela",                    value: 0.3,  unit: "un/janela",      category: "ESQUADRIAS" },
   { key: "SILICONE_POR_INSTALACAO",       label: "Silicone por instalação",                  value: 0.5,  unit: "tubo/instalação", category: "HIDRAULICA" },
   { key: "VEDA_ROSCA_POR_CONEXAO",        label: "Fita veda-rosca por conexão",             value: 0.1,  unit: "rolo/conexão",   category: "HIDRAULICA" },
   { key: "IMPERM_PRIMER_L_M2",            label: "Primer impermeabilização",                 value: 0.15, unit: "L/m²",            category: "IMPERMEABILIZACAO" },

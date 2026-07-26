@@ -10,3 +10,17 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+@media print {
+  body {
+    background: white;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  nav, aside, .print\\:hidden {
+    display: none !important;
+  }
+  main {
+    padding: 0 !important;
+  }
+}

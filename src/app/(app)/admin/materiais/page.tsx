@@ -21,12 +21,20 @@ const categoryLabels: Record<MaterialCategory, string> = {
   PINTURA: "Pintura",
   ESQUADRIA: "Esquadria/Acabamento",
   ACABAMENTO: "Acabamento",
+  LOUCAS_SANITARIAS: "Louças sanitárias",
+  METAIS_SANITARIOS: "Metais sanitários",
+  ACESSORIOS_HIDRAULICOS: "Acessórios hidráulicos",
+  IMPERMEABILIZACAO: "Impermeabilização",
+  VIDROS_BOX: "Vidros e box",
+  ACESSORIOS_BANHEIRO: "Acessórios de banheiro",
   OUTROS: "Outros",
 };
 
 const categoryOrder: MaterialCategory[] = [
   "TERRAPLENAGEM","FUNDACAO","ESTRUTURA","ALVENARIA","LAJE","COBERTURA",
-  "ELETRICA","HIDRAULICA","REVESTIMENTO","PINTURA","ESQUADRIA","ACABAMENTO","OUTROS"
+  "ELETRICA","HIDRAULICA","REVESTIMENTO","PINTURA","ESQUADRIA","ACABAMENTO",
+  "LOUCAS_SANITARIAS","METAIS_SANITARIOS","ACESSORIOS_HIDRAULICOS",
+  "IMPERMEABILIZACAO","VIDROS_BOX","ACESSORIOS_BANHEIRO","OUTROS"
 ];
 
 export default async function MateriaisPage() {

@@ -5,7 +5,9 @@ import { saveStep5Installations } from "@/app/actions/wizard";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Zap, ChevronRight } from "lucide-react";
+import { Zap, ChevronRight, Bath } from "lucide-react";
+import { BathroomCard } from "./step5-bathroom-card";
+import { BATHROOM_ROOM_TYPE_SET } from "@/lib/fixture-library/bathroom";
 
 export function Step5Instalacoes({ project }: { project: any }) {
   const [isPending, startTransition] = useTransition();
@@ -20,6 +22,17 @@ export function Step5Instalacoes({ project }: { project: any }) {
   function handleSubmit(formData: FormData) {
     startTransition(() => saveStep5Installations(project.id, formData));
   }
+
+  // A room is a bathroom if its roomType is a bathroom type, or (for rooms not yet
+  // typed) its name matches banheiro/lavabo/wc.
+  function isBathroom(room: any) {
+    if (room.roomType && BATHROOM_ROOM_TYPE_SET.has(room.roomType)) return true;
+    if (room.roomType) return false; // typed as non-bathroom
+    const n = (room.name ?? "").toLowerCase();
+    return n.includes("banheiro") || n.includes("lavabo") || n.includes("wc");
+  }
+
+  const bathrooms = (project.rooms ?? []).filter(isBathroom);
 
   // Suggest defaults by room name
   function suggestOutlets(name: string) {
@@ -129,6 +142,23 @@ export function Step5Instalacoes({ project }: { project: any }) {
             </Button>
           </div>
         </form>
+
+        {/* Equipamentos por ambiente — banheiros */}
+        {bathrooms.length > 0 && (
+          <div className="mt-8 pt-6 border-t border-gray-200">
+            <div className="flex items-center gap-2 mb-1">
+              <Bath className="w-4 h-4 text-blue-700" />
+              <h3 className="text-base font-semibold text-gray-900">Equipamentos por ambiente</h3>
+            </div>
+            <p className="text-sm text-gray-500 mb-4">
+              Configure os equipamentos de cada banheiro. Os materiais, acessórios e pontos são gerados
+              automaticamente e alimentam o orçamento. Cada banheiro é salvo individualmente.
+            </p>
+            {bathrooms.map((room: any) => (
+              <BathroomCard key={room.id} room={room} />
+            ))}
+          </div>
+        )}
       </CardContent>
     </Card>
   );

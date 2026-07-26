@@ -57,7 +57,87 @@ enum MaterialCategory {
   HIDRAULICA
   REVESTIMENTO
   ESQUADRIA
+  LOUCAS_SANITARIAS
+  METAIS_SANITARIOS
+  ACESSORIOS_HIDRAULICOS
+  IMPERMEABILIZACAO
+  VIDROS_BOX
+  ACESSORIOS_BANHEIRO
   OUTROS
+}
+
+enum RoomType {
+  BANHEIRO
+  LAVABO
+  BANHEIRO_SUITE
+  BANHEIRO_SERVICO
+  COZINHA
+  AREA_SERVICO
+  QUARTO
+  SUITE
+  SALA_ESTAR
+  SALA_JANTAR
+  GARAGEM
+  VARANDA
+  ESCRITORIO
+  CIRCULACAO
+  OUTRO
+}
+
+enum FixtureType {
+  VASO_CAIXA_ACOPLADA
+  VASO_VALVULA
+  LAVATORIO_SUSPENSO
+  LAVATORIO_COLUNA
+  CUBA_APOIO
+  CUBA_EMBUTIR
+  CUBA_SOBREPOR
+  GABINETE_CUBA
+  BANCADA_CUBA
+  CHUVEIRO_ELETRICO
+  DUCHA_FRIA
+  DUCHA_QUENTE
+  DUCHA_SOLAR
+  DUCHA_GAS
+  CAIXA_SIFONADA
+  RALO_SIFONADO
+  RALO_SECO
+  RALO_LINEAR
+  DUCHA_HIGIENICA
+  BOX_FRONTAL
+  BOX_CANTO
+  EXAUSTOR
+  TORNEIRA_ELETRICA
+}
+
+enum HydraulicPointType {
+  AGUA_FRIA
+  AGUA_QUENTE
+  ESGOTO_40
+  ESGOTO_50
+  ESGOTO_100
+  RALO
+}
+
+enum ElectricalPointType {
+  TOMADA
+  INTERRUPTOR
+  PONTO_LUZ
+  CIRCUITO_EXCLUSIVO
+}
+
+enum JoineryType {
+  PORTA_INTERNA
+  PORTA_EXTERNA
+  JANELA
+}
+
+enum ImpermScope {
+  NENHUM
+  BOX
+  PISO
+  PISO_PAREDES
+  CUSTOM
 }
 
 model User {
@@ -106,18 +186,24 @@ model Project {
 }
 
 model Room {
-  id        String @id @default(cuid())
+  id        String    @id @default(cuid())
   projectId String
   name      String
   width     Float
   length    Float
-  height    Float  @default(2.8)
-  order     Int    @default(0)
+  height    Float     @default(2.8)
+  order     Int       @default(0)
+  roomType  RoomType?
 
-  project          Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project          Project                 @relation(fields: [projectId], references: [id], onDelete: Cascade)
   electricalPoints ElectricalPoint[]
   hydraulicPoints  HydraulicPoint[]
   roomFinishes     RoomFinish[]
+  fixtures         Fixture[]
+  wallFinishes     RoomWallFinish[]
+  joineries        RoomJoinery[]
+  accessories      Accessory[]
+  imperm           RoomImpermeabilization?
 }
 
 model ProjectStructure {
@@ -178,8 +264,9 @@ model ElectricalPoint {
   switches        Int    @default(1)
   lightPoints     Int    @default(1)
 
-  installations ProjectInstallations @relation(fields: [installationsId], references: [id], onDelete: Cascade)
-  room          Room                 @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  installations ProjectInstallations      @relation(fields: [installationsId], references: [id], onDelete: Cascade)
+  room          Room                      @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  details       ElectricalPointDetail[]
 }
 
 model HydraulicPoint {
@@ -189,8 +276,91 @@ model HydraulicPoint {
   waterInlets     Int    @default(0)
   drainPoints     Int    @default(0)
 
-  installations ProjectInstallations @relation(fields: [installationsId], references: [id], onDelete: Cascade)
-  room          Room                 @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  installations ProjectInstallations     @relation(fields: [installationsId], references: [id], onDelete: Cascade)
+  room          Room                     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  details       HydraulicPointDetail[]
+}
+
+model HydraulicPointDetail {
+  id               String             @id @default(cuid())
+  hydraulicPointId String
+  type             HydraulicPointType
+  quantity         Int                @default(0)
+  sourceFixtureId  String?
+
+  hydraulicPoint HydraulicPoint @relation(fields: [hydraulicPointId], references: [id], onDelete: Cascade)
+}
+
+model ElectricalPointDetail {
+  id                String              @id @default(cuid())
+  electricalPointId String
+  type              ElectricalPointType
+  quantity          Int                 @default(0)
+  sourceFixtureId   String?
+
+  electricalPoint ElectricalPoint @relation(fields: [electricalPointId], references: [id], onDelete: Cascade)
+}
+
+model Fixture {
+  id                 String      @id @default(cuid())
+  roomId             String
+  fixtureType        FixtureType
+  quantity           Int         @default(1)
+  exclusionGroup     String?
+  configJson         String?
+  includedComponents String[]    @default([])
+  createdAt          DateTime    @default(now())
+
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+}
+
+model RoomWallFinish {
+  id         String  @id @default(cuid())
+  roomId     String
+  wallSide   String
+  hasTile    Boolean @default(false)
+  tileHeight Float   @default(1.5)
+
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+}
+
+model RoomImpermeabilization {
+  id             String      @id @default(cuid())
+  roomId         String      @unique
+  scope          ImpermScope @default(NENHUM)
+  area           Float       @default(0)
+  wallHeight     Float       @default(0)
+  ralos          Int         @default(0)
+  tubulacoes     Int         @default(0)
+  system         String      @default("argamassa_polimerica")
+  coats          Int         @default(3)
+  mechProtection Boolean     @default(false)
+
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+}
+
+model RoomJoinery {
+  id                 String      @id @default(cuid())
+  roomId             String
+  joineryType        JoineryType
+  subtype            String      @default("comum")
+  width              Float       @default(0.80)
+  height             Float       @default(2.10)
+  material           String      @default("madeira")
+  quantity           Int         @default(1)
+  prefinished        Boolean     @default(false)
+  includedComponents String[]    @default([])
+
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+}
+
+model Accessory {
+  id            String @id @default(cuid())
+  roomId        String
+  accessoryType String
+  quantity      Int    @default(1)
+
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
 }
 
 model ProjectFinishes {
@@ -251,6 +421,15 @@ model BudgetItem {
   quantity          Float
   unitPriceSnapshot Float
   createdAt         DateTime  @default(now())
+
+  // Origin metadata — populated for items generated by the fixture library.
+  // NULL for the classic per-phase items (structure, roofing, …), which keeps
+  // the existing report and calculations unchanged.
+  roomId            String?   // ambiente de origem (visão por ambiente)
+  sourceKind        String?   // FIXTURE | JOINERY | ACCESSORY | IMPERM | GENERIC
+  sourceLabel       String?   // equipamento que originou o item
+  formula           String?   // memória de cálculo
+  autoGenerated     Boolean   @default(true)
 
   project  Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   material Material @relation(fields: [materialId], references: [id])

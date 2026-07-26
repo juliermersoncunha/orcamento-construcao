@@ -58,25 +58,30 @@ export async function saveStep2Rooms(projectId: string, formData: FormData) {
 export async function saveStep3Structure(projectId: string, formData: FormData) {
   const { project } = await getProject(projectId);
 
+  const f = (key: string, fallback = 0) => parseFloat(formData.get(key) as string) || fallback;
+  const structData = {
+    foundationType: formData.get("foundationType") as string,
+    structureType: formData.get("structureType") as string,
+    blockType: formData.get("blockType") as string,
+    floors: parseInt(formData.get("floors") as string) || 1,
+    hasLaje: formData.get("hasLaje") === "true",
+    hasEscada: formData.get("hasEscada") === "true",
+    pilarMetros: f("pilarMetros"),
+    pilarLargura: f("pilarLargura", 0.15),
+    pilarAltura: f("pilarAltura", 0.30),
+    vigaMetros: f("vigaMetros"),
+    vigaLargura: f("vigaLargura", 0.15),
+    vigaAltura: f("vigaAltura", 0.40),
+    sapataQtd: parseInt(formData.get("sapataQtd") as string) || 0,
+    sapataLargura: f("sapataLargura", 0.60),
+    sapataCompr: f("sapataCompr", 0.60),
+    sapataAltura: f("sapataAltura", 0.30),
+  };
+
   await prisma.projectStructure.upsert({
     where: { projectId },
-    create: {
-      projectId,
-      foundationType: formData.get("foundationType") as string,
-      structureType: formData.get("structureType") as string,
-      blockType: formData.get("blockType") as string,
-      floors: parseInt(formData.get("floors") as string) || 1,
-      hasLaje: formData.get("hasLaje") === "true",
-      hasEscada: formData.get("hasEscada") === "true",
-    },
-    update: {
-      foundationType: formData.get("foundationType") as string,
-      structureType: formData.get("structureType") as string,
-      blockType: formData.get("blockType") as string,
-      floors: parseInt(formData.get("floors") as string) || 1,
-      hasLaje: formData.get("hasLaje") === "true",
-      hasEscada: formData.get("hasEscada") === "true",
-    },
+    create: { projectId, ...structData },
+    update: structData,
   });
 
   await prisma.project.update({
@@ -284,6 +289,16 @@ export async function calculateAndSaveBudget(projectId: string) {
       floors: project.structure?.floors ?? 1,
       hasLaje: project.structure?.hasLaje ?? false,
       hasEscada: project.structure?.hasEscada ?? false,
+      pilarMetros: project.structure?.pilarMetros ?? 0,
+      pilarLargura: project.structure?.pilarLargura ?? 0.15,
+      pilarAltura: project.structure?.pilarAltura ?? 0.30,
+      vigaMetros: project.structure?.vigaMetros ?? 0,
+      vigaLargura: project.structure?.vigaLargura ?? 0.15,
+      vigaAltura: project.structure?.vigaAltura ?? 0.40,
+      sapataQtd: project.structure?.sapataQtd ?? 0,
+      sapataLargura: project.structure?.sapataLargura ?? 0.60,
+      sapataCompr: project.structure?.sapataCompr ?? 0.60,
+      sapataAltura: project.structure?.sapataAltura ?? 0.30,
     },
     roofing: {
       roofType: project.roofing?.roofType ?? "duas_aguas",

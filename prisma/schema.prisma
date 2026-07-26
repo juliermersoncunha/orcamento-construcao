@@ -130,6 +130,22 @@ model ProjectStructure {
   hasLaje        Boolean @default(false)
   hasEscada      Boolean @default(false)
 
+  // Pilares — metros lineares e seção
+  pilarMetros    Float   @default(0)
+  pilarLargura   Float   @default(0.15)
+  pilarAltura    Float   @default(0.30)
+
+  // Vigas — metros lineares e seção
+  vigaMetros     Float   @default(0)
+  vigaLargura    Float   @default(0.15)
+  vigaAltura     Float   @default(0.40)
+
+  // Sapatas — quantidade e dimensões
+  sapataQtd      Int     @default(0)
+  sapataLargura  Float   @default(0.60)
+  sapataCompr    Float   @default(0.60)
+  sapataAltura   Float   @default(0.30)
+
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 }
 

@@ -29,18 +29,36 @@ function totalWallArea(rooms: RoomInput[]) {
   }, 0);
 }
 
-const FOUNDATION_LABELS: Record<string, string> = {
-  radier: "Radier",
-  sapata_corrida: "Sapata corrida",
-  sapata_isolada: "Sapata isolada",
-  estaca: "Estaca (tubulão/hélice)",
-};
-
 const BLOCK_LABELS: Record<string, string> = {
   tijolo_furado: "Tijolo cerâmico furado",
   bloco_concreto: "Bloco de concreto",
   bloco_celular: "Bloco de concreto celular",
 };
+
+function tracoExplanations(
+  volumeM3: number,
+  label: string,
+  phase: string,
+): CalcExplanation[] {
+  if (volumeM3 <= 0) return [];
+  return [
+    {
+      materialName: `Cimento CP-II (50kg) – concreto`,
+      formula: `Volume concreto ${label} (${fmt(volumeM3)} m³) × 8 sc/m³ [traço 1:2:3]`,
+      result: `${fmt(volumeM3 * 8)} → ${Math.ceil(volumeM3 * 8)} sc`,
+    },
+    {
+      materialName: `Areia Média – concreto`,
+      formula: `Volume concreto ${label} (${fmt(volumeM3)} m³) × 0,56 m³/m³ [traço 1:2:3]`,
+      result: `${fmt(volumeM3 * 0.56)} → ${round1(volumeM3 * 0.56)} m³`,
+    },
+    {
+      materialName: `Brita 1 – concreto`,
+      formula: `Volume concreto ${label} (${fmt(volumeM3)} m³) × 0,84 m³/m³ [traço 1:2:3]`,
+      result: `${fmt(volumeM3 * 0.84)} → ${round1(volumeM3 * 0.84)} m³`,
+    },
+  ];
+}
 
 export function generateExplanations(
   rooms: RoomInput[],
@@ -69,61 +87,78 @@ export function generateExplanations(
     ];
   }
 
-  // ── Fundação ──
+  // ── Fundação (sapatas) ──
   {
-    const coefs: Record<string, { concrete: number; steel: number; forms: number }> = {
-      radier: { concrete: 0.1, steel: 60, forms: 1.5 },
-      sapata_corrida: { concrete: 0.08, steel: 80, forms: 0.8 },
-      sapata_isolada: { concrete: 0.08, steel: 80, forms: 0.8 },
-      estaca: { concrete: 0.1, steel: 100, forms: 0.5 },
-    };
-    const c = coefs[structure.foundationType] ?? coefs.sapata_corrida;
-    const fLabel = FOUNDATION_LABELS[structure.foundationType] ?? structure.foundationType;
-
-    result["FUNDACAO"] = [
-      {
-        materialName: "Concreto Usinado FCK 25 MPa",
-        formula: `Área (${fmt(area)} m²) × ${fmt(c.concrete)} m³/m² [${fLabel}]`,
-        result: `${fmt(area * c.concrete)} → ${fmt(round1(area * c.concrete))} m³`,
-      },
-      {
-        materialName: "Aço CA-50 (vergalhão)",
-        formula: `Área (${fmt(area)} m²) × ${c.steel} kg/m² [${fLabel}]`,
-        result: `${fmt(area * c.steel)} → ${Math.ceil(area * c.steel)} kg`,
-      },
-      {
-        materialName: "Fôrmas de Madeira (compensado 18mm)",
-        formula: `Área (${fmt(area)} m²) × ${fmt(c.forms)} m²/m² [${fLabel}]`,
-        result: `${fmt(area * c.forms)} → ${Math.ceil(area * c.forms)} m²`,
-      },
-    ];
+    const vol = structure.sapataQtd * structure.sapataLargura * structure.sapataCompr * structure.sapataAltura;
+    if (vol > 0) {
+      result["FUNDACAO"] = [
+        {
+          materialName: "Volume de concreto – sapatas",
+          formula: `${structure.sapataQtd} sapatas × ${fmt(structure.sapataLargura)} m (larg.) × ${fmt(structure.sapataCompr)} m (comp.) × ${fmt(structure.sapataAltura)} m (alt.)`,
+          result: `${fmt(vol)} m³`,
+        },
+        ...tracoExplanations(vol, "sapatas", "FUNDACAO"),
+        {
+          materialName: "Aço CA-50 (vergalhão) – sapatas",
+          formula: `Volume concreto (${fmt(vol)} m³) × 80 kg/m³`,
+          result: `${fmt(vol * 80)} → ${Math.ceil(vol * 80)} kg`,
+        },
+        {
+          materialName: "Fôrmas de Madeira – sapatas",
+          formula: `Volume concreto (${fmt(vol)} m³) × 10 m²/m³`,
+          result: `${fmt(vol * 10)} → ${Math.ceil(vol * 10)} m²`,
+        },
+      ];
+    }
   }
 
-  // ── Estrutura ──
+  // ── Estrutura (pilares + vigas) ──
   {
-    const areaStr = area * structure.floors;
-    const concrete = round1(areaStr * 0.05);
-    const steel = Math.ceil(concrete * 80);
-    const forms = Math.ceil(concrete * 10);
+    const volPilar = structure.pilarMetros * structure.pilarLargura * structure.pilarAltura;
+    const volViga = structure.vigaMetros * structure.vigaLargura * structure.vigaAltura;
+    const volTotal = volPilar + volViga;
 
-    const floorNote = structure.floors > 1 ? ` × ${structure.floors} pav.` : "";
-    result["ESTRUTURA_ALVENARIA_ESTRUTURA"] = [
-      {
-        materialName: "Concreto Usinado FCK 25 MPa",
-        formula: `Área (${fmt(area)} m²${floorNote}) × 0,05 m³/m² [pilares+vigas]`,
-        result: `${fmt(areaStr * 0.05)} → ${fmt(concrete)} m³`,
-      },
-      {
-        materialName: "Aço CA-50 (vergalhão)",
-        formula: `Concreto (${fmt(concrete)} m³) × 80 kg/m³`,
-        result: `${fmt(concrete * 80)} → ${steel} kg`,
-      },
-      {
-        materialName: "Fôrmas de Madeira (compensado 18mm)",
-        formula: `Concreto (${fmt(concrete)} m³) × 10 m²/m³`,
-        result: `${fmt(concrete * 10)} → ${forms} m²`,
-      },
-    ];
+    if (volTotal > 0) {
+      const explanations: CalcExplanation[] = [];
+
+      if (volPilar > 0) {
+        explanations.push({
+          materialName: "Volume concreto – pilares",
+          formula: `${fmt(structure.pilarMetros)} m × ${fmt(structure.pilarLargura)} m (larg.) × ${fmt(structure.pilarAltura)} m (alt.)`,
+          result: `${fmt(volPilar)} m³`,
+        });
+      }
+      if (volViga > 0) {
+        explanations.push({
+          materialName: "Volume concreto – vigas",
+          formula: `${fmt(structure.vigaMetros)} m × ${fmt(structure.vigaLargura)} m (larg.) × ${fmt(structure.vigaAltura)} m (alt.)`,
+          result: `${fmt(volViga)} m³`,
+        });
+      }
+      if (volPilar > 0 && volViga > 0) {
+        explanations.push({
+          materialName: "Volume total concreto estrutura",
+          formula: `Pilares (${fmt(volPilar)} m³) + Vigas (${fmt(volViga)} m³)`,
+          result: `${fmt(volTotal)} m³`,
+        });
+      }
+
+      explanations.push(
+        ...tracoExplanations(volTotal, "estrutura", "ESTRUTURA"),
+        {
+          materialName: "Aço CA-50 (vergalhão) – estrutura",
+          formula: `Volume concreto (${fmt(volTotal)} m³) × 80 kg/m³`,
+          result: `${fmt(volTotal * 80)} → ${Math.ceil(volTotal * 80)} kg`,
+        },
+        {
+          materialName: "Fôrmas de Madeira (compensado 18mm)",
+          formula: `Volume concreto (${fmt(volTotal)} m³) × 10 m²/m³`,
+          result: `${fmt(volTotal * 10)} → ${Math.ceil(volTotal * 10)} m²`,
+        },
+      );
+
+      result["ESTRUTURA_ALVENARIA_ESTRUTURA"] = explanations;
+    }
   }
 
   // ── Alvenaria ──
@@ -199,24 +234,27 @@ export function generateExplanations(
     ];
   }
 
-  // ── Laje ──
+  // ── Laje pré-moldada ──
   if (structure.hasLaje) {
     const lajeArea = area * (structure.floors - 1 || 1);
+    const concreteVol = round1(lajeArea * 0.065);
+
     result["LAJE"] = [
       {
-        materialName: "Concreto Usinado FCK 25 MPa",
-        formula: `Área (${fmt(area)} m²) × ${structure.floors - 1 || 1} laje(s) × 0,12 m³/m²`,
-        result: `${fmt(lajeArea * 0.12)} → ${fmt(round1(lajeArea * 0.12))} m³`,
-      },
-      {
-        materialName: "Aço CA-50 (vergalhão)",
-        formula: `Área laje (${fmt(lajeArea)} m²) × 12 kg/m²`,
-        result: `${fmt(lajeArea * 12)} → ${Math.ceil(lajeArea * 12)} kg`,
-      },
-      {
-        materialName: "Escoramento/Fôrma para Laje",
-        formula: `Área laje (${fmt(lajeArea)} m²) × 1,0 m²/m²`,
+        materialName: "Laje pré-moldada treliçada",
+        formula: `Área (${fmt(area)} m²) × ${structure.floors - 1 || 1} laje(s)`,
         result: `${Math.ceil(lajeArea)} m²`,
+      },
+      {
+        materialName: "Volume de concreto – laje",
+        formula: `Área laje (${fmt(lajeArea)} m²) × 0,065 m³/m² [coef. forro/cobertura]`,
+        result: `${fmt(lajeArea * 0.065)} → ${fmt(concreteVol)} m³`,
+      },
+      ...tracoExplanations(concreteVol, "laje", "LAJE"),
+      {
+        materialName: "Aço CA-50 (vergalhão) – laje",
+        formula: `Área laje (${fmt(lajeArea)} m²) × 4 kg/m²`,
+        result: `${fmt(lajeArea * 4)} → ${Math.ceil(lajeArea * 4)} kg`,
       },
     ];
   }
@@ -224,14 +262,16 @@ export function generateExplanations(
   // ── Escada ──
   if (structure.hasEscada && structure.floors >= 2) {
     const lances = structure.floors - 1;
+    const vol = 2 * lances;
     result["ESCADA"] = [
       {
-        materialName: "Concreto Usinado FCK 25 MPa",
+        materialName: "Volume de concreto – escada",
         formula: `${lances} lance(s) × 2 m³/lance`,
-        result: `${2 * lances} m³`,
+        result: `${fmt(vol)} m³`,
       },
+      ...tracoExplanations(vol, "escada", "ESCADA"),
       {
-        materialName: "Aço CA-50 (vergalhão)",
+        materialName: "Aço CA-50 (vergalhão) – escada",
         formula: `${lances} lance(s) × 150 kg/lance`,
         result: `${150 * lances} kg`,
       },

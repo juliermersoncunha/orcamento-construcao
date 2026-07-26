@@ -21,6 +21,16 @@ export type StructureInput = {
   floors: number;
   hasLaje: boolean;
   hasEscada: boolean;
+  pilarMetros: number;
+  pilarLargura: number;
+  pilarAltura: number;
+  vigaMetros: number;
+  vigaLargura: number;
+  vigaAltura: number;
+  sapataQtd: number;
+  sapataLargura: number;
+  sapataCompr: number;
+  sapataAltura: number;
 };
 
 export type RoofingInput = {
@@ -71,66 +81,62 @@ function round1(n: number) {
   return Math.ceil(n * 10) / 10;
 }
 
+// Traço 1:2:3 — materiais por m³ de concreto feito na obra
+const TRACO_123 = {
+  cimentoSc: 8,    // sacos de 50kg
+  areiaM3: 0.56,   // m³
+  britaM3: 0.84,   // m³
+};
+
+function concretoTraco123(volumeM3: number, phase: string, category: string): MaterialResult[] {
+  if (volumeM3 <= 0) return [];
+  return [
+    { name: "Cimento CP-II (50kg) – concreto", unit: "sc", quantity: Math.ceil(volumeM3 * TRACO_123.cimentoSc), phase, category },
+    { name: "Areia Média – concreto", unit: "m³", quantity: round1(volumeM3 * TRACO_123.areiaM3), phase, category },
+    { name: "Brita 1 – concreto", unit: "m³", quantity: round1(volumeM3 * TRACO_123.britaM3), phase, category },
+  ];
+}
+
 // ── Terraplenagem ──────────────────────────────────────────────────────────
 function calcTerraplenagem(rooms: RoomInput[], structure: StructureInput): MaterialResult[] {
   const area = totalFloorArea(rooms);
-  // 0.30 m³/m² de movimentação de terra média
   const soilVolume = round1(area * 0.30 * structure.floors);
 
   return [
-    {
-      name: "Escavação e Terraplenagem",
-      unit: "m³",
-      quantity: soilVolume,
-      phase: "TERRAPLENAGEM",
-      category: "TERRAPLENAGEM",
-    },
-    {
-      name: "Compactação de Aterro",
-      unit: "m²",
-      quantity: Math.ceil(area),
-      phase: "TERRAPLENAGEM",
-      category: "TERRAPLENAGEM",
-    },
+    { name: "Escavação e Terraplenagem", unit: "m³", quantity: soilVolume, phase: "TERRAPLENAGEM", category: "TERRAPLENAGEM" },
+    { name: "Compactação de Aterro", unit: "m²", quantity: Math.ceil(area), phase: "TERRAPLENAGEM", category: "TERRAPLENAGEM" },
   ];
 }
 
-// ── Fundação ───────────────────────────────────────────────────────────────
-function calcFundacao(rooms: RoomInput[], structure: StructureInput): MaterialResult[] {
-  const area = totalFloorArea(rooms);
+// ── Fundação (sapatas) ────────────────────────────────────────────────────
+function calcFundacao(structure: StructureInput): MaterialResult[] {
+  const vol = structure.sapataQtd * structure.sapataLargura * structure.sapataCompr * structure.sapataAltura;
+  if (vol <= 0) return [];
 
-  const coefs: Record<string, { concrete: number; steel: number; forms: number }> = {
-    radier:          { concrete: 0.10, steel: 60, forms: 1.5 },
-    sapata_corrida:  { concrete: 0.08, steel: 80, forms: 0.8 },
-    sapata_isolada:  { concrete: 0.08, steel: 80, forms: 0.8 },
-    estaca:          { concrete: 0.10, steel: 100, forms: 0.5 },
-  };
-
-  const c = coefs[structure.foundationType] ?? coefs.sapata_corrida;
-  const concrete = round1(area * c.concrete);
-  const steel = Math.ceil(area * c.steel);
-  const forms = Math.ceil(area * c.forms);
-
-  return [
-    { name: "Concreto Usinado FCK 25 MPa", unit: "m³", quantity: concrete, phase: "FUNDACAO", category: "FUNDACAO" },
-    { name: "Aço CA-50 (vergalhão)", unit: "kg", quantity: steel, phase: "FUNDACAO", category: "FUNDACAO" },
-    { name: "Fôrmas de Madeira (compensado 18mm)", unit: "m²", quantity: forms, phase: "FUNDACAO", category: "FUNDACAO" },
+  const results: MaterialResult[] = [
+    ...concretoTraco123(vol, "FUNDACAO", "FUNDACAO"),
+    { name: "Aço CA-50 (vergalhão) – sapatas", unit: "kg", quantity: Math.ceil(vol * 80), phase: "FUNDACAO", category: "FUNDACAO" },
+    { name: "Fôrmas de Madeira – sapatas", unit: "m²", quantity: Math.ceil(vol * 10), phase: "FUNDACAO", category: "FUNDACAO" },
   ];
+
+  return results;
 }
 
-// ── Estrutura e Alvenaria ──────────────────────────────────────────────────
-function calcEstrutura(rooms: RoomInput[], structure: StructureInput): MaterialResult[] {
-  const area = totalFloorArea(rooms) * structure.floors;
-  // Pilares + vigas: 0.05 m³/m²
-  const concrete = round1(area * 0.05);
-  const steel = Math.ceil(concrete * 80);
-  const forms = Math.ceil(concrete * 10);
+// ── Estrutura (pilares + vigas) ───────────────────────────────────────────
+function calcEstrutura(structure: StructureInput): MaterialResult[] {
+  const volPilar = structure.pilarMetros * structure.pilarLargura * structure.pilarAltura;
+  const volViga = structure.vigaMetros * structure.vigaLargura * structure.vigaAltura;
+  const volTotal = volPilar + volViga;
 
-  return [
-    { name: "Concreto Usinado FCK 25 MPa", unit: "m³", quantity: concrete, phase: "ESTRUTURA_ALVENARIA", category: "ESTRUTURA" },
-    { name: "Aço CA-50 (vergalhão)", unit: "kg", quantity: steel, phase: "ESTRUTURA_ALVENARIA", category: "ESTRUTURA" },
-    { name: "Fôrmas de Madeira (compensado 18mm)", unit: "m²", quantity: forms, phase: "ESTRUTURA_ALVENARIA", category: "ESTRUTURA" },
+  if (volTotal <= 0) return [];
+
+  const results: MaterialResult[] = [
+    ...concretoTraco123(volTotal, "ESTRUTURA_ALVENARIA", "ESTRUTURA"),
+    { name: "Aço CA-50 (vergalhão) – estrutura", unit: "kg", quantity: Math.ceil(volTotal * 80), phase: "ESTRUTURA_ALVENARIA", category: "ESTRUTURA" },
+    { name: "Fôrmas de Madeira (compensado 18mm)", unit: "m²", quantity: Math.ceil(volTotal * 10), phase: "ESTRUTURA_ALVENARIA", category: "ESTRUTURA" },
   ];
+
+  return results;
 }
 
 function calcAlvenaria(
@@ -144,26 +150,19 @@ function calcAlvenaria(
     finishes.windows * 1.2 * 1.2;
   const netWallArea = Math.max(wallArea - areaVaos, 0);
 
-  // Tijolos: 25 un/m² com 10% de perda
   const brickPerM2 = structure.blockType === "bloco_concreto" ? 12 : 25;
   const bricks = Math.ceil(netWallArea * brickPerM2 * 1.10);
 
-  // Assentamento: 0.07 sc/m² cimento + 0.01 m³/m² areia + 5% perda
   const cimentoAssentamento = Math.ceil(netWallArea * 0.07 * 1.05);
   const areiaAssentamento = round1(netWallArea * 0.01 * 1.05);
 
-  // Chapisco: 0.04 sc cimento/m² + 0.006 m³ areia grossa/m² + 5%
-  // Área de chapisco = ambos os lados da parede
   const chapiscoArea = netWallArea * 2;
   const cimentoChapisco = Math.ceil(chapiscoArea * 0.04 * 1.05);
   const areiaChapisco = round1(chapiscoArea * 0.006 * 1.05);
 
-  // Reboco interno: 0.08 sc/m² + 0.018 m³/m² + 10%
   const cimentoRebrocoInt = Math.ceil(netWallArea * 0.08 * 1.10);
   const areiaRebrocoInt = round1(netWallArea * 0.018 * 1.10);
 
-  // Reboco externo: 0.10 sc/m² + 0.024 m³/m² + 10%
-  // Estima área externa = 30% da área de parede total
   const externalWallArea = netWallArea * 0.30;
   const cimentoRebrocoExt = Math.ceil(externalWallArea * 0.10 * 1.10);
   const areiaRebrocoExt = round1(externalWallArea * 0.024 * 1.10);
@@ -187,20 +186,18 @@ function calcAlvenaria(
   ];
 }
 
-// ── Laje ───────────────────────────────────────────────────────────────────
+// ── Laje pré-moldada ──────────────────────────────────────────────────────
 function calcLaje(rooms: RoomInput[], structure: StructureInput): MaterialResult[] {
   if (!structure.hasLaje) return [];
 
   const area = totalFloorArea(rooms) * (structure.floors - 1 || 1);
-  // Laje: concreto 0.12 m³/m², aço 12 kg/m², escoramento 1.0 m²/m²
-  const concrete = round1(area * 0.12);
-  const steel = Math.ceil(area * 12);
-  const escoramento = Math.ceil(area * 1.0);
+  // Laje pré-moldada/treliçada: concreto 0,065 m³/m² (referência forro/cobertura)
+  const concreteVol = round1(area * 0.065);
 
   return [
-    { name: "Concreto Usinado FCK 25 MPa", unit: "m³", quantity: concrete, phase: "LAJE", category: "LAJE" },
-    { name: "Aço CA-50 (vergalhão)", unit: "kg", quantity: steel, phase: "LAJE", category: "LAJE" },
-    { name: "Escoramento/Fôrma para Laje", unit: "m²", quantity: escoramento, phase: "LAJE", category: "LAJE" },
+    { name: "Laje pré-moldada treliçada", unit: "m²", quantity: Math.ceil(area), phase: "LAJE", category: "LAJE" },
+    ...concretoTraco123(concreteVol, "LAJE", "LAJE"),
+    { name: "Aço CA-50 (vergalhão) – laje", unit: "kg", quantity: Math.ceil(area * 4), phase: "LAJE", category: "LAJE" },
   ];
 }
 
@@ -208,11 +205,11 @@ function calcLaje(rooms: RoomInput[], structure: StructureInput): MaterialResult
 function calcEscada(structure: StructureInput): MaterialResult[] {
   if (!structure.hasEscada || structure.floors < 2) return [];
 
-  // Por lance de escada: concreto 2 m³, aço 150 kg, fôrmas 15 m²
   const lances = structure.floors - 1;
+  const vol = 2 * lances;
   return [
-    { name: "Concreto Usinado FCK 25 MPa", unit: "m³", quantity: 2 * lances, phase: "ESCADA", category: "ESTRUTURA" },
-    { name: "Aço CA-50 (vergalhão)", unit: "kg", quantity: 150 * lances, phase: "ESCADA", category: "ESTRUTURA" },
+    ...concretoTraco123(vol, "ESCADA", "ESTRUTURA"),
+    { name: "Aço CA-50 (vergalhão) – escada", unit: "kg", quantity: 150 * lances, phase: "ESCADA", category: "ESTRUTURA" },
     { name: "Fôrmas de Madeira (escada)", unit: "m²", quantity: 15 * lances, phase: "ESCADA", category: "ESTRUTURA" },
   ];
 }
@@ -231,7 +228,6 @@ function calcCobertura(rooms: RoomInput[], roofing: RoofingInput): MaterialResul
   const roofArea = round1((floorArea / Math.cos(inclRad)) * 1.15);
   const LOSS = 1.10;
 
-  // Coeficientes calibrados: cerâmica 25 un/m², fibrocimento 10/m², metálica 8/m²
   const tilesCoverage =
     roofing.tileType === "ceramica" ? 25
     : roofing.tileType === "fibrocimento" ? 10
@@ -258,14 +254,13 @@ function calcCobertura(rooms: RoomInput[], roofing: RoofingInput): MaterialResul
 // ── Instalações Elétricas ──────────────────────────────────────────────────
 function calcEletrica(rooms: RoomInput[]): MaterialResult[] {
   const totalFloor = totalFloorArea(rooms);
-  // Coeficiente calibrado: 0.22 pontos/m²
   const totalPoints = Math.ceil(totalFloor * 0.22);
 
   if (totalPoints === 0) return [];
 
   return [
     { name: "Conduíte Corrugado 3/4\" (flexível)", unit: "m", quantity: Math.ceil(totalPoints * 3), phase: "INSTALACOES_ELETRICAS", category: "ELETRICA" },
-    { name: "Fio Flexível 2,5mm² ", unit: "m", quantity: Math.ceil(totalPoints * 4), phase: "INSTALACOES_ELETRICAS", category: "ELETRICA" },
+    { name: "Fio Flexível 2,5mm²", unit: "m", quantity: Math.ceil(totalPoints * 4), phase: "INSTALACOES_ELETRICAS", category: "ELETRICA" },
     { name: "Caixa de Passagem 4x4/4x2", unit: "un", quantity: totalPoints, phase: "INSTALACOES_ELETRICAS", category: "ELETRICA" },
     { name: "Quadro de Distribuição", unit: "un", quantity: 1, phase: "INSTALACOES_ELETRICAS", category: "ELETRICA" },
     { name: "Disjuntor/DR", unit: "un", quantity: Math.ceil(totalPoints / 8) + 1, phase: "INSTALACOES_ELETRICAS", category: "ELETRICA" },
@@ -274,9 +269,7 @@ function calcEletrica(rooms: RoomInput[]): MaterialResult[] {
 
 // ── Instalações Hidrossanitárias ──────────────────────────────────────────
 function calcHidrossanitaria(rooms: RoomInput[]): MaterialResult[] {
-  // Contar cômodos molhados (banheiro, cozinha, área de serviço)
   const wetRooms = rooms.filter((r) => (r.hydraulicDrainPoints ?? 0) > 0 || (r.hydraulicWaterInlets ?? 0) > 0);
-  // 4 pontos por cômodo molhado
   const totalWaterPoints = wetRooms.length * 4;
   const totalDrainPoints = wetRooms.length * 4;
   const totalPoints = totalWaterPoints + totalDrainPoints;
@@ -321,14 +314,12 @@ function calcRevestimentos(rooms: RoomInput[]): MaterialResult[] {
   if (ceramicFloor > 0) {
     const area = Math.ceil(ceramicFloor * LOSS_FLOOR);
     results.push({ name: "Piso Cerâmico", unit: "m²", quantity: area, phase: "REVESTIMENTOS", category: "REVESTIMENTO" });
-    // Argamassa: 1 sc / 3.5 m² → 0.286 sc/m² + 6% perda
     results.push({ name: "Argamassa AC-II (assentamento piso)", unit: "sc", quantity: Math.ceil(ceramicFloor * 0.286 * LOSS_ARG), phase: "REVESTIMENTOS", category: "REVESTIMENTO" });
     results.push({ name: "Rejunte", unit: "kg", quantity: Math.ceil(ceramicFloor * 0.4 * LOSS_ARG), phase: "REVESTIMENTOS", category: "REVESTIMENTO" });
   }
   if (porcelainFloor > 0) {
     const area = Math.ceil(porcelainFloor * LOSS_FLOOR);
     results.push({ name: "Piso Porcelanato", unit: "m²", quantity: area, phase: "REVESTIMENTOS", category: "REVESTIMENTO" });
-    // Argamassa: 1 sc / 2.5 m² → 0.4 sc/m² + 6%
     results.push({ name: "Argamassa AC-III (assentamento porcelanato)", unit: "sc", quantity: Math.ceil(porcelainFloor * 0.4 * LOSS_ARG), phase: "REVESTIMENTOS", category: "REVESTIMENTO" });
     results.push({ name: "Rejunte", unit: "kg", quantity: Math.ceil(porcelainFloor * 0.4 * LOSS_ARG), phase: "REVESTIMENTOS", category: "REVESTIMENTO" });
   }
@@ -356,9 +347,7 @@ function calcPintura(rooms: RoomInput[]): MaterialResult[] {
   if (paintWallArea <= 0) return [];
 
   const LOSS = 1.08;
-  // Massa corrida: 1 balde (20kg) por m² de parede
   const massaBuckets = Math.ceil(paintWallArea * 1.0 * LOSS);
-  // Tinta PVA: 15L / 70m² = 0.214 L/m² × 2 demãos
   const tintaLitros = Math.ceil(paintWallArea * 0.214 * 2 * LOSS);
 
   return [
@@ -394,8 +383,8 @@ function calcAcabamento(finishes: FinishesInput): MaterialResult[] {
 export function calculateMaterials(input: CalculationInput): MaterialResult[] {
   return [
     ...calcTerraplenagem(input.rooms, input.structure),
-    ...calcFundacao(input.rooms, input.structure),
-    ...calcEstrutura(input.rooms, input.structure),
+    ...calcFundacao(input.structure),
+    ...calcEstrutura(input.structure),
     ...calcAlvenaria(input.rooms, input.finishes, input.structure),
     ...calcLaje(input.rooms, input.structure),
     ...calcEscada(input.structure),

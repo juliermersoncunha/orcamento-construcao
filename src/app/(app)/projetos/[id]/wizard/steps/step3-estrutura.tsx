@@ -25,53 +25,169 @@ export function Step3Estrutura({ project }: { project: any }) {
           </div>
           <CardTitle>Etapa 3 — Estrutura e Alvenaria</CardTitle>
         </div>
-        <CardDescription>Defina o sistema construtivo da obra.</CardDescription>
+        <CardDescription>Defina o sistema construtivo e as dimensões dos elementos estruturais.</CardDescription>
       </CardHeader>
       <CardContent>
-        <form action={handleSubmit} className="flex flex-col gap-4">
-          <Select
-            id="foundationType"
-            name="foundationType"
-            label="Tipo de fundação"
-            defaultValue={s?.foundationType ?? "sapata_corrida"}
-            options={[
-              { value: "radier", label: "Radier" },
-              { value: "sapata_corrida", label: "Sapata Corrida" },
-              { value: "sapata_isolada", label: "Sapata Isolada" },
-              { value: "estaca", label: "Estaca (tubulão/hélice)" },
-            ]}
-          />
-          <Select
-            id="structureType"
-            name="structureType"
-            label="Tipo de estrutura"
-            defaultValue={s?.structureType ?? "concreto_armado"}
-            options={[
-              { value: "concreto_armado", label: "Concreto Armado" },
-              { value: "metalica", label: "Estrutura Metálica" },
-              { value: "madeira", label: "Madeira (Wood Frame)" },
-            ]}
-          />
-          <Select
-            id="blockType"
-            name="blockType"
-            label="Tipo de bloco para alvenaria"
-            defaultValue={s?.blockType ?? "tijolo_furado"}
-            options={[
-              { value: "tijolo_furado", label: "Tijolo Cerâmico Furado 9x19x19" },
-              { value: "bloco_concreto", label: "Bloco de Concreto" },
-              { value: "bloco_celular", label: "Bloco de Concreto Celular (BCC)" },
-            ]}
-          />
-          <Input
-            id="floors"
-            name="floors"
-            type="number"
-            label="Número de pavimentos"
-            defaultValue={s?.floors ?? 1}
-            min="1"
-            max="10"
-          />
+        <form action={handleSubmit} className="flex flex-col gap-5">
+          <div className="grid grid-cols-2 gap-4">
+            <Select
+              id="foundationType"
+              name="foundationType"
+              label="Tipo de fundação"
+              defaultValue={s?.foundationType ?? "sapata_corrida"}
+              options={[
+                { value: "radier", label: "Radier" },
+                { value: "sapata_corrida", label: "Sapata Corrida" },
+                { value: "sapata_isolada", label: "Sapata Isolada" },
+                { value: "estaca", label: "Estaca (tubulão/hélice)" },
+              ]}
+            />
+            <Select
+              id="structureType"
+              name="structureType"
+              label="Tipo de estrutura"
+              defaultValue={s?.structureType ?? "concreto_armado"}
+              options={[
+                { value: "concreto_armado", label: "Concreto Armado" },
+                { value: "metalica", label: "Estrutura Metálica" },
+                { value: "madeira", label: "Madeira (Wood Frame)" },
+              ]}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <Select
+              id="blockType"
+              name="blockType"
+              label="Tipo de bloco para alvenaria"
+              defaultValue={s?.blockType ?? "tijolo_furado"}
+              options={[
+                { value: "tijolo_furado", label: "Tijolo Cerâmico Furado 9x19x19" },
+                { value: "bloco_concreto", label: "Bloco de Concreto" },
+                { value: "bloco_celular", label: "Bloco de Concreto Celular (BCC)" },
+              ]}
+            />
+            <Input
+              id="floors"
+              name="floors"
+              type="number"
+              label="Número de pavimentos"
+              defaultValue={s?.floors ?? 1}
+              min="1"
+              max="10"
+            />
+          </div>
+
+          {/* Sapatas */}
+          <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-4">
+            <p className="text-sm font-semibold text-zinc-700 mb-3">Sapatas</p>
+            <div className="grid grid-cols-4 gap-3">
+              <Input
+                id="sapataQtd"
+                name="sapataQtd"
+                type="number"
+                label="Quantidade"
+                defaultValue={s?.sapataQtd ?? 0}
+                min="0"
+                step="1"
+              />
+              <Input
+                id="sapataLargura"
+                name="sapataLargura"
+                type="number"
+                label="Largura (m)"
+                defaultValue={s?.sapataLargura ?? 0.6}
+                min="0"
+                step="0.05"
+              />
+              <Input
+                id="sapataCompr"
+                name="sapataCompr"
+                type="number"
+                label="Comprimento (m)"
+                defaultValue={s?.sapataCompr ?? 0.6}
+                min="0"
+                step="0.05"
+              />
+              <Input
+                id="sapataAltura"
+                name="sapataAltura"
+                type="number"
+                label="Altura (m)"
+                defaultValue={s?.sapataAltura ?? 0.3}
+                min="0"
+                step="0.05"
+              />
+            </div>
+          </div>
+
+          {/* Pilares */}
+          <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-4">
+            <p className="text-sm font-semibold text-zinc-700 mb-3">Pilares</p>
+            <div className="grid grid-cols-3 gap-3">
+              <Input
+                id="pilarMetros"
+                name="pilarMetros"
+                type="number"
+                label="Metros lineares totais"
+                defaultValue={s?.pilarMetros ?? 0}
+                min="0"
+                step="0.1"
+              />
+              <Input
+                id="pilarLargura"
+                name="pilarLargura"
+                type="number"
+                label="Seção — Largura (m)"
+                defaultValue={s?.pilarLargura ?? 0.15}
+                min="0"
+                step="0.01"
+              />
+              <Input
+                id="pilarAltura"
+                name="pilarAltura"
+                type="number"
+                label="Seção — Altura (m)"
+                defaultValue={s?.pilarAltura ?? 0.3}
+                min="0"
+                step="0.01"
+              />
+            </div>
+          </div>
+
+          {/* Vigas */}
+          <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-4">
+            <p className="text-sm font-semibold text-zinc-700 mb-3">Vigas</p>
+            <div className="grid grid-cols-3 gap-3">
+              <Input
+                id="vigaMetros"
+                name="vigaMetros"
+                type="number"
+                label="Metros lineares totais"
+                defaultValue={s?.vigaMetros ?? 0}
+                min="0"
+                step="0.1"
+              />
+              <Input
+                id="vigaLargura"
+                name="vigaLargura"
+                type="number"
+                label="Seção — Largura (m)"
+                defaultValue={s?.vigaLargura ?? 0.15}
+                min="0"
+                step="0.01"
+              />
+              <Input
+                id="vigaAltura"
+                name="vigaAltura"
+                type="number"
+                label="Seção — Altura (m)"
+                defaultValue={s?.vigaAltura ?? 0.4}
+                min="0"
+                step="0.01"
+              />
+            </div>
+          </div>
 
           <div className="flex flex-col gap-3 rounded-lg border border-zinc-200 bg-zinc-50 p-4">
             <p className="text-sm font-medium text-zinc-700">Elementos estruturais adicionais</p>
@@ -83,7 +199,7 @@ export function Step3Estrutura({ project }: { project: any }) {
                 defaultChecked={s?.hasLaje ?? false}
                 className="w-4 h-4 rounded accent-amber-600"
               />
-              <span className="text-sm text-zinc-700">Possui laje (laje pré-moldada ou moldada in loco)</span>
+              <span className="text-sm text-zinc-700">Possui laje pré-moldada/treliçada</span>
             </label>
             <label className="flex items-center gap-3 cursor-pointer">
               <input

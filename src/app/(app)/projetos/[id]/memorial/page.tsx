@@ -197,6 +197,16 @@ export default async function MemorialPage({
         floors: project.structure.floors,
         hasLaje: project.structure.hasLaje,
         hasEscada: project.structure.hasEscada,
+        pilarMetros: project.structure.pilarMetros,
+        pilarLargura: project.structure.pilarLargura,
+        pilarAltura: project.structure.pilarAltura,
+        vigaMetros: project.structure.vigaMetros,
+        vigaLargura: project.structure.vigaLargura,
+        vigaAltura: project.structure.vigaAltura,
+        sapataQtd: project.structure.sapataQtd,
+        sapataLargura: project.structure.sapataLargura,
+        sapataCompr: project.structure.sapataCompr,
+        sapataAltura: project.structure.sapataAltura,
       }
     : {
         foundationType: "sapata_corrida",
@@ -205,6 +215,16 @@ export default async function MemorialPage({
         floors: 1,
         hasLaje: false,
         hasEscada: false,
+        pilarMetros: 0,
+        pilarLargura: 0.15,
+        pilarAltura: 0.30,
+        vigaMetros: 0,
+        vigaLargura: 0.15,
+        vigaAltura: 0.40,
+        sapataQtd: 0,
+        sapataLargura: 0.60,
+        sapataCompr: 0.60,
+        sapataAltura: 0.30,
       };
 
   const roofingInput: RoofingInput = project.roofing
@@ -328,6 +348,22 @@ export default async function MemorialPage({
               {TILE_TYPE_LABELS[roofingInput.tileType] ?? roofingInput.tileType}
               {" ("}
               {roofingInput.inclination}°{")"}
+            </div>
+            <div>
+              <span className="font-semibold text-gray-600">Sapatas:</span>{" "}
+              {structureInput.sapataQtd} un ({formatNumber(structureInput.sapataLargura)}×{formatNumber(structureInput.sapataCompr)}×{formatNumber(structureInput.sapataAltura)} m)
+            </div>
+            <div>
+              <span className="font-semibold text-gray-600">Pilares:</span>{" "}
+              {formatNumber(structureInput.pilarMetros)} m ({formatNumber(structureInput.pilarLargura)}×{formatNumber(structureInput.pilarAltura)} m)
+            </div>
+            <div>
+              <span className="font-semibold text-gray-600">Vigas:</span>{" "}
+              {formatNumber(structureInput.vigaMetros)} m ({formatNumber(structureInput.vigaLargura)}×{formatNumber(structureInput.vigaAltura)} m)
+            </div>
+            <div>
+              <span className="font-semibold text-gray-600">Concreto:</span>{" "}
+              Feito na obra — traço 1:2:3
             </div>
             <div>
               <span className="font-semibold text-gray-600">Esquadrias:</span>{" "}

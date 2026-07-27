@@ -73,6 +73,15 @@ export type FixtureSpec = {
   dependencies: DependencySpec[];
   // Config schema — describes what dimensions/options this fixture accepts
   configSchema?: ConfigSchema;
+  // Fora do escopo do banheiro padrão econômico (MCMV). A definição continua
+  // válida — o motor resolve normalmente e projetos antigos seguem funcionando —
+  // mas o item não aparece no seletor nem entra em nenhum preset.
+  advanced?: boolean;
+  // Aparece como caixa de seleção simples em "Itens opcionais", fora da
+  // composição padrão. Nunca entra automaticamente.
+  optional?: boolean;
+  // Rótulo curto usado na lista de opcionais (quando `optional`).
+  shortLabel?: string;
 };
 
 // An accessory is an opt-in item with no hydraulic/electric points of its own.

@@ -343,22 +343,69 @@ function expandAccessory(
 
 // ── Expand impermeabilization ──────────────────────────────────────────────
 
+// Escopo do padrão econômico: piso + rodapé em todo o perímetro + as duas paredes
+// da área do box, quando houver box. Alturas e demãos vêm das Premissas, então
+// mudar o coeficiente lá altera o orçamento sem precisar reeditar o ambiente.
+export const IMPERM_SCOPE_BASICA = "PISO_PAREDES";
+
+export function impermBasicaArea(
+  room: RoomEngineInput,
+  premises: PremiseValue[]
+): { area: number; rodapeH: number; formula: string } {
+  const piso = room.width * room.length;
+  const perim = 2 * (room.width + room.length);
+  const rodapeH = findPremise(premises, "IMPERM_RODAPE_H");
+  const rodape = perim * rodapeH;
+
+  const box = room.fixtures.find(
+    (f) => f.fixtureType === "BOX_FRONTAL" || f.fixtureType === "BOX_CANTO"
+  );
+  let boxArea = 0;
+  let boxTxt = "";
+  if (box) {
+    const cfg = box.configJson ? safeJson(box.configJson) : {};
+    const boxW = Number(cfg.width ?? 1);
+    const boxH = findPremise(premises, "IMPERM_BOX_H");
+    if (boxH > rodapeH) {
+      boxArea = boxW * 2 * (boxH - rodapeH);
+      boxTxt = ` + box ${boxW} m × 2 × ${(boxH - rodapeH).toFixed(2)} m`;
+    }
+  }
+
+  return {
+    area: piso + rodape + boxArea,
+    rodapeH,
+    formula: `piso ${piso.toFixed(2)} m² + rodapé ${perim.toFixed(2)} m × ${rodapeH} m${boxTxt}`,
+  };
+}
+
 function expandImperm(
   imperm: ImpermInput,
   room: RoomEngineInput,
   premises: PremiseValue[],
   warnings: string[]
 ): FixtureMaterialItem[] {
-  if (imperm.scope === "NENHUM" || imperm.area <= 0) return [];
+  if (imperm.scope === "NENHUM") return [];
   const sys = IMPERM_SYSTEMS[imperm.system];
   if (!sys) {
     warnings.push(`Sistema de impermeabilização "${imperm.system}" não catalogado`);
     return [];
   }
 
+  // No escopo básico, área, altura e demãos são derivadas das Premissas —
+  // o que estiver gravado no ambiente é só cache da última edição.
+  const basica = imperm.scope === IMPERM_SCOPE_BASICA;
+  const derived = basica ? impermBasicaArea(room, premises) : null;
+  const area = derived ? derived.area : imperm.area;
+  const wallHeight = derived ? derived.rodapeH : imperm.wallHeight;
+  const coats = basica
+    ? (findPremise(premises, "IMPERM_DEMAOS") || imperm.coats || 1)
+    : imperm.coats;
+
+  if (area <= 0) return [];
+
   const items: FixtureMaterialItem[] = [];
-  const area = imperm.area;
-  const perimReforcoCantos = (imperm.wallHeight > 0)
+  const perimReforcoCantos = (wallHeight > 0)
     ? 2 * (room.width + room.length) // canto piso-parede
     : 0;
 
@@ -371,8 +418,8 @@ function expandImperm(
         qty = area * findPremise(premises, "IMPERM_PRIMER_L_M2");
         formula = `${area.toFixed(2)} m² × ${findPremise(premises, "IMPERM_PRIMER_L_M2")} L/m²`;
       } else if (m.material === "Argamassa polimérica") {
-        qty = area * findPremise(premises, "IMPERM_ARGAMASSA_KG_M2_DEMAO") * imperm.coats;
-        formula = `${area.toFixed(2)} m² × ${findPremise(premises, "IMPERM_ARGAMASSA_KG_M2_DEMAO")} kg × ${imperm.coats} demão(s)`;
+        qty = area * findPremise(premises, "IMPERM_ARGAMASSA_KG_M2_DEMAO") * coats;
+        formula = `${area.toFixed(2)} m² × ${findPremise(premises, "IMPERM_ARGAMASSA_KG_M2_DEMAO")} kg × ${coats} demão(s)`;
       } else if (m.material === "Tela de poliéster para reforço") {
         qty = area * findPremise(premises, "IMPERM_TELA_M_M2");
         formula = `${area.toFixed(2)} m² × ${findPremise(premises, "IMPERM_TELA_M_M2")} m/m²`;
@@ -418,9 +465,19 @@ function expandImperm(
 
 const WALL_SIDE_LABELS: Record<string, string> = {
   FRENTE: "Frente", FUNDO: "Fundo", ESQUERDA: "Esquerda", DIREITA: "Direita",
+  BOX: "Área do box",
 };
 
+// "BOX" não é um lado do ambiente: representa as duas paredes que formam o
+// canto do box, medidas pela largura do próprio box.
 function wallLength(room: RoomEngineInput, side: string): number {
+  if (side === "BOX") {
+    const box = room.fixtures.find(
+      (f) => f.fixtureType === "BOX_FRONTAL" || f.fixtureType === "BOX_CANTO"
+    );
+    const w = box ? Number(safeJson(box.configJson ?? "{}").width ?? 1) : 1;
+    return w * 2;
+  }
   return side === "FRENTE" || side === "FUNDO" ? room.width : room.length;
 }
 

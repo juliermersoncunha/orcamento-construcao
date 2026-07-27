@@ -9,6 +9,18 @@
 
 import type { FixtureSpec, DependencySpec, AccessorySpec, ConfigSchema } from "./types";
 
+// Bitola do circuito do chuveiro, derivada da corrente (P/V) em vez de perguntada.
+// Faixas dimensionadas para o uso residencial econômico: 220 V / 5500 W cai em
+// 6 mm², que é o que o mercado pratica considerando queda de tensão no ramal.
+export function chuveiroCabo(config: Record<string, unknown>): string {
+  const powerW = Number(config.powerW ?? 5500);
+  const voltage = Number(config.voltage ?? 220) || 220;
+  const amps = powerW / voltage;
+  if (amps < 22) return "4";
+  if (amps < 40) return "6";
+  return "10";
+}
+
 export const BATHROOM_FIXTURES: FixtureSpec[] = [
   // ── VASO SANITÁRIO ────────────────────────────────────────────────────────
   {
@@ -32,6 +44,7 @@ export const BATHROOM_FIXTURES: FixtureSpec[] = [
   },
   {
     fixtureType: "VASO_VALVULA",
+    advanced: true,
     label: "Vaso sanitário com válvula",
     hydraulicPoints: [
       { type: "AGUA_FRIA",  qty: 1 },
@@ -54,9 +67,9 @@ export const BATHROOM_FIXTURES: FixtureSpec[] = [
   {
     fixtureType: "LAVATORIO_SUSPENSO",
     label: "Lavatório suspenso",
-    configSchema: {
-      hotWater: { label: "Com água quente", type: "boolean", default: false },
-    },
+    // Sem configSchema no padrão econômico: não há água quente. As dependências
+    // com `hotWater` continuam declaradas para não quebrar projetos antigos que
+    // gravaram a opção, mas nada na interface consegue mais ligá-la.
     hydraulicPoints: [
       { type: "AGUA_FRIA", qty: 1 },
       { type: "ESGOTO_50", qty: 1 },
@@ -80,6 +93,7 @@ export const BATHROOM_FIXTURES: FixtureSpec[] = [
   },
   {
     fixtureType: "LAVATORIO_COLUNA",
+    advanced: true,
     label: "Lavatório com coluna",
     configSchema: {
       hotWater: { label: "Com água quente", type: "boolean", default: false },
@@ -114,7 +128,6 @@ export const BATHROOM_FIXTURES: FixtureSpec[] = [
       voltage:  { label: "Tensão (V)",       type: "enum",   options: ["127", "220"], default: "220" },
       powerW:   { label: "Potência (W)",     type: "number", default: 5500, unit: "W" },
       distance: { label: "Distância ao quadro (m)", type: "number", default: 8, unit: "m" },
-      cableSize:{ label: "Bitola do cabo (mm²)", type: "enum", options: ["4", "6", "10"], default: "6", unit: "mm²" },
     },
     hydraulicPoints: [
       { type: "AGUA_FRIA", qty: 1 },
@@ -128,15 +141,15 @@ export const BATHROOM_FIXTURES: FixtureSpec[] = [
       { material: "Acabamento de registro",             unit: "un",  category: "METAIS_SANITARIOS",     quantity: { qty: 1 } },
       { material: "Fita veda-rosca",                    unit: "rolo",category: "ACESSORIOS_HIDRAULICOS", quantity: { formula: "premise:VEDA_ROSCA_POR_CONEXAO", multiplier: 2 } },
       { material: "Disjuntor monopolar exclusivo",      unit: "un",  category: "ELETRICA",              quantity: { qty: 1 } },
-      // Circuito exclusivo — bitola do cabo vem do config; comprimento = 2 × distância (fase+neutro) × mult
+      // Circuito exclusivo — bitola derivada da potência; comprimento = 2 × distância (fase+neutro) × mult
       {
-        material: (c) => `Cabo flexível ${(c.cableSize ?? "6")}mm²`,
+        material: (c) => `Cabo flexível ${chuveiroCabo(c)}mm²`,
         unit: "m", category: "ELETRICA",
         quantity: { compute: "chuveiro.cableFase", premise: "CHUVEIRO_CABO_FASE_MULT" },
         formulaLabel: (c) => `2 × ${c.distance ?? 8} m (fase+neutro) × mult`,
       },
       {
-        material: (c) => `Cabo flexível ${(c.cableSize ?? "6")}mm² (terra)`,
+        material: (c) => `Cabo flexível ${chuveiroCabo(c)}mm² (terra)`,
         unit: "m", category: "ELETRICA",
         quantity: { compute: "chuveiro.cableTerra" },
         formulaLabel: (c) => `1 × ${c.distance ?? 8} m (terra)`,
@@ -151,6 +164,7 @@ export const BATHROOM_FIXTURES: FixtureSpec[] = [
   },
   {
     fixtureType: "DUCHA_FRIA",
+    advanced: true,
     label: "Ducha (somente água fria)",
     hydraulicPoints: [
       { type: "AGUA_FRIA", qty: 1 },
@@ -167,6 +181,7 @@ export const BATHROOM_FIXTURES: FixtureSpec[] = [
   },
   {
     fixtureType: "DUCHA_QUENTE",
+    advanced: true,
     label: "Ducha com água quente (misturador)",
     hydraulicPoints: [
       { type: "AGUA_FRIA",   qty: 1 },
@@ -212,6 +227,7 @@ export const BATHROOM_FIXTURES: FixtureSpec[] = [
   },
   {
     fixtureType: "RALO_SECO",
+    advanced: true,
     label: "Ralo seco",
     hydraulicPoints: [
       { type: "RALO", qty: 1 },
@@ -225,6 +241,7 @@ export const BATHROOM_FIXTURES: FixtureSpec[] = [
   },
   {
     fixtureType: "RALO_LINEAR",
+    advanced: true,
     label: "Ralo linear",
     configSchema: {
       length: { label: "Comprimento (m)", type: "number", default: 0.60, unit: "m" },
@@ -242,6 +259,8 @@ export const BATHROOM_FIXTURES: FixtureSpec[] = [
   // ── DUCHA HIGIÊNICA ───────────────────────────────────────────────────────
   {
     fixtureType: "DUCHA_HIGIENICA",
+    optional: true,
+    shortLabel: "Ducha higiênica",
     label: "Ducha higiênica",
     hydraulicPoints: [
       { type: "AGUA_FRIA", qty: 1 },
@@ -258,46 +277,43 @@ export const BATHROOM_FIXTURES: FixtureSpec[] = [
   // ── BOX ────────────────────────────────────────────────────────────────────
   {
     fixtureType: "BOX_FRONTAL",
+    optional: true,
+    shortLabel: "Box de vidro",
     label: "Box frontal",
     configSchema: {
       width:      { label: "Largura (m)",  type: "number", default: 1.00, unit: "m" },
       height:     { label: "Altura (m)",   type: "number", default: 1.90, unit: "m" },
-      glassMm:    { label: "Vidro (mm)",   type: "enum", options: ["6", "8", "10"], default: "8", unit: "mm" },
-      opening:    { label: "Abertura",     type: "enum", options: ["correr", "abrir"], default: "correr" },
       priceMode:  { label: "Preço por",    type: "enum", options: ["conjunto", "m2"], default: "conjunto" },
     },
     hydraulicPoints: [],
     electricalPoints: [],
+    // Conjunto fechado: perfis, roldanas, puxador e borracha vêm com o box.
+    // Só o modo de preço muda a composição — por peça inteira ou por m² de vidro.
     dependencies: [
       {
-        material: (c) => `Vidro temperado incolor ${c.glassMm ?? "8"}mm`,
-        unit: "m²", category: "VIDROS_BOX",
-        quantity: { compute: "box.glassArea" },
+        material: "Box de Banheiro",
+        unit: "cj", category: "VIDROS_BOX",
+        quantity: { qty: 1 },
+        onlyIf: (c) => c.priceMode !== "m2",
         formulaLabel: (c) => `${c.width ?? 1} m × ${c.height ?? 1.9} m`,
       },
       {
-        material: "Perfil de alumínio para box",
-        unit: "m", category: "VIDROS_BOX",
-        quantity: { compute: "box.perimeter" },
-        formulaLabel: (c) => `perímetro = 2 × (${c.width ?? 1} + ${c.height ?? 1.9})`,
+        material: "Vidro temperado incolor 8mm",
+        unit: "m²", category: "VIDROS_BOX",
+        quantity: { compute: "box.glassArea" },
+        onlyIf: (c) => c.priceMode === "m2",
+        formulaLabel: (c) => `${c.width ?? 1} m × ${c.height ?? 1.9} m`,
       },
-      { material: "Roldana para box de correr",  unit: "cj",  category: "VIDROS_BOX", quantity: { qty: 1 }, onlyIf: (c) => c.opening === "correr" },
-      { material: "Dobradiça para box",           unit: "un",  category: "VIDROS_BOX", quantity: { qty: 2 }, onlyIf: (c) => c.opening === "abrir" },
-      { material: "Puxador de box",                unit: "un",  category: "VIDROS_BOX", quantity: { qty: 1 } },
-      {
-        material: "Borracha de vedação para box",
-        unit: "m", category: "VIDROS_BOX",
-        quantity: { compute: "box.perimeterVedacao" },
-        formulaLabel: (c) => `2 × ${c.height ?? 1.9} + ${c.width ?? 1}`,
-      },
-      { material: "Kit fixação de box",            unit: "kit", category: "VIDROS_BOX",              quantity: { qty: 1 } },
-      { material: "Silicone sanitário",             unit: "tubo", category: "ACESSORIOS_HIDRAULICOS", quantity: { formula: "premise:SILICONE_POR_INSTALACAO", multiplier: 2 } },
+      { material: "Kit fixação de box",  unit: "kit",  category: "VIDROS_BOX",              quantity: { qty: 1 } },
+      { material: "Silicone sanitário",  unit: "tubo", category: "ACESSORIOS_HIDRAULICOS", quantity: { formula: "premise:SILICONE_POR_INSTALACAO", multiplier: 2 } },
     ],
   },
 
   // ── EXAUSTOR ──────────────────────────────────────────────────────────────
   {
     fixtureType: "EXAUSTOR",
+    optional: true,
+    shortLabel: "Exaustor",
     label: "Exaustor de banheiro",
     configSchema: {
       ductLength: { label: "Comprimento do duto (m)", type: "number", default: 3, unit: "m" },
@@ -319,11 +335,12 @@ export const BATHROOM_FIXTURES: FixtureSpec[] = [
   },
 ];
 
-// Preset — "Banheiro completo padrão"
+// Preset — "Banheiro padrão econômico" (MCMV). Só o indispensável para entregar
+// um banheiro funcional; conforto e acabamento superior ficam em Itens opcionais.
 export const BATHROOM_STANDARD_PRESET = [
   { fixtureType: "VASO_CAIXA_ACOPLADA", quantity: 1 },
-  { fixtureType: "LAVATORIO_SUSPENSO",  quantity: 1, config: { hotWater: false } },
-  { fixtureType: "CHUVEIRO_ELETRICO",   quantity: 1, config: { voltage: "220", powerW: 5500, distance: 8, cableSize: "6" } },
+  { fixtureType: "LAVATORIO_SUSPENSO",  quantity: 1 },
+  { fixtureType: "CHUVEIRO_ELETRICO",   quantity: 1, config: { voltage: "220", powerW: 5500, distance: 8 } },
   { fixtureType: "CAIXA_SIFONADA",      quantity: 1 },
 ] as const;
 
@@ -566,16 +583,35 @@ export function getBathroomFixtureSpec(fixtureType: string): FixtureSpec | undef
   return BATHROOM_FIXTURES.find((f) => f.fixtureType === fixtureType);
 }
 
-// UI grouping for the "adicionar equipamento" dropdown.
-export const BATHROOM_FIXTURE_GROUPS: { label: string; types: string[] }[] = [
+// Equipamentos oferecidos no seletor do padrão econômico. Os marcados como
+// `advanced` (vaso com válvula, lavatório com coluna, duchas, ralo seco e linear)
+// continuam definidos e resolvem normalmente para projetos antigos, mas não
+// aparecem aqui. Os `optional` saem para a seção "Itens opcionais".
+const ECONOMIC_GROUPS: { label: string; types: string[] }[] = [
   { label: "Vaso sanitário", types: ["VASO_CAIXA_ACOPLADA", "VASO_VALVULA"] },
-  { label: "Lavatório / cuba", types: ["LAVATORIO_SUSPENSO", "LAVATORIO_COLUNA"] },
-  { label: "Chuveiro / ducha", types: ["CHUVEIRO_ELETRICO", "DUCHA_FRIA", "DUCHA_QUENTE"] },
+  { label: "Lavatório", types: ["LAVATORIO_SUSPENSO", "LAVATORIO_COLUNA"] },
+  { label: "Chuveiro", types: ["CHUVEIRO_ELETRICO", "DUCHA_FRIA", "DUCHA_QUENTE"] },
   { label: "Ralo / caixa sifonada", types: ["CAIXA_SIFONADA", "RALO_SIFONADO", "RALO_SECO", "RALO_LINEAR"] },
-  { label: "Ducha higiênica", types: ["DUCHA_HIGIENICA"] },
-  { label: "Box", types: ["BOX_FRONTAL"] },
-  { label: "Exaustor", types: ["EXAUSTOR"] },
 ];
+
+function isEconomic(t: string): boolean {
+  const spec = BATHROOM_FIXTURES.find((f) => f.fixtureType === t);
+  return !!spec && !spec.advanced && !spec.optional;
+}
+
+export const BATHROOM_FIXTURE_GROUPS: { label: string; types: string[] }[] =
+  ECONOMIC_GROUPS
+    .map((g) => ({ label: g.label, types: g.types.filter(isEconomic) }))
+    .filter((g) => g.types.length > 0);
+
+// Equipamentos que viram caixa de seleção simples em "Itens opcionais".
+export const BATHROOM_OPTIONAL_FIXTURES = BATHROOM_FIXTURES
+  .filter((f) => f.optional)
+  .map((f) => ({
+    fixtureType: f.fixtureType,
+    label: f.shortLabel ?? f.label,
+    configSchema: f.configSchema,
+  }));
 
 // List of components a fixture *can* have "já incluso no produto" — for the checkboxes.
 // Returns the resolved material names given the current config.

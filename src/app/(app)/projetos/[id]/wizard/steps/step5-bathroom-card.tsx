@@ -7,13 +7,14 @@ import {
   BATHROOM_FIXTURE_GROUPS,
   BATHROOM_STANDARD_PRESET,
   BATHROOM_ACCESSORIES,
+  BATHROOM_OPTIONAL_FIXTURES,
   BATHROOM_ROOM_TYPES,
   getBathroomFixtureSpec,
   getBathroomAccessorySpec,
   includableComponents,
 } from "@/lib/fixture-library/bathroom";
 import { computePointDemand } from "@/lib/calculations/fixture-engine";
-import { Bath, Plus, Trash2, Check, Sparkles } from "lucide-react";
+import { Bath, Plus, Trash2, Check, Sparkles, ChevronDown, ChevronUp } from "lucide-react";
 
 // ── Client state shapes ─────────────────────────────────────────────────────
 type FixtureState = {
@@ -45,9 +46,17 @@ const WALL_SIDES = [
   { key: "DIREITA", label: "Direita" },
 ];
 
+// Padrão econômico: três opções em vez de escolher parede a parede.
+const WALL_TILE_MODES = [
+  { value: "NENHUM", label: "Sem revestimento de parede" },
+  { value: "ALTURA", label: "Até uma altura (meia parede)" },
+  { value: "TODAS",  label: "Todas as paredes, do piso ao teto" },
+  { value: "BOX",    label: "Somente a área do box" },
+];
+
 type WallTileState = {
+  mode: string;
   height: number;
-  walls: Record<string, boolean>; // wallSide -> hasTile
 };
 
 type AccessoryState = {
@@ -56,6 +65,8 @@ type AccessoryState = {
 };
 
 // Defaults declared by the accessory's configSchema in the fixture library.
+// No padrão econômico o usuário não informa dimensões de acessório — os valores
+// padrão da biblioteca são usados como estão.
 function defaultAccessoryConfig(type: string): Record<string, unknown> {
   const schema = getBathroomAccessorySpec(type)?.configSchema;
   if (!schema) return {};
@@ -66,16 +77,21 @@ function defaultAccessoryConfig(type: string): Record<string, unknown> {
   return out;
 }
 
-type ImpermState = {
-  scope: string;
-  area: number;
-  wallHeight: number;
-  ralos: number;
-  tubulacoes: number;
-  system: string;
-  coats: number;
-  mechProtection: boolean;
-};
+// Traduz o modo escolhido nas linhas de RoomWallFinish que o motor consome.
+function wallFinishesFor(mode: string, height: number, roomHeight: number) {
+  if (mode === "TODAS") {
+    return WALL_SIDES.map((s) => ({ wallSide: s.key, hasTile: true, tileHeight: roomHeight }));
+  }
+  if (mode === "ALTURA") {
+    return WALL_SIDES.map((s) => ({ wallSide: s.key, hasTile: true, tileHeight: height }));
+  }
+  if (mode === "BOX") {
+    return [{ wallSide: "BOX", hasTile: true, tileHeight: height }];
+  }
+  return [];
+}
+
+const RALO_TYPES = ["CAIXA_SIFONADA", "RALO_SIFONADO", "RALO_SECO", "RALO_LINEAR"];
 
 let uidCounter = 0;
 const nextUid = () => `fx-${++uidCounter}`;
@@ -95,17 +111,10 @@ const ELECTRICAL_LABELS: Record<string, string> = {
   CIRCUITO_EXCLUSIVO: "Circuito exclusivo",
 };
 
-const IMPERM_SCOPES = [
-  { value: "NENHUM", label: "Não calcular" },
-  { value: "BOX", label: "Somente área do box" },
-  { value: "PISO", label: "Piso completo" },
-  { value: "PISO_PAREDES", label: "Piso e paredes" },
-  { value: "CUSTOM", label: "Personalizada" },
-];
-const IMPERM_SYSTEMS_UI = [
-  { value: "argamassa_polimerica", label: "Argamassa polimérica" },
-  { value: "manta_asfaltica", label: "Manta asfáltica" },
-];
+// Padrão econômico: liga/desliga. Área, altura do rodapé e demãos vêm das
+// Premissas de Cálculo — ver IMPERM_RODAPE_H, IMPERM_BOX_H e IMPERM_DEMAOS.
+const IMPERM_BASICA = "PISO_PAREDES";
+const IMPERM_SISTEMA_PADRAO = "argamassa_polimerica";
 
 export function BathroomCard({ room }: { room: any }) {
   const [isPending, startTransition] = useTransition();
@@ -155,29 +164,21 @@ export function BathroomCard({ room }: { room: any }) {
   });
 
   const [wallTile, setWallTile] = useState<WallTileState>(() => {
-    const existing = (room.wallFinishes ?? []) as any[];
-    const walls: Record<string, boolean> = {};
-    WALL_SIDES.forEach((s) => { walls[s.key] = false; });
-    let height = 1.5;
-    for (const w of existing) {
-      if (w.hasTile) { walls[w.wallSide] = true; height = w.tileHeight ?? height; }
+    const existing = ((room.wallFinishes ?? []) as any[]).filter((w) => w.hasTile);
+    if (existing.length === 0) return { mode: "NENHUM", height: 1.5 };
+    const height = existing[0].tileHeight ?? 1.5;
+    if (existing.some((w) => w.wallSide === "BOX")) return { mode: "BOX", height };
+    if (existing.length >= WALL_SIDES.length && height >= room.height) {
+      return { mode: "TODAS", height };
     }
-    return { height, walls };
+    return { mode: "ALTURA", height };
   });
 
-  const [imperm, setImperm] = useState<ImpermState>(() => {
-    const im = room.imperm;
-    return {
-      scope: im?.scope ?? "NENHUM",
-      area: im?.area ?? round2(room.width * room.length),
-      wallHeight: im?.wallHeight ?? 1.5,
-      ralos: im?.ralos ?? 1,
-      tubulacoes: im?.tubulacoes ?? 3,
-      system: im?.system ?? "argamassa_polimerica",
-      coats: im?.coats ?? 3,
-      mechProtection: im?.mechProtection ?? false,
-    };
-  });
+  const [optionalsOpen, setOptionalsOpen] = useState(false);
+
+  const [impermOn, setImpermOn] = useState<boolean>(
+    !!room.imperm && room.imperm.scope !== "NENHUM"
+  );
 
   // ── Live point demand ─────────────────────────────────────────────────────
   const pointDemand = useMemo(() => {
@@ -194,7 +195,29 @@ export function BathroomCard({ room }: { room: any }) {
     return computePointDemand([engineRoom])[0];
   }, [fixtures, roomType, room.id, room.name, room.width, room.length, room.height]);
 
+  const raloCount = fixtures
+    .filter((f) => RALO_TYPES.includes(f.fixtureType))
+    .reduce((n, f) => n + f.quantity, 0);
+
+  // Os equipamentos opcionais (box, ducha higiênica, exaustor) aparecem só na
+  // seção recolhida, não na lista principal.
+  const optionalTypes = new Set(BATHROOM_OPTIONAL_FIXTURES.map((o) => o.fixtureType));
+  const mainFixtures = fixtures.filter((f) => !optionalTypes.has(f.fixtureType));
+  const optionalCount =
+    fixtures.filter((f) => optionalTypes.has(f.fixtureType)).length +
+    Object.values(accessories).filter((a) => a.qty > 0).length;
+
   // ── Mutators ──────────────────────────────────────────────────────────────
+  function toggleOptionalFixture(fixtureType: string) {
+    const has = fixtures.some((f) => f.fixtureType === fixtureType);
+    if (has) {
+      setFixtures((prev) => prev.filter((f) => f.fixtureType !== fixtureType));
+    } else {
+      addFixture(fixtureType);
+    }
+    setSaved(false);
+  }
+
   function applyPreset() {
     setFixtures(
       BATHROOM_STANDARD_PRESET.map((p) => ({
@@ -261,12 +284,21 @@ export function BathroomCard({ room }: { room: any }) {
       accessories: Object.entries(accessories)
         .filter(([, a]) => a.qty > 0)
         .map(([accessoryType, a]) => ({ accessoryType, quantity: a.qty, config: a.config })),
-      imperm: imperm.scope !== "NENHUM"
-        ? { ...imperm }
+      // Escopo básico: o motor recalcula área, altura e demãos a partir das
+      // Premissas. O que vai gravado aqui é só o registro da última edição.
+      imperm: impermOn
+        ? {
+            scope: IMPERM_BASICA,
+            area: round2(room.width * room.length),
+            wallHeight: 0.3,
+            ralos: raloCount,
+            tubulacoes: 0,
+            system: IMPERM_SISTEMA_PADRAO,
+            coats: 3,
+            mechProtection: false,
+          }
         : null,
-      wallFinishes: WALL_SIDES
-        .filter((s) => wallTile.walls[s.key])
-        .map((s) => ({ wallSide: s.key, hasTile: true, tileHeight: wallTile.height })),
+      wallFinishes: wallFinishesFor(wallTile.mode, wallTile.height, room.height),
     };
     startTransition(async () => {
       await saveRoomEquipment(room.id, payload);
@@ -303,7 +335,7 @@ export function BathroomCard({ room }: { room: any }) {
             className="text-xs px-3 py-1.5 rounded-full border border-blue-300 text-blue-700 bg-white hover:bg-blue-100 flex items-center gap-1 font-medium"
           >
             <Sparkles className="w-3.5 h-3.5" />
-            Banheiro completo padrão
+            Banheiro padrão econômico
           </button>
         </div>
       </div>
@@ -315,7 +347,7 @@ export function BathroomCard({ room }: { room: any }) {
           <p className="text-xs text-gray-400 italic py-2">Nenhum equipamento. Use o preenchimento rápido ou adicione abaixo.</p>
         )}
         <div className="flex flex-col gap-2">
-          {fixtures.map((f) => (
+          {mainFixtures.map((f) => (
             <FixtureRow
               key={f.uid}
               fixture={f}
@@ -397,147 +429,155 @@ export function BathroomCard({ room }: { room: any }) {
         )}
       </div>
 
-      {/* Wall tile (per-wall) */}
+      {/* Wall tile — 3 modos no padrão econômico */}
       <div className="mb-3 rounded-md bg-white border border-gray-200 p-3">
-        <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
-          <p className="text-sm font-medium text-gray-700">Revestimento de parede (azulejo)</p>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                const all: Record<string, boolean> = {};
-                WALL_SIDES.forEach((s) => { all[s.key] = true; });
-                setWallTile((w) => ({ ...w, walls: all })); setSaved(false);
-              }}
-              className="text-[11px] px-2 py-0.5 rounded-full border border-blue-300 text-blue-700 bg-white hover:bg-blue-50"
-            >
-              Todas as paredes
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                const none: Record<string, boolean> = {};
-                WALL_SIDES.forEach((s) => { none[s.key] = false; });
-                setWallTile((w) => ({ ...w, walls: none })); setSaved(false);
-              }}
-              className="text-[11px] px-2 py-0.5 rounded-full border border-gray-300 text-gray-600 bg-white hover:bg-gray-50"
-            >
-              Limpar
-            </button>
-          </div>
+        <p className="text-sm font-medium text-gray-700 mb-2">Revestimento de parede (azulejo)</p>
+        <div className="grid grid-cols-2 gap-2">
+          <SelField
+            label="Escopo"
+            value={wallTile.mode}
+            onChange={(v) => { setWallTile((w) => ({ ...w, mode: v })); setSaved(false); }}
+            options={WALL_TILE_MODES}
+          />
+          {(wallTile.mode === "ALTURA" || wallTile.mode === "BOX") && (
+            <NumField
+              label="Altura do azulejo (m)"
+              value={wallTile.height}
+              onChange={(v) => { setWallTile((w) => ({ ...w, height: v })); setSaved(false); }}
+              step={0.05}
+            />
+          )}
         </div>
-        <div className="flex flex-wrap gap-2 mb-2">
-          {WALL_SIDES.map((s) => {
-            const on = wallTile.walls[s.key];
-            const len = (s.key === "FRENTE" || s.key === "FUNDO") ? room.width : room.length;
-            return (
-              <button
-                key={s.key}
-                type="button"
-                onClick={() => { setWallTile((w) => ({ ...w, walls: { ...w.walls, [s.key]: !on } })); setSaved(false); }}
-                className={
-                  "text-xs px-2.5 py-1 rounded-full border transition-colors " +
-                  (on ? "border-blue-400 bg-blue-100 text-blue-800 font-medium" : "border-gray-300 bg-white text-gray-600 hover:bg-gray-50")
-                }
-                title={`${round2(len)} m de parede`}
-              >
-                {on ? "✓ " : "+ "}{s.label} ({round2(len)}m)
-              </button>
-            );
-          })}
-        </div>
-        {WALL_SIDES.some((s) => wallTile.walls[s.key]) && (
-          <div className="grid grid-cols-2 gap-2">
-            <NumField label="Altura do azulejo (m)" value={wallTile.height} onChange={(v) => { setWallTile((w) => ({ ...w, height: v })); setSaved(false); }} step={0.05} />
-          </div>
+        {wallTile.mode === "BOX" && !fixtures.some((f) => f.fixtureType === "BOX_FRONTAL") && (
+          <p className="text-[11px] text-amber-700 mt-1.5">
+            Nenhum box selecionado — a área será estimada por 1,00 m de largura.
+          </p>
         )}
       </div>
 
-      {/* Impermeabilization */}
+      {/* Impermeabilização — liga/desliga */}
       <div className="mb-3 rounded-md bg-white border border-gray-200 p-3">
-        <p className="text-sm font-medium text-gray-700 mb-2">Impermeabilização</p>
-        <div className="grid grid-cols-2 gap-2">
-          <SelField label="Escopo" value={imperm.scope} onChange={(v) => { setImperm((i) => ({ ...i, scope: v })); setSaved(false); }} options={IMPERM_SCOPES} />
-          {imperm.scope !== "NENHUM" && (
-            <>
-              <SelField label="Sistema" value={imperm.system} onChange={(v) => { setImperm((i) => ({ ...i, system: v })); setSaved(false); }} options={IMPERM_SYSTEMS_UI} />
-              <NumField label="Área (m²)" value={imperm.area} onChange={(v) => { setImperm((i) => ({ ...i, area: v })); setSaved(false); }} step={0.1} />
-              <NumField label="Altura nas paredes (m)" value={imperm.wallHeight} onChange={(v) => { setImperm((i) => ({ ...i, wallHeight: v })); setSaved(false); }} step={0.1} />
-              <NumField label="Nº de ralos" value={imperm.ralos} onChange={(v) => { setImperm((i) => ({ ...i, ralos: v })); setSaved(false); }} step={1} />
-              <NumField label="Nº de demãos" value={imperm.coats} onChange={(v) => { setImperm((i) => ({ ...i, coats: v })); setSaved(false); }} step={1} />
-            </>
-          )}
-        </div>
+        <label className="flex items-center gap-2 text-sm font-medium text-gray-700 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={impermOn}
+            onChange={(e) => { setImpermOn(e.target.checked); setSaved(false); }}
+            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+          />
+          Impermeabilização básica
+        </label>
+        <p className="text-[11px] text-gray-400 mt-1 pl-6">
+          Piso, rodapé em todo o perímetro e a área do box quando houver. Alturas e
+          número de demãos vêm das Premissas de Cálculo.
+        </p>
       </div>
 
-      {/* Accessories */}
-      <div className="mb-3 rounded-md bg-white border border-gray-200 p-3">
-        <p className="text-sm font-medium text-gray-700 mb-2">Acessórios (opcionais)</p>
-        <div className="flex flex-wrap gap-2">
-          {BATHROOM_ACCESSORIES.map((a) => {
-            const active = (accessories[a.type]?.qty ?? 0) > 0;
-            return (
-              <button
-                key={a.type}
-                type="button"
-                onClick={() => {
-                  setAccessories((prev) => {
-                    const next = { ...prev };
-                    if (active) delete next[a.type];
-                    else next[a.type] = { qty: 1, config: defaultAccessoryConfig(a.type) };
-                    return next;
-                  });
-                  setSaved(false);
-                }}
-                className={
-                  "text-xs px-2.5 py-1 rounded-full border transition-colors " +
-                  (active
-                    ? "border-blue-400 bg-blue-100 text-blue-800 font-medium"
-                    : "border-gray-300 bg-white text-gray-600 hover:bg-gray-50")
-                }
-              >
-                {active ? "✓ " : "+ "}{a.label}
-              </button>
-            );
-          })}
-        </div>
+      {/* Itens opcionais — recolhido; nada aqui entra automaticamente */}
+      <div className="mb-3 rounded-md bg-white border border-gray-200">
+        <button
+          type="button"
+          onClick={() => setOptionalsOpen((v) => !v)}
+          className="w-full flex items-center justify-between p-3 text-left"
+        >
+          <span className="text-sm font-medium text-gray-700">
+            Itens opcionais
+            {optionalCount > 0 && (
+              <span className="ml-2 text-xs font-normal text-blue-700">
+                {optionalCount} selecionado{optionalCount > 1 ? "s" : ""}
+              </span>
+            )}
+          </span>
+          {optionalsOpen
+            ? <ChevronUp className="w-4 h-4 text-gray-400" />
+            : <ChevronDown className="w-4 h-4 text-gray-400" />}
+        </button>
 
-        {/* Dimensions + quantity for the selected accessories that need them */}
-        {BATHROOM_ACCESSORIES.filter((a) => (accessories[a.type]?.qty ?? 0) > 0).map((a) => {
-          const state = accessories[a.type];
-          const schema = a.configSchema;
-          return (
-            <div key={a.type} className="mt-2 pt-2 border-t border-gray-100 flex flex-wrap items-end gap-2">
-              <span className="text-xs font-medium text-gray-600 min-w-32">{a.label}</span>
-              <div className="w-20">
-                <NumField
-                  label="Qtd"
-                  value={state.qty}
-                  step={1}
-                  onChange={(v) => {
-                    setAccessories((prev) => ({ ...prev, [a.type]: { ...prev[a.type], qty: Math.max(1, v) } }));
-                    setSaved(false);
-                  }}
-                />
-              </div>
-              {schema && Object.entries(schema).map(([key, field]) => (
-                <div key={key} className="w-24">
-                  <NumField
-                    label={`${field.label}${field.unit ? ` (${field.unit})` : ""}`}
-                    value={Number(state.config[key] ?? field.default ?? 0)}
-                    onChange={(v) => {
-                      setAccessories((prev) => ({
-                        ...prev,
-                        [a.type]: { ...prev[a.type], config: { ...prev[a.type].config, [key]: v } },
-                      }));
+        {optionalsOpen && (
+          <div className="border-t border-gray-100 p-3">
+            <div className="flex flex-wrap gap-2">
+              {BATHROOM_OPTIONAL_FIXTURES.map((o) => {
+                const on = fixtures.some((f) => f.fixtureType === o.fixtureType);
+                return (
+                  <button
+                    key={o.fixtureType}
+                    type="button"
+                    onClick={() => toggleOptionalFixture(o.fixtureType)}
+                    className={
+                      "text-xs px-2.5 py-1 rounded-full border transition-colors " +
+                      (on
+                        ? "border-blue-400 bg-blue-100 text-blue-800 font-medium"
+                        : "border-gray-300 bg-white text-gray-600 hover:bg-gray-50")
+                    }
+                  >
+                    {on ? "✓ " : "+ "}{o.label}
+                  </button>
+                );
+              })}
+              {BATHROOM_ACCESSORIES.map((a) => {
+                const on = (accessories[a.type]?.qty ?? 0) > 0;
+                return (
+                  <button
+                    key={a.type}
+                    type="button"
+                    onClick={() => {
+                      setAccessories((prev) => {
+                        const next = { ...prev };
+                        if (on) delete next[a.type];
+                        else next[a.type] = { qty: 1, config: defaultAccessoryConfig(a.type) };
+                        return next;
+                      });
                       setSaved(false);
                     }}
-                  />
+                    className={
+                      "text-xs px-2.5 py-1 rounded-full border transition-colors " +
+                      (on
+                        ? "border-blue-400 bg-blue-100 text-blue-800 font-medium"
+                        : "border-gray-300 bg-white text-gray-600 hover:bg-gray-50")
+                    }
+                  >
+                    {on ? "✓ " : "+ "}{a.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Só o box pede medida; o resto usa dimensão padrão da biblioteca */}
+            {fixtures
+              .filter((f) => f.fixtureType === "BOX_FRONTAL")
+              .map((f) => (
+                <div key={f.uid} className="mt-3 pt-3 border-t border-gray-100 flex flex-wrap items-end gap-2">
+                  <span className="text-xs font-medium text-gray-600 min-w-24">Box de vidro</span>
+                  <div className="w-24">
+                    <NumField
+                      label="Largura (m)"
+                      value={Number(f.config.width ?? 1)}
+                      step={0.05}
+                      onChange={(v) => updateFixtureConfig(f.uid, "width", v)}
+                    />
+                  </div>
+                  <div className="w-24">
+                    <NumField
+                      label="Altura (m)"
+                      value={Number(f.config.height ?? 1.9)}
+                      step={0.05}
+                      onChange={(v) => updateFixtureConfig(f.uid, "height", v)}
+                    />
+                  </div>
+                  <div className="w-32">
+                    <SelField
+                      label="Preço por"
+                      value={String(f.config.priceMode ?? "conjunto")}
+                      onChange={(v) => updateFixtureConfig(f.uid, "priceMode", v)}
+                      options={[
+                        { value: "conjunto", label: "Conjunto" },
+                        { value: "m2", label: "m² de vidro" },
+                      ]}
+                    />
+                  </div>
                 </div>
               ))}
-            </div>
-          );
-        })}
+          </div>
+        )}
       </div>
 
       {/* Point demand preview */}

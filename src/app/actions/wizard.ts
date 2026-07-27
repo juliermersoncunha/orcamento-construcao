@@ -418,15 +418,9 @@ export async function calculateAndSaveBudget(projectId: string) {
 
   const { items: fixtureItems } = resolveRoomFixtures(engineRooms, premises);
 
-  // Dedup: rooms whose box is now detailed by a fixture must not also get the
-  // generic "Box de Banheiro" aggregate item.
-  const roomsWithBox = engineRooms.filter((r) =>
-    r.fixtures.some((f) => f.fixtureType === "BOX_FRONTAL" || f.fixtureType === "BOX_CANTO")
-  ).length;
-  if (roomsWithBox > 0) {
-    const boxItem = materials.find((m) => m.name === "Box de Banheiro");
-    if (boxItem) boxItem.quantity = Math.max(0, boxItem.quantity - roomsWithBox);
-  }
+  // O cálculo genérico não gera mais "Box de Banheiro" — box é item opcional
+  // por ambiente, adicionado no card do banheiro (fixture BOX_FRONTAL).
+  // O dedup antigo virou desnecessário.
 
   // Dedup: portas detalhadas pela biblioteca já trazem a própria soleira de
   // granito, medida pela largura do vão. Não podem contar também a soleira

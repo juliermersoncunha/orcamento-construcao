@@ -313,10 +313,11 @@ function calcHidrossanitaria(rooms: RoomInput[]): MaterialResult[] {
   const wetRooms = rooms.filter((r) => (r.hydraulicDrainPoints ?? 0) > 0 || (r.hydraulicWaterInlets ?? 0) > 0);
   if (wetRooms.length === 0) return [];
 
+  // Box de banheiro NÃO entra aqui — é item opcional por ambiente, marcado no
+  // card do banheiro (fixtureType BOX_FRONTAL) na Etapa 5.
   return [
     { name: "Caixa d'Água 1000L", unit: "un", quantity: 1, phase: "INSTALACOES_HIDROSSANITARIAS", category: "HIDRAULICA" },
     { name: "Fossa Séptica", unit: "un", quantity: 1, phase: "INSTALACOES_HIDROSSANITARIAS", category: "HIDRAULICA" },
-    { name: "Box de Banheiro", unit: "un", quantity: wetRooms.length, phase: "INSTALACOES_HIDROSSANITARIAS", category: "HIDRAULICA" },
   ];
 }
 

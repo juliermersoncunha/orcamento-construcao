@@ -406,7 +406,9 @@ function calcAcabamento(finishes: FinishesInput): MaterialResult[] {
 
   const totalDoors = finishes.doors + finishes.externalDoors;
   if (totalDoors > 0) {
-    results.push({ name: "Batente/Marco de Porta", unit: "un", quantity: totalDoors, phase: "ACABAMENTO", category: "ESQUADRIA" });
+    // Uma soleira por vão. O batente dos ambientes detalhados (banheiro) vem da
+    // biblioteca de equipamentos, com o marco e a ferragem próprios daquela porta.
+    results.push({ name: "Soleira de Porta", unit: "un", quantity: totalDoors, phase: "ACABAMENTO", category: "ESQUADRIA" });
     results.push({ name: "Fechadura Completa", unit: "un", quantity: totalDoors, phase: "ACABAMENTO", category: "ESQUADRIA" });
   }
 

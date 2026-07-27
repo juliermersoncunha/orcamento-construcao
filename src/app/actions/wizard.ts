@@ -424,6 +424,18 @@ export async function calculateAndSaveBudget(projectId: string) {
     if (boxItem) boxItem.quantity = Math.max(0, boxItem.quantity - roomsWithBox);
   }
 
+  // Dedup: portas detalhadas pela biblioteca já trazem a própria soleira de
+  // granito, medida pela largura do vão. Não podem contar também a soleira
+  // genérica por unidade.
+  const detailedDoors = engineRooms.reduce(
+    (n, r) => n + r.joineries.filter((j) => j.joineryType === "PORTA_INTERNA").length,
+    0
+  );
+  if (detailedDoors > 0) {
+    const soleira = materials.find((m) => m.name === "Soleira de Porta");
+    if (soleira) soleira.quantity = Math.max(0, soleira.quantity - detailedDoors);
+  }
+
   // ── Persist budget items ─────────────────────────────────────────────────
   await prisma.budgetItem.deleteMany({ where: { projectId } });
 

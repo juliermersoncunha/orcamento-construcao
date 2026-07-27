@@ -131,12 +131,14 @@ export async function saveStep4Roofing(projectId: string, formData: FormData) {
       tileType: formData.get("tileType") as string,
       inclination: parseFloat(formData.get("inclination") as string) || 30,
       hasRoof: formData.get("hasRoof") !== "false",
+      tileSize: (formData.get("tileSize") as string) || null,
     },
     update: {
       roofType: formData.get("roofType") as string,
       tileType: formData.get("tileType") as string,
       inclination: parseFloat(formData.get("inclination") as string) || 30,
       hasRoof: formData.get("hasRoof") !== "false",
+      tileSize: (formData.get("tileSize") as string) || null,
     },
   });
 
@@ -341,6 +343,7 @@ export async function calculateAndSaveBudget(projectId: string) {
       tileType: project.roofing?.tileType ?? "ceramica",
       inclination: project.roofing?.inclination ?? 30,
       hasRoof: project.roofing?.hasRoof ?? true,
+      tileSize: project.roofing?.tileSize ?? null,
     },
     finishes: {
       doors: project.finishes?.doors ?? 0,

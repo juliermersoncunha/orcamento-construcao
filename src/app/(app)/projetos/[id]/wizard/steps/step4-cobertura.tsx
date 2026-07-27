@@ -12,6 +12,7 @@ export function Step4Cobertura({ project }: { project: any }) {
   const [isPending, startTransition] = useTransition();
   const r = project.roofing;
   const [hasRoof, setHasRoof] = useState(r?.hasRoof !== false);
+  const [tileType, setTileType] = useState<string>(r?.tileType ?? "ceramica");
 
   function handleSubmit(formData: FormData) {
     formData.set("hasRoof", hasRoof ? "true" : "false");
@@ -62,7 +63,8 @@ export function Step4Cobertura({ project }: { project: any }) {
                 id="tileType"
                 name="tileType"
                 label="Tipo de telha"
-                defaultValue={r?.tileType ?? "ceramica"}
+                value={tileType}
+                onChange={(e) => setTileType(e.target.value)}
                 options={[
                   { value: "ceramica", label: "Cerâmica (colonial, portuguesa)" },
                   { value: "fibrocimento", label: "Fibrocimento (Eternit)" },
@@ -70,6 +72,18 @@ export function Step4Cobertura({ project }: { project: any }) {
                   { value: "concreto", label: "Concreto" },
                 ]}
               />
+              {tileType === "fibrocimento" && (
+                <Select
+                  id="tileSize"
+                  name="tileSize"
+                  label="Tamanho da telha (m)"
+                  defaultValue={r?.tileSize ?? "2,44 x 1,1"}
+                  options={[
+                    { value: "2,44 x 1,1", label: "2,44 × 1,10" },
+                    { value: "1,83 x 1,1", label: "1,83 × 1,10" },
+                  ]}
+                />
+              )}
               <Input
                 id="inclination"
                 name="inclination"

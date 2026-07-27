@@ -41,6 +41,7 @@ export type RoofingInput = {
   tileType: string;
   inclination: number;
   hasRoof: boolean;
+  tileSize?: string | null;   // fibrocimento: "2,44 x 1,1" | "1,83 x 1,1"
 };
 
 export type FinishesInput = {
@@ -221,6 +222,41 @@ function calcEscada(structure: StructureInput): MaterialResult[] {
 }
 
 // ── Cobertura ──────────────────────────────────────────────────────────────
+
+// Telhas grandes (fibrocimento) são dimensionadas pela área ÚTIL da peça — a área
+// nominal menos os recobrimentos lateral e longitudinal, que são sobreposição e não
+// cobrem telhado. Telhas pequenas (cerâmica) são vendidas por consumo em peças/m².
+//
+// Fibrocimento ondulada: largura nominal 1,10 m, recobrimento lateral de 1/4 de onda
+// (~5 cm). O recobrimento longitudinal cresce quando a inclinação é baixa, porque a
+// água escorre mais devagar e sobe por capilaridade na emenda.
+const FIBROCIMENTO_LARGURA = 1.10;
+const FIBROCIMENTO_RECOBR_LATERAL = 0.05;
+const FIBROCIMENTO_COMPRIMENTOS: Record<string, number> = {
+  "2,44 x 1,1": 2.44,
+  "1,83 x 1,1": 1.83,
+};
+const FIBROCIMENTO_TAMANHO_PADRAO = "2,44 x 1,1";
+
+// Consumo em peças por m² de telhado, e o nome exato do material no catálogo.
+function tileConsumption(roofing: RoofingInput): { name: string; perM2: number } {
+  if (roofing.tileType === "fibrocimento") {
+    const size = roofing.tileSize && FIBROCIMENTO_COMPRIMENTOS[roofing.tileSize]
+      ? roofing.tileSize
+      : FIBROCIMENTO_TAMANHO_PADRAO;
+    const comprimento = FIBROCIMENTO_COMPRIMENTOS[size];
+    // Abaixo de 15° o fabricante exige recobrimento longitudinal maior.
+    const recobrLongitudinal = roofing.inclination >= 15 ? 0.14 : 0.20;
+    const areaUtil =
+      (comprimento - recobrLongitudinal) * (FIBROCIMENTO_LARGURA - FIBROCIMENTO_RECOBR_LATERAL);
+    return { name: `Telha de Fibrocimento ${size}`, perM2: 1 / areaUtil };
+  }
+  if (roofing.tileType === "ceramica") {
+    return { name: "Telha Cerâmica", perM2: 25 };
+  }
+  return { name: "Telha Metálica", perM2: 8 };
+}
+
 function calcCobertura(rooms: RoomInput[], roofing: RoofingInput): MaterialResult[] {
   if (!roofing.hasRoof || roofing.roofType === "laje_impermeabilizada") {
     const area = totalFloorArea(rooms);
@@ -234,20 +270,12 @@ function calcCobertura(rooms: RoomInput[], roofing: RoofingInput): MaterialResul
   const roofArea = round1((floorArea / Math.cos(inclRad)) * 1.15);
   const LOSS = 1.10;
 
-  const tilesCoverage =
-    roofing.tileType === "ceramica" ? 25
-    : roofing.tileType === "fibrocimento" ? 10
-    : 8;
+  const { name: tileName, perM2 } = tileConsumption(roofing);
 
-  const tiles = Math.ceil(roofArea * tilesCoverage * LOSS);
+  const tiles = Math.ceil(roofArea * perM2 * LOSS);
   const caibros = Math.ceil(roofArea * 3.5);
   const ripas = Math.ceil(roofArea * 6);
   const ridgePieces = Math.ceil(roofArea * 0.15);
-
-  const tileName =
-    roofing.tileType === "ceramica" ? "Telha Cerâmica"
-    : roofing.tileType === "fibrocimento" ? "Telha de Fibrocimento"
-    : "Telha Metálica";
 
   return [
     { name: tileName, unit: "un", quantity: tiles, phase: "COBERTURA", category: "COBERTURA" },

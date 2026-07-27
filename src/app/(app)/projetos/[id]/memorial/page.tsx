@@ -242,6 +242,7 @@ export default async function MemorialPage({
         tileType: project.roofing.tileType,
         inclination: project.roofing.inclination,
         hasRoof: project.roofing.hasRoof,
+        tileSize: project.roofing.tileSize,
       }
     : { roofType: "duas_aguas", tileType: "ceramica", inclination: 30, hasRoof: true };
 

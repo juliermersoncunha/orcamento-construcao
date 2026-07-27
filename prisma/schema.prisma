@@ -242,6 +242,8 @@ model ProjectRoofing {
   tileType    String  @default("ceramica")
   inclination Float   @default(30)
   hasRoof     Boolean @default(true)
+  // Fibrocimento: "2,44 x 1,1" | "1,83 x 1,1". Define a área útil e o material.
+  tileSize    String?
 
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 }

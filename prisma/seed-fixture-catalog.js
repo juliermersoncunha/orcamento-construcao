@@ -103,6 +103,9 @@ const MATERIALS = [
   { name: "Kit fixação de janela",                    unit: "kit", category: "ESQUADRIA" },
   { name: "Selante PU 400ml",                         unit: "un",  category: "ESQUADRIA" },
   { name: "Tela mosquiteira",                         unit: "m²",  category: "ESQUADRIA" },
+  // Revestimento — acabamentos do banheiro
+  { name: "Soleira de granito",                       unit: "m",   category: "REVESTIMENTO" },
+  { name: "Espaçador para revestimento",              unit: "pct", category: "REVESTIMENTO" },
 
   // Elétrica — chuveiro / exaustor
   { name: "Chuveiro elétrico",                       unit: "un",  category: "ELETRICA" },
@@ -125,6 +128,7 @@ const MATERIALS = [
 const PREMISES = [
   { key: "ESPUMA_POR_PORTA",              label: "Espuma expansiva por porta",              value: 0.5,  unit: "tubo/porta",     category: "ESQUADRIAS" },
   { key: "SELANTE_POR_JANELA",            label: "Selante PU por janela",                    value: 0.3,  unit: "un/janela",      category: "ESQUADRIAS" },
+  { key: "ESPACADOR_POR_M2",              label: "Espaçador por m² de revestimento",         value: 0.05, unit: "pct/m²",         category: "REVESTIMENTO" },
   { key: "SILICONE_POR_INSTALACAO",       label: "Silicone por instalação",                  value: 0.5,  unit: "tubo/instalação", category: "HIDRAULICA" },
   { key: "VEDA_ROSCA_POR_CONEXAO",        label: "Fita veda-rosca por conexão",             value: 0.1,  unit: "rolo/conexão",   category: "HIDRAULICA" },
   { key: "IMPERM_PRIMER_L_M2",            label: "Primer impermeabilização",                 value: 0.15, unit: "L/m²",            category: "IMPERMEABILIZACAO" },

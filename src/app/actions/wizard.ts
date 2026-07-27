@@ -278,6 +278,7 @@ export async function calculateAndSaveBudget(projectId: string) {
           joineries: true,
           accessories: true,
           imperm: true,
+          wallFinishes: true,
         },
       },
       structure: true,
@@ -294,6 +295,9 @@ export async function calculateAndSaveBudget(projectId: string) {
     const ep = room.electricalPoints[0];
     const hp = room.hydraulicPoints[0];
     const rf = room.roomFinishes[0];
+    // If a room has per-wall tile config, the fixture engine computes its wall
+    // tile — the generic calc must skip it to avoid double counting.
+    const hasCustomWallTile = room.wallFinishes.some((w) => w.hasTile);
     return {
       name: room.name,
       width: room.width,
@@ -308,6 +312,7 @@ export async function calculateAndSaveBudget(projectId: string) {
       electricalLightPoints: ep?.lightPoints,
       hydraulicWaterInlets: hp?.waterInlets,
       hydraulicDrainPoints: hp?.drainPoints,
+      skipWallTile: hasCustomWallTile,
     };
   });
 
@@ -395,6 +400,9 @@ export async function calculateAndSaveBudget(projectId: string) {
       wallHeight: room.imperm.wallHeight, ralos: room.imperm.ralos, tubulacoes: room.imperm.tubulacoes,
       system: room.imperm.system, coats: room.imperm.coats, mechProtection: room.imperm.mechProtection,
     } : null,
+    wallFinishes: room.wallFinishes.map((w) => ({
+      wallSide: w.wallSide, hasTile: w.hasTile, tileHeight: w.tileHeight,
+    })),
   }));
 
   const premiseRows = await prisma.globalPremise.findMany();

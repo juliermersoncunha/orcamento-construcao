@@ -37,6 +37,18 @@ type WindowState = {
   telaMosquiteira: boolean;
 };
 
+const WALL_SIDES = [
+  { key: "FRENTE", label: "Frente" },
+  { key: "FUNDO", label: "Fundo" },
+  { key: "ESQUERDA", label: "Esquerda" },
+  { key: "DIREITA", label: "Direita" },
+];
+
+type WallTileState = {
+  height: number;
+  walls: Record<string, boolean>; // wallSide -> hasTile
+};
+
 type ImpermState = {
   scope: string;
   area: number;
@@ -120,6 +132,17 @@ export function BathroomCard({ room }: { room: any }) {
     return map;
   });
 
+  const [wallTile, setWallTile] = useState<WallTileState>(() => {
+    const existing = (room.wallFinishes ?? []) as any[];
+    const walls: Record<string, boolean> = {};
+    WALL_SIDES.forEach((s) => { walls[s.key] = false; });
+    let height = 1.5;
+    for (const w of existing) {
+      if (w.hasTile) { walls[w.wallSide] = true; height = w.tileHeight ?? height; }
+    }
+    return { height, walls };
+  });
+
   const [imperm, setImperm] = useState<ImpermState>(() => {
     const im = room.imperm;
     return {
@@ -144,7 +167,7 @@ export function BathroomCard({ room }: { room: any }) {
         quantity: f.quantity, configJson: JSON.stringify(f.config),
         includedComponents: f.includedComponents,
       })),
-      joineries: [], accessories: [], imperm: null,
+      joineries: [], accessories: [], imperm: null, wallFinishes: [],
     };
     return computePointDemand([engineRoom])[0];
   }, [fixtures, roomType, room.id, room.name, room.width, room.length, room.height]);
@@ -219,6 +242,9 @@ export function BathroomCard({ room }: { room: any }) {
       imperm: imperm.scope !== "NENHUM"
         ? { ...imperm }
         : null,
+      wallFinishes: WALL_SIDES
+        .filter((s) => wallTile.walls[s.key])
+        .map((s) => ({ wallSide: s.key, hasTile: true, tileHeight: wallTile.height })),
     };
     startTransition(async () => {
       await saveRoomEquipment(room.id, payload);
@@ -345,6 +371,62 @@ export function BathroomCard({ room }: { room: any }) {
             <p className="text-[11px] text-gray-400 col-span-2">
               Sem ventilação natural? Adicione o equipamento &quot;Exaustor de banheiro&quot; acima.
             </p>
+          </div>
+        )}
+      </div>
+
+      {/* Wall tile (per-wall) */}
+      <div className="mb-3 rounded-md bg-white border border-gray-200 p-3">
+        <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
+          <p className="text-sm font-medium text-gray-700">Revestimento de parede (azulejo)</p>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                const all: Record<string, boolean> = {};
+                WALL_SIDES.forEach((s) => { all[s.key] = true; });
+                setWallTile((w) => ({ ...w, walls: all })); setSaved(false);
+              }}
+              className="text-[11px] px-2 py-0.5 rounded-full border border-blue-300 text-blue-700 bg-white hover:bg-blue-50"
+            >
+              Todas as paredes
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const none: Record<string, boolean> = {};
+                WALL_SIDES.forEach((s) => { none[s.key] = false; });
+                setWallTile((w) => ({ ...w, walls: none })); setSaved(false);
+              }}
+              className="text-[11px] px-2 py-0.5 rounded-full border border-gray-300 text-gray-600 bg-white hover:bg-gray-50"
+            >
+              Limpar
+            </button>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2 mb-2">
+          {WALL_SIDES.map((s) => {
+            const on = wallTile.walls[s.key];
+            const len = (s.key === "FRENTE" || s.key === "FUNDO") ? room.width : room.length;
+            return (
+              <button
+                key={s.key}
+                type="button"
+                onClick={() => { setWallTile((w) => ({ ...w, walls: { ...w.walls, [s.key]: !on } })); setSaved(false); }}
+                className={
+                  "text-xs px-2.5 py-1 rounded-full border transition-colors " +
+                  (on ? "border-blue-400 bg-blue-100 text-blue-800 font-medium" : "border-gray-300 bg-white text-gray-600 hover:bg-gray-50")
+                }
+                title={`${round2(len)} m de parede`}
+              >
+                {on ? "✓ " : "+ "}{s.label} ({round2(len)}m)
+              </button>
+            );
+          })}
+        </div>
+        {WALL_SIDES.some((s) => wallTile.walls[s.key]) && (
+          <div className="grid grid-cols-2 gap-2">
+            <NumField label="Altura do azulejo (m)" value={wallTile.height} onChange={(v) => { setWallTile((w) => ({ ...w, height: v })); setSaved(false); }} step={0.05} />
           </div>
         )}
       </div>

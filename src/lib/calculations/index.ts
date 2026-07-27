@@ -12,6 +12,9 @@ export type RoomInput = {
   electricalLightPoints?: number;
   hydraulicWaterInlets?: number;
   hydraulicDrainPoints?: number;
+  // When true, the generic wall-tile calc skips this room — its wall tile is
+  // computed per-wall by the fixture engine (bathroom custom wall finish).
+  skipWallTile?: boolean;
 };
 
 export type StructureInput = {
@@ -305,7 +308,7 @@ function calcRevestimentos(rooms: RoomInput[]): MaterialResult[] {
     }
 
     const perimeter = 2 * (room.width + room.length);
-    if (room.wallTile) {
+    if (room.wallTile && !room.skipWallTile) {
       wallTileArea += perimeter * (room.wallTileHeight ?? 1.5);
     }
   }

@@ -25,6 +25,7 @@ export default async function WizardPage({
           joineries: true,
           accessories: true,
           imperm: true,
+          wallFinishes: true,
         },
       },
       structure: true,

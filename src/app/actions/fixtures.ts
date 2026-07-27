@@ -44,6 +44,7 @@ export type RoomEquipmentPayload = {
     coats: number;
     mechProtection: boolean;
   } | null;
+  wallFinishes: { wallSide: string; hasTile: boolean; tileHeight: number }[];
 };
 
 async function assertOwnsRoom(roomId: string) {
@@ -154,6 +155,15 @@ export async function saveRoomEquipment(roomId: string, payload: RoomEquipmentPa
       });
     } else {
       await tx.roomImpermeabilization.deleteMany({ where: { roomId } });
+    }
+
+    // 6. Wall finishes (per-wall tile) — replace all for this room
+    await tx.roomWallFinish.deleteMany({ where: { roomId } });
+    for (const wf of payload.wallFinishes ?? []) {
+      if (!wf.hasTile) continue;
+      await tx.roomWallFinish.create({
+        data: { roomId, wallSide: wf.wallSide, hasTile: true, tileHeight: wf.tileHeight },
+      });
     }
   });
 

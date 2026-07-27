@@ -54,6 +54,12 @@ export type ImpermInput = {
   mechProtection: boolean;
 };
 
+export type RoomWallFinishInput = {
+  wallSide: string;      // FRENTE | FUNDO | ESQUERDA | DIREITA
+  hasTile: boolean;
+  tileHeight: number;
+};
+
 export type RoomEngineInput = {
   id: string;
   name: string;
@@ -65,6 +71,7 @@ export type RoomEngineInput = {
   joineries: RoomJoineryInput[];
   accessories: AccessoryInput[];
   imperm: ImpermInput | null;
+  wallFinishes: RoomWallFinishInput[];
 };
 
 // ── Output ─────────────────────────────────────────────────────────────────
@@ -77,7 +84,7 @@ export type FixtureMaterialItem = {
   quantity: number;                  // final rounded qty
   roomId: string;
   roomName: string;
-  sourceKind: "FIXTURE" | "JOINERY" | "ACCESSORY" | "IMPERM";
+  sourceKind: "FIXTURE" | "JOINERY" | "ACCESSORY" | "IMPERM" | "WALLFINISH";
   sourceId: string;                  // fixture.id | joinery.id | accessory.id | "imperm:roomId"
   sourceLabel: string;               // human name of the source ("Vaso c/ caixa acoplada")
   formula: string;                   // memory-of-calc string
@@ -140,6 +147,7 @@ function computeValue(name: string, config: Record<string, unknown>): number {
     case "exaustor.duto":         return ductLength; // scaled by EXAUSTOR_DUTO_MULT
     case "window.width":          return width;
     case "window.area":           return width * height;
+    case "joinery.width":         return width;
     default:                       return 0;
   }
 }
@@ -382,6 +390,59 @@ function expandImperm(
   return items;
 }
 
+// ── Expand per-wall tile (bathroom custom wall finish) ─────────────────────
+// Uses the SAME material names + coefficients as the generic calcRevestimentos,
+// so items merge cleanly in the consolidado. The generic calc skips rooms that
+// have wall finishes (skipWallTile), preventing double counting.
+
+const WALL_SIDE_LABELS: Record<string, string> = {
+  FRENTE: "Frente", FUNDO: "Fundo", ESQUERDA: "Esquerda", DIREITA: "Direita",
+};
+
+function wallLength(room: RoomEngineInput, side: string): number {
+  return side === "FRENTE" || side === "FUNDO" ? room.width : room.length;
+}
+
+function expandWallFinish(
+  room: RoomEngineInput,
+  premises: PremiseValue[]
+): FixtureMaterialItem[] {
+  const walls = (room.wallFinishes ?? []).filter((w) => w.hasTile);
+  if (walls.length === 0) return [];
+
+  let area = 0;
+  const parts: string[] = [];
+  for (const w of walls) {
+    const len = wallLength(room, w.wallSide);
+    area += len * w.tileHeight;
+    parts.push(`${WALL_SIDE_LABELS[w.wallSide] ?? w.wallSide} ${len.toFixed(2)}×${w.tileHeight.toFixed(2)}`);
+  }
+  if (area <= 0) return [];
+
+  const LOSS_TILE = 1.10;
+  const LOSS_ARG = 1.06;
+  const espacador = area * findPremise(premises, "ESPACADOR_POR_M2");
+
+  const mk = (materialName: string, unit: string, category: string, quantity: number, formula: string): FixtureMaterialItem => ({
+    materialName, unit, category,
+    phase: CATEGORY_TO_PHASE[category] ?? "REVESTIMENTOS",
+    quantity: ceil2(quantity),
+    roomId: room.id, roomName: room.name,
+    sourceKind: "WALLFINISH", sourceId: `wall:${room.id}`,
+    sourceLabel: "Revestimento de parede", formula,
+  });
+
+  const items: FixtureMaterialItem[] = [
+    mk("Revestimento Cerâmico (parede)", "m²", "REVESTIMENTO", Math.ceil(area * LOSS_TILE), `${parts.join(" + ")} = ${area.toFixed(2)} m² × 1,10`),
+    mk("Argamassa AC-I (assentamento azulejo)", "sc", "REVESTIMENTO", Math.ceil(area * 0.45), `${area.toFixed(2)} m² × 0,45 sc/m²`),
+    mk("Rejunte", "kg", "REVESTIMENTO", Math.ceil(area * 0.4 * LOSS_ARG), `${area.toFixed(2)} m² × 0,40 kg/m² × 1,06`),
+  ];
+  if (espacador > 0) {
+    items.push(mk("Espaçador para revestimento", "pct", "REVESTIMENTO", espacador, `${area.toFixed(2)} m² × ${findPremise(premises, "ESPACADOR_POR_M2")} pct/m²`));
+  }
+  return items;
+}
+
 // ── Public API ─────────────────────────────────────────────────────────────
 
 export type EngineResult = {
@@ -400,6 +461,7 @@ export function resolveRoomFixtures(
     for (const j of room.joineries) items.push(...expandBathroomJoinery(j, room, premises));
     for (const a of room.accessories) items.push(...expandAccessory(a, room, premises));
     if (room.imperm) items.push(...expandImperm(room.imperm, room, premises, warnings));
+    items.push(...expandWallFinish(room, premises));
   }
   return { items, warnings };
 }

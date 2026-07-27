@@ -356,10 +356,13 @@ model RoomJoinery {
 }
 
 model Accessory {
-  id            String @id @default(cuid())
+  id            String  @id @default(cuid())
   roomId        String
   accessoryType String
-  quantity      Int    @default(1)
+  quantity      Int     @default(1)
+  // Dimensions/options for accessories that have them (espelho, gabinete, nicho…),
+  // shaped by the accessory's configSchema in the fixture library.
+  configJson    String?
 
   room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
 }

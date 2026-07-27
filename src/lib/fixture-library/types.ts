@@ -55,6 +55,15 @@ export type DependencySpec = {
   formulaLabel?: string | ((config: Record<string, unknown>) => string);
 };
 
+// Describes what dimensions/options an item accepts, and how the UI renders them.
+export type ConfigSchema = Record<string, {
+  label: string;
+  type: "number" | "string" | "boolean" | "enum";
+  default?: unknown;
+  options?: string[];
+  unit?: string;
+}>;
+
 export type FixtureSpec = {
   fixtureType: string;   // matches Prisma FixtureType enum value
   label: string;         // human name shown in UI
@@ -63,11 +72,15 @@ export type FixtureSpec = {
   electricalPoints: PointRequirement[];
   dependencies: DependencySpec[];
   // Config schema — describes what dimensions/options this fixture accepts
-  configSchema?: Record<string, {
-    label: string;
-    type: "number" | "string" | "boolean" | "enum";
-    default?: unknown;
-    options?: string[];
-    unit?: string;
-  }>;
+  configSchema?: ConfigSchema;
+};
+
+// An accessory is an opt-in item with no hydraulic/electric points of its own.
+// Dependencies live on the spec so an accessory can never be offered in the UI
+// without also declaring the materials it generates.
+export type AccessorySpec = {
+  type: string;
+  label: string;
+  dependencies: DependencySpec[];
+  configSchema?: ConfigSchema;
 };

@@ -7,7 +7,7 @@
 // Does NOT touch existing per-phase calculations. The room-aware report merges
 // these items into "Materiais por Ambiente"; consolidation happens on the report side.
 
-import { BATHROOM_FIXTURES, BATHROOM_DOOR_DEPENDENCIES, BATHROOM_WINDOW_DEPENDENCIES, BATHROOM_ACCESSORY_DEPENDENCIES, IMPERM_SYSTEMS } from "@/lib/fixture-library/bathroom";
+import { BATHROOM_FIXTURES, BATHROOM_DOOR_DEPENDENCIES, BATHROOM_WINDOW_DEPENDENCIES, getBathroomAccessorySpec, IMPERM_SYSTEMS } from "@/lib/fixture-library/bathroom";
 import type { FixtureQuantity, DependencySpec, MaterialResolver } from "@/lib/fixture-library/types";
 
 // ── Inputs to the engine ───────────────────────────────────────────────────
@@ -40,6 +40,7 @@ export type AccessoryInput = {
   roomId: string;
   accessoryType: string;
   quantity: number;
+  configJson?: string | null;
 };
 
 export type ImpermInput = {
@@ -148,6 +149,8 @@ function computeValue(name: string, config: Record<string, unknown>): number {
     case "window.width":          return width;
     case "window.area":           return width * height;
     case "joinery.width":         return width;
+    case "accessory.width":       return width;
+    case "accessory.area":        return width * height;
     default:                       return 0;
   }
 }
@@ -295,16 +298,34 @@ function expandBathroomJoinery(
 function expandAccessory(
   accessory: AccessoryInput,
   room: RoomEngineInput,
-  premises: PremiseValue[]
+  premises: PremiseValue[],
+  warnings: string[]
 ): FixtureMaterialItem[] {
-  const deps = BATHROOM_ACCESSORY_DEPENDENCIES[accessory.accessoryType];
-  if (!deps) return [];
+  const spec = getBathroomAccessorySpec(accessory.accessoryType);
+  if (!spec) {
+    warnings.push(`Acessório "${accessory.accessoryType}" não está no catálogo do banheiro`);
+    return [];
+  }
+  const config = accessory.configJson ? safeJson(accessory.configJson) : {};
+
   const items: FixtureMaterialItem[] = [];
-  for (const dep of deps) {
-    const { value, label } = resolveQuantity(dep.quantity as FixtureQuantity, {}, premises, accessory.quantity);
-    if (value <= 0) continue;
+  for (const dep of spec.dependencies) {
+    if (dep.onlyIf && !dep.onlyIf(config)) continue;
+
+    const { value, label } = resolveQuantity(dep.quantity, config, premises, accessory.quantity);
+    if (value <= 0) {
+      warnings.push(
+        `${room.name}: "${spec.label}" não gerou ${resolveMaterialName(dep.material, config)} (quantidade zero) — confira as dimensões`
+      );
+      continue;
+    }
+
+    const rawFormula = typeof dep.formulaLabel === "function"
+      ? dep.formulaLabel(config)
+      : dep.formulaLabel ?? label;
+
     items.push({
-      materialName: dep.material,
+      materialName: resolveMaterialName(dep.material, config),
       unit: dep.unit,
       category: dep.category,
       phase: CATEGORY_TO_PHASE[dep.category] ?? "ACABAMENTO",
@@ -313,8 +334,8 @@ function expandAccessory(
       roomName: room.name,
       sourceKind: "ACCESSORY",
       sourceId: accessory.id,
-      sourceLabel: accessory.accessoryType,
-      formula: label,
+      sourceLabel: spec.label,
+      formula: rawFormula,
     });
   }
   return items;
@@ -459,7 +480,7 @@ export function resolveRoomFixtures(
   for (const room of rooms) {
     for (const fx of room.fixtures) items.push(...expandFixture(fx, room, premises, warnings));
     for (const j of room.joineries) items.push(...expandBathroomJoinery(j, room, premises));
-    for (const a of room.accessories) items.push(...expandAccessory(a, room, premises));
+    for (const a of room.accessories) items.push(...expandAccessory(a, room, premises, warnings));
     if (room.imperm) items.push(...expandImperm(room.imperm, room, premises, warnings));
     items.push(...expandWallFinish(room, premises));
   }

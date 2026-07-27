@@ -9,6 +9,7 @@ import {
   BATHROOM_ACCESSORIES,
   BATHROOM_ROOM_TYPES,
   getBathroomFixtureSpec,
+  getBathroomAccessorySpec,
   includableComponents,
 } from "@/lib/fixture-library/bathroom";
 import { computePointDemand } from "@/lib/calculations/fixture-engine";
@@ -48,6 +49,22 @@ type WallTileState = {
   height: number;
   walls: Record<string, boolean>; // wallSide -> hasTile
 };
+
+type AccessoryState = {
+  qty: number;
+  config: Record<string, unknown>;
+};
+
+// Defaults declared by the accessory's configSchema in the fixture library.
+function defaultAccessoryConfig(type: string): Record<string, unknown> {
+  const schema = getBathroomAccessorySpec(type)?.configSchema;
+  if (!schema) return {};
+  const out: Record<string, unknown> = {};
+  for (const [k, f] of Object.entries(schema)) {
+    if (f.default !== undefined) out[k] = f.default;
+  }
+  return out;
+}
 
 type ImpermState = {
   scope: string;
@@ -126,9 +143,14 @@ export function BathroomCard({ room }: { room: any }) {
     telaMosquiteira: existingWindow?.configJson ? !!safeParse(existingWindow.configJson).telaMosquiteira : false,
   });
 
-  const [accessories, setAccessories] = useState<Record<string, number>>(() => {
-    const map: Record<string, number> = {};
-    (room.accessories ?? []).forEach((a: any) => { map[a.accessoryType] = a.quantity; });
+  const [accessories, setAccessories] = useState<Record<string, AccessoryState>>(() => {
+    const map: Record<string, AccessoryState> = {};
+    (room.accessories ?? []).forEach((a: any) => {
+      map[a.accessoryType] = {
+        qty: a.quantity,
+        config: { ...defaultAccessoryConfig(a.accessoryType), ...safeParse(a.configJson) },
+      };
+    });
     return map;
   });
 
@@ -237,8 +259,8 @@ export function BathroomCard({ room }: { room: any }) {
         ? { width: win.width, height: win.height, telaMosquiteira: win.telaMosquiteira }
         : null,
       accessories: Object.entries(accessories)
-        .filter(([, q]) => q > 0)
-        .map(([accessoryType, quantity]) => ({ accessoryType, quantity })),
+        .filter(([, a]) => a.qty > 0)
+        .map(([accessoryType, a]) => ({ accessoryType, quantity: a.qty, config: a.config })),
       imperm: imperm.scope !== "NENHUM"
         ? { ...imperm }
         : null,
@@ -453,13 +475,18 @@ export function BathroomCard({ room }: { room: any }) {
         <p className="text-sm font-medium text-gray-700 mb-2">Acessórios (opcionais)</p>
         <div className="flex flex-wrap gap-2">
           {BATHROOM_ACCESSORIES.map((a) => {
-            const active = (accessories[a.type] ?? 0) > 0;
+            const active = (accessories[a.type]?.qty ?? 0) > 0;
             return (
               <button
                 key={a.type}
                 type="button"
                 onClick={() => {
-                  setAccessories((prev) => ({ ...prev, [a.type]: active ? 0 : 1 }));
+                  setAccessories((prev) => {
+                    const next = { ...prev };
+                    if (active) delete next[a.type];
+                    else next[a.type] = { qty: 1, config: defaultAccessoryConfig(a.type) };
+                    return next;
+                  });
                   setSaved(false);
                 }}
                 className={
@@ -474,6 +501,43 @@ export function BathroomCard({ room }: { room: any }) {
             );
           })}
         </div>
+
+        {/* Dimensions + quantity for the selected accessories that need them */}
+        {BATHROOM_ACCESSORIES.filter((a) => (accessories[a.type]?.qty ?? 0) > 0).map((a) => {
+          const state = accessories[a.type];
+          const schema = a.configSchema;
+          return (
+            <div key={a.type} className="mt-2 pt-2 border-t border-gray-100 flex flex-wrap items-end gap-2">
+              <span className="text-xs font-medium text-gray-600 min-w-32">{a.label}</span>
+              <div className="w-20">
+                <NumField
+                  label="Qtd"
+                  value={state.qty}
+                  step={1}
+                  onChange={(v) => {
+                    setAccessories((prev) => ({ ...prev, [a.type]: { ...prev[a.type], qty: Math.max(1, v) } }));
+                    setSaved(false);
+                  }}
+                />
+              </div>
+              {schema && Object.entries(schema).map(([key, field]) => (
+                <div key={key} className="w-24">
+                  <NumField
+                    label={`${field.label}${field.unit ? ` (${field.unit})` : ""}`}
+                    value={Number(state.config[key] ?? field.default ?? 0)}
+                    onChange={(v) => {
+                      setAccessories((prev) => ({
+                        ...prev,
+                        [a.type]: { ...prev[a.type], config: { ...prev[a.type].config, [key]: v } },
+                      }));
+                      setSaved(false);
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
+          );
+        })}
       </div>
 
       {/* Point demand preview */}

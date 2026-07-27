@@ -33,7 +33,7 @@ export type RoomEquipmentPayload = {
     height: number;
     telaMosquiteira: boolean;
   } | null;
-  accessories: { accessoryType: string; quantity: number }[];
+  accessories: { accessoryType: string; quantity: number; config?: Record<string, unknown> }[];
   imperm: {
     scope: string;
     area: number;
@@ -122,7 +122,12 @@ export async function saveRoomEquipment(roomId: string, payload: RoomEquipmentPa
     for (const a of payload.accessories) {
       if (a.quantity <= 0) continue;
       await tx.accessory.create({
-        data: { roomId, accessoryType: a.accessoryType, quantity: a.quantity },
+        data: {
+          roomId,
+          accessoryType: a.accessoryType,
+          quantity: a.quantity,
+          configJson: JSON.stringify(a.config ?? {}),
+        },
       });
     }
 

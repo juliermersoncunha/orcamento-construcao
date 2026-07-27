@@ -394,6 +394,7 @@ export async function calculateAndSaveBudget(projectId: string) {
     })),
     accessories: room.accessories.map((a) => ({
       id: a.id, roomId: a.roomId, accessoryType: a.accessoryType, quantity: a.quantity,
+      configJson: a.configJson,
     })),
     imperm: room.imperm ? {
       roomId: room.imperm.roomId, scope: room.imperm.scope, area: room.imperm.area,

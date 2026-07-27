@@ -7,7 +7,7 @@
 // No formula, coefficient or material name is hard-coded elsewhere — everything
 // flows through this file into the engine.
 
-import type { FixtureSpec, DependencySpec } from "./types";
+import type { FixtureSpec, DependencySpec, AccessorySpec, ConfigSchema } from "./types";
 
 export const BATHROOM_FIXTURES: FixtureSpec[] = [
   // ── VASO SANITÁRIO ────────────────────────────────────────────────────────
@@ -378,41 +378,154 @@ export const BATHROOM_WINDOW_DEPENDENCIES: DependencySpec[] = [
   },
 ];
 
-// Accessories (opt-in, individually)
-export const BATHROOM_ACCESSORIES = [
-  { type: "ESPELHO",             label: "Espelho" },
-  { type: "GABINETE",            label: "Gabinete" },
-  { type: "ARMARIO",             label: "Armário" },
-  { type: "PORTA_PAPEL",         label: "Porta-papel higiênico" },
-  { type: "TOALHEIRO_ROSTO",     label: "Toalheiro de rosto" },
-  { type: "TOALHEIRO_BANHO",     label: "Toalheiro de banho" },
-  { type: "GANCHO",              label: "Gancho" },
-  { type: "SABONETEIRA",         label: "Saboneteira" },
-  { type: "PORTA_SHAMPOO",       label: "Porta-shampoo" },
-  { type: "PRATELEIRA",          label: "Prateleira" },
-  { type: "NICHO",               label: "Nicho" },
-  { type: "LIXEIRA",             label: "Lixeira" },
-  { type: "BARRA_APOIO",         label: "Barra de apoio" },
-] as const;
-
-export const BATHROOM_ACCESSORY_DEPENDENCIES: Record<string, {
-  material: string; unit: string; category: string; quantity: { qty: number } | { formula: string; multiplier?: number };
-}[]> = {
-  ESPELHO: [
-    { material: "Espelho comum 4mm",       unit: "m²", category: "ACESSORIOS_BANHEIRO", quantity: { qty: 1 } },
-    { material: "Kit fixação para espelho", unit: "kit",category: "ACESSORIOS_BANHEIRO", quantity: { qty: 1 } },
-    { material: "Silicone sanitário",        unit: "tubo", category: "ACESSORIOS_HIDRAULICOS", quantity: { formula: "premise:SILICONE_POR_INSTALACAO" } },
-  ],
-  PORTA_PAPEL:     [{ material: "Porta-papel higiênico",    unit: "un", category: "ACESSORIOS_BANHEIRO", quantity: { qty: 1 } }, { material: "Kit parafusos e buchas", unit: "kit", category: "ACESSORIOS_BANHEIRO", quantity: { qty: 1 } }],
-  TOALHEIRO_ROSTO: [{ material: "Toalheiro de rosto",       unit: "un", category: "ACESSORIOS_BANHEIRO", quantity: { qty: 1 } }, { material: "Kit parafusos e buchas", unit: "kit", category: "ACESSORIOS_BANHEIRO", quantity: { qty: 1 } }],
-  TOALHEIRO_BANHO: [{ material: "Toalheiro de banho",       unit: "un", category: "ACESSORIOS_BANHEIRO", quantity: { qty: 1 } }, { material: "Kit parafusos e buchas", unit: "kit", category: "ACESSORIOS_BANHEIRO", quantity: { qty: 1 } }],
-  GANCHO:          [{ material: "Gancho de parede",          unit: "un", category: "ACESSORIOS_BANHEIRO", quantity: { qty: 1 } }, { material: "Kit parafusos e buchas", unit: "kit", category: "ACESSORIOS_BANHEIRO", quantity: { qty: 1 } }],
-  SABONETEIRA:     [{ material: "Saboneteira",                unit: "un", category: "ACESSORIOS_BANHEIRO", quantity: { qty: 1 } }, { material: "Kit parafusos e buchas", unit: "kit", category: "ACESSORIOS_BANHEIRO", quantity: { qty: 1 } }],
-  PORTA_SHAMPOO:   [{ material: "Porta-shampoo",              unit: "un", category: "ACESSORIOS_BANHEIRO", quantity: { qty: 1 } }, { material: "Kit parafusos e buchas", unit: "kit", category: "ACESSORIOS_BANHEIRO", quantity: { qty: 1 } }],
-  PRATELEIRA:      [{ material: "Prateleira de vidro",         unit: "un", category: "ACESSORIOS_BANHEIRO", quantity: { qty: 1 } }, { material: "Kit parafusos e buchas", unit: "kit", category: "ACESSORIOS_BANHEIRO", quantity: { qty: 1 } }],
-  LIXEIRA:         [{ material: "Lixeira de banheiro",         unit: "un", category: "ACESSORIOS_BANHEIRO", quantity: { qty: 1 } }],
-  BARRA_APOIO:     [{ material: "Barra de apoio para banheiro", unit: "un", category: "ACESSORIOS_BANHEIRO", quantity: { qty: 1 } }, { material: "Kit fixação reforçado", unit: "kit", category: "ACESSORIOS_BANHEIRO", quantity: { qty: 1 } }],
+// Accessories (opt-in, individually).
+//
+// Dependencies live on the spec itself: an accessory offered in the UI always
+// declares the materials it generates, so it can never silently produce nothing.
+// Wall-hung items that carry load (gabinete, armário, barra de apoio) take the
+// reinforced fixation kit; light items take the plain screw/plug kit.
+const SCREWS: DependencySpec = {
+  material: "Kit parafusos e buchas",
+  unit: "kit", category: "ACESSORIOS_BANHEIRO",
+  quantity: { qty: 1 },
 };
+const SCREWS_REINFORCED: DependencySpec = {
+  material: "Kit fixação reforçado",
+  unit: "kit", category: "ACESSORIOS_BANHEIRO",
+  quantity: { qty: 1 },
+};
+const SILICONE: DependencySpec = {
+  material: "Silicone sanitário",
+  unit: "tubo", category: "ACESSORIOS_HIDRAULICOS",
+  quantity: { formula: "premise:SILICONE_POR_INSTALACAO" },
+};
+
+// A simple "one unit + plain fixation" accessory.
+function simpleAccessory(type: string, label: string, material: string): AccessorySpec {
+  return {
+    type, label,
+    dependencies: [
+      { material, unit: "un", category: "ACESSORIOS_BANHEIRO", quantity: { qty: 1 } },
+      SCREWS,
+    ],
+  };
+}
+
+const WIDTH_ONLY: ConfigSchema = {
+  width: { label: "Largura", type: "number", default: 0.6, unit: "m" },
+};
+const WIDTH_HEIGHT: ConfigSchema = {
+  width:  { label: "Largura", type: "number", default: 0.6, unit: "m" },
+  height: { label: "Altura",  type: "number", default: 0.8, unit: "m" },
+};
+
+const dims = (c: Record<string, unknown>) => `${c.width ?? 0} × ${c.height ?? 0} m`;
+
+export const BATHROOM_ACCESSORY_SPECS: AccessorySpec[] = [
+  {
+    type: "ESPELHO", label: "Espelho",
+    configSchema: WIDTH_HEIGHT,
+    dependencies: [
+      {
+        material: "Espelho comum 4mm", unit: "m²", category: "ACESSORIOS_BANHEIRO",
+        quantity: { compute: "accessory.area" },
+        formulaLabel: dims,
+      },
+      { material: "Kit fixação para espelho", unit: "kit", category: "ACESSORIOS_BANHEIRO", quantity: { qty: 1 } },
+      SILICONE,
+    ],
+  },
+  {
+    type: "GABINETE", label: "Gabinete",
+    configSchema: WIDTH_ONLY,
+    dependencies: [
+      {
+        material: "Gabinete para banheiro", unit: "un", category: "ACESSORIOS_BANHEIRO",
+        quantity: { qty: 1 },
+        formulaLabel: (c) => `largura ${c.width ?? 0} m`,
+      },
+      SCREWS_REINFORCED,
+      SILICONE,
+    ],
+  },
+  {
+    type: "ARMARIO", label: "Armário",
+    configSchema: WIDTH_ONLY,
+    dependencies: [
+      {
+        material: "Armário para banheiro", unit: "un", category: "ACESSORIOS_BANHEIRO",
+        quantity: { qty: 1 },
+        formulaLabel: (c) => `largura ${c.width ?? 0} m`,
+      },
+      SCREWS_REINFORCED,
+    ],
+  },
+  {
+    type: "NICHO", label: "Nicho",
+    configSchema: {
+      width:  { label: "Largura", type: "number", default: 0.3, unit: "m" },
+      height: { label: "Altura",  type: "number", default: 0.3, unit: "m" },
+    },
+    dependencies: [
+      {
+        material: "Nicho para banheiro", unit: "un", category: "ACESSORIOS_BANHEIRO",
+        quantity: { qty: 1 },
+        formulaLabel: dims,
+      },
+      SILICONE,
+    ],
+  },
+  {
+    type: "PRATELEIRA", label: "Prateleira",
+    configSchema: WIDTH_ONLY,
+    dependencies: [
+      {
+        material: "Prateleira de vidro", unit: "un", category: "ACESSORIOS_BANHEIRO",
+        quantity: { qty: 1 },
+        formulaLabel: (c) => `largura ${c.width ?? 0} m`,
+      },
+      SCREWS,
+    ],
+  },
+  {
+    type: "BARRA_APOIO", label: "Barra de apoio",
+    configSchema: {
+      width: { label: "Comprimento", type: "number", default: 0.8, unit: "m" },
+    },
+    dependencies: [
+      {
+        material: "Barra de apoio para banheiro", unit: "un", category: "ACESSORIOS_BANHEIRO",
+        quantity: { qty: 1 },
+        formulaLabel: (c) => `comprimento ${c.width ?? 0} m`,
+      },
+      SCREWS_REINFORCED,
+    ],
+  },
+  simpleAccessory("PORTA_PAPEL",     "Porta-papel higiênico", "Porta-papel higiênico"),
+  simpleAccessory("TOALHEIRO_ROSTO", "Toalheiro de rosto",    "Toalheiro de rosto"),
+  simpleAccessory("TOALHEIRO_BANHO", "Toalheiro de banho",    "Toalheiro de banho"),
+  simpleAccessory("GANCHO",          "Gancho",                "Gancho de parede"),
+  simpleAccessory("SABONETEIRA",     "Saboneteira",           "Saboneteira"),
+  simpleAccessory("PORTA_SHAMPOO",   "Porta-shampoo",         "Porta-shampoo"),
+  {
+    type: "LIXEIRA", label: "Lixeira",
+    dependencies: [
+      { material: "Lixeira de banheiro", unit: "un", category: "ACESSORIOS_BANHEIRO", quantity: { qty: 1 } },
+    ],
+  },
+];
+
+// UI list (chips) — derived so it can never drift from the specs above.
+export const BATHROOM_ACCESSORIES = BATHROOM_ACCESSORY_SPECS.map(
+  ({ type, label, configSchema }) => ({ type, label, configSchema })
+);
+
+export const BATHROOM_ACCESSORY_DEPENDENCIES: Record<string, DependencySpec[]> =
+  Object.fromEntries(BATHROOM_ACCESSORY_SPECS.map((a) => [a.type, a.dependencies]));
+
+export function getBathroomAccessorySpec(type: string): AccessorySpec | undefined {
+  return BATHROOM_ACCESSORY_SPECS.find((a) => a.type === type);
+}
 
 // Impermeabilization systems
 export const IMPERM_SYSTEMS: Record<string, {

@@ -120,6 +120,7 @@ export default async function MemorialPage({
       },
       structure: true,
       roofing: true,
+      installations: true,
       finishes: { include: { roomFinishes: true } },
       budgetItems: {
         include: { material: true },
@@ -280,9 +281,14 @@ export default async function MemorialPage({
   }
 
   const wallFinishType = (project.finishes?.wallFinishType ?? "SO_TINTA") as "SO_TINTA" | "MASSA_TINTA" | "GESSO_TINTA";
+  const electrical = {
+    outletType:     (project.installations?.outletType     ?? "SIMPLES")   as "SIMPLES" | "DUPLA" | "TRIPLA",
+    switchType:     (project.installations?.switchType     ?? "SIMPLES")   as "SIMPLES" | "DUPLO" | "TRIPLO",
+    lightPointType: (project.installations?.lightPointType ?? "PLAFON_LED") as "RECEPTACULO_LAMPADA" | "PLAFON_LED",
+  };
   const roomMaterials = roomInputs.map((room) => ({
     roomName: room.name,
-    items: calculateRoomMaterials(room, wallFinishType),
+    items: calculateRoomMaterials(room, wallFinishType, electrical),
   }));
 
   // ── Consolidated material list (shopping list) ──

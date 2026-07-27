@@ -1,4 +1,9 @@
 import type { RoomInput } from "./index";
+import {
+  ELECTRICAL_FINISH_DEFAULTS,
+  outletMaterialsPerPoint, switchMaterialsPerPoint, lightPointMaterialsPerPoint,
+} from "./electrical-finishes";
+import type { ElectricalFinishes } from "./electrical-finishes";
 
 export type RoomMaterialItem = {
   name: string;
@@ -14,7 +19,8 @@ function fmt(n: number) {
 
 export function calculateRoomMaterials(
   room: RoomInput,
-  wallFinishType: "SO_TINTA" | "MASSA_TINTA" | "GESSO_TINTA" = "SO_TINTA"
+  wallFinishType: "SO_TINTA" | "MASSA_TINTA" | "GESSO_TINTA" = "SO_TINTA",
+  electrical: ElectricalFinishes = ELECTRICAL_FINISH_DEFAULTS
 ): RoomMaterialItem[] {
   const results: RoomMaterialItem[] = [];
   const floorArea = room.width * room.length;
@@ -61,12 +67,24 @@ export function calculateRoomMaterials(
   }
 
   // ── Elétrica por ambiente ──
+  // O tipo de cada ponto vem das preferências globais do projeto e casa com
+  // um material específico do catálogo — assim o memorial mostra preço.
   const outlets = room.electricalOutlets ?? 0;
   const switches = room.electricalSwitches ?? 0;
   const lightPoints = room.electricalLightPoints ?? 0;
-  if (outlets > 0) results.push({ name: "Tomada", unit: "un", quantity: outlets, category: "Elétrica", formula: `${outlets} ponto(s) cadastrado(s)` });
-  if (switches > 0) results.push({ name: "Interruptor", unit: "un", quantity: switches, category: "Elétrica", formula: `${switches} ponto(s) cadastrado(s)` });
-  if (lightPoints > 0) results.push({ name: "Ponto de iluminação", unit: "un", quantity: lightPoints, category: "Elétrica", formula: `${lightPoints} ponto(s) cadastrado(s)` });
+  if (outlets > 0) {
+    const m = outletMaterialsPerPoint(electrical.outletType);
+    results.push({ name: m.name, unit: m.unit, quantity: outlets * m.qty, category: "Elétrica", formula: `${outlets} ponto(s) × ${m.qty}` });
+  }
+  if (switches > 0) {
+    const m = switchMaterialsPerPoint(electrical.switchType);
+    results.push({ name: m.name, unit: m.unit, quantity: switches * m.qty, category: "Elétrica", formula: `${switches} ponto(s) × ${m.qty}` });
+  }
+  if (lightPoints > 0) {
+    for (const m of lightPointMaterialsPerPoint(electrical.lightPointType)) {
+      results.push({ name: m.name, unit: m.unit, quantity: lightPoints * m.qty, category: "Elétrica", formula: `${lightPoints} ponto(s) × ${m.qty}` });
+    }
+  }
 
   // ── Hidráulica por ambiente ──
   const waterInlets = room.hydraulicWaterInlets ?? 0;

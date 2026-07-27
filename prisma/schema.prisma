@@ -275,6 +275,12 @@ model ProjectInstallations {
   id          String @id @default(cuid())
   projectId   String @unique
   heatingType String @default("eletrico")
+  // Preferências globais de acabamento elétrico. Cada ponto declarado emite
+  // um item do material escolhido — sem UI por ambiente, o padrão MCMV é
+  // homogêneo. Ver src/lib/calculations/per-room.ts e calcEletrica.
+  outletType     String @default("SIMPLES")     // SIMPLES | DUPLA | TRIPLA
+  switchType     String @default("SIMPLES")     // SIMPLES | DUPLO | TRIPLO
+  lightPointType String @default("PLAFON_LED")  // RECEPTACULO_LAMPADA | PLAFON_LED
 
   project          Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
   electricalPoints ElectricalPoint[]

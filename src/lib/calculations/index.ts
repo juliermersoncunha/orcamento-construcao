@@ -44,6 +44,9 @@ export type RoofingInput = {
   tileSize?: string | null;   // fibrocimento: "2,44 x 1,1" | "1,83 x 1,1"
 };
 
+import { ELECTRICAL_FINISH_DEFAULTS, outletMaterialsPerPoint, switchMaterialsPerPoint, lightPointMaterialsPerPoint } from "./electrical-finishes";
+import type { ElectricalFinishes } from "./electrical-finishes";
+
 export type FinishesInput = {
   doors: number;
   windows: number;
@@ -58,6 +61,7 @@ export type CalculationInput = {
   roofing: RoofingInput;
   finishes: FinishesInput;
   heatingType: string;
+  electrical?: ElectricalFinishes;
 };
 
 export type MaterialResult = {
@@ -288,19 +292,50 @@ function calcCobertura(rooms: RoomInput[], roofing: RoofingInput): MaterialResul
 }
 
 // ── Instalações Elétricas ──────────────────────────────────────────────────
-function calcEletrica(rooms: RoomInput[]): MaterialResult[] {
-  const totalFloor = totalFloorArea(rooms);
-  const totalPoints = Math.ceil(totalFloor * 0.22);
+function calcEletrica(
+  rooms: RoomInput[],
+  electrical: ElectricalFinishes = ELECTRICAL_FINISH_DEFAULTS
+): MaterialResult[] {
+  // Prioriza pontos declarados por ambiente; cai para estimativa por área
+  // só se ninguém declarou (compatibilidade com projetos antigos).
+  const declared = rooms.reduce((acc, r) => ({
+    outlets: acc.outlets + (r.electricalOutlets ?? 0),
+    switches: acc.switches + (r.electricalSwitches ?? 0),
+    lightPoints: acc.lightPoints + (r.electricalLightPoints ?? 0),
+  }), { outlets: 0, switches: 0, lightPoints: 0 });
+  const declaredTotal = declared.outlets + declared.switches + declared.lightPoints;
+
+  const totalPoints = declaredTotal > 0
+    ? declaredTotal
+    : Math.ceil(totalFloorArea(rooms) * 0.22);
 
   if (totalPoints === 0) return [];
 
-  return [
+  const items: MaterialResult[] = [
     { name: "Conduíte Corrugado 3/4\" (flexível)", unit: "m", quantity: Math.ceil(totalPoints * 3), phase: "INSTALACOES_ELETRICAS", category: "ELETRICA" },
     { name: "Fio Flexível 2,5mm²", unit: "m", quantity: Math.ceil(totalPoints * 4), phase: "INSTALACOES_ELETRICAS", category: "ELETRICA" },
     { name: "Caixa de Passagem 4x4/4x2", unit: "un", quantity: totalPoints, phase: "INSTALACOES_ELETRICAS", category: "ELETRICA" },
     { name: "Quadro de Distribuição", unit: "un", quantity: 1, phase: "INSTALACOES_ELETRICAS", category: "ELETRICA" },
     { name: "Disjuntor/DR", unit: "un", quantity: Math.ceil(totalPoints / 8) + 1, phase: "INSTALACOES_ELETRICAS", category: "ELETRICA" },
   ];
+
+  // Acabamentos: só quando o usuário declarou os pontos (o cálculo por área
+  // não distingue tomada/interruptor/luz — seria arbitrário).
+  if (declared.outlets > 0) {
+    const m = outletMaterialsPerPoint(electrical.outletType);
+    items.push({ name: m.name, unit: m.unit, quantity: declared.outlets * m.qty, phase: "INSTALACOES_ELETRICAS", category: "ELETRICA" });
+  }
+  if (declared.switches > 0) {
+    const m = switchMaterialsPerPoint(electrical.switchType);
+    items.push({ name: m.name, unit: m.unit, quantity: declared.switches * m.qty, phase: "INSTALACOES_ELETRICAS", category: "ELETRICA" });
+  }
+  if (declared.lightPoints > 0) {
+    for (const m of lightPointMaterialsPerPoint(electrical.lightPointType)) {
+      items.push({ name: m.name, unit: m.unit, quantity: declared.lightPoints * m.qty, phase: "INSTALACOES_ELETRICAS", category: "ELETRICA" });
+    }
+  }
+
+  return items;
 }
 
 // ── Instalações Hidrossanitárias ──────────────────────────────────────────
@@ -458,7 +493,7 @@ export function calculateMaterials(input: CalculationInput): MaterialResult[] {
     ...calcLaje(input.rooms, input.structure),
     ...calcEscada(input.structure),
     ...calcCobertura(input.rooms, input.roofing),
-    ...calcEletrica(input.rooms),
+    ...calcEletrica(input.rooms, input.electrical ?? ELECTRICAL_FINISH_DEFAULTS),
     ...calcHidrossanitaria(input.rooms),
     ...calcRevestimentos(input.rooms),
     ...calcPintura(input.rooms, input.finishes.wallFinishType),

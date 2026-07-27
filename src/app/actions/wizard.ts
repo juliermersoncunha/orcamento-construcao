@@ -156,10 +156,16 @@ export async function saveStep5Installations(projectId: string, formData: FormDa
 
   const rooms = await prisma.room.findMany({ where: { projectId } });
 
+  const prefs = {
+    heatingType:    (formData.get("heatingType")    as string) || "eletrico",
+    outletType:     (formData.get("outletType")     as string) || "SIMPLES",
+    switchType:     (formData.get("switchType")     as string) || "SIMPLES",
+    lightPointType: (formData.get("lightPointType") as string) || "PLAFON_LED",
+  };
   const installations = await prisma.projectInstallations.upsert({
     where: { projectId },
-    create: { projectId, heatingType: formData.get("heatingType") as string },
-    update: { heatingType: formData.get("heatingType") as string },
+    create: { projectId, ...prefs },
+    update: prefs,
   });
 
   await prisma.electricalPoint.deleteMany({ where: { installationsId: installations.id } });
@@ -354,6 +360,11 @@ export async function calculateAndSaveBudget(projectId: string) {
       wallFinishType: (project.finishes?.wallFinishType ?? "SO_TINTA") as "SO_TINTA" | "MASSA_TINTA" | "GESSO_TINTA",
     },
     heatingType: project.installations?.heatingType ?? "eletrico",
+    electrical: {
+      outletType:     (project.installations?.outletType     ?? "SIMPLES")   as "SIMPLES" | "DUPLA" | "TRIPLA",
+      switchType:     (project.installations?.switchType     ?? "SIMPLES")   as "SIMPLES" | "DUPLO" | "TRIPLO",
+      lightPointType: (project.installations?.lightPointType ?? "PLAFON_LED") as "RECEPTACULO_LAMPADA" | "PLAFON_LED",
+    },
   };
 
   const materials = calculateMaterials(input);

@@ -100,8 +100,45 @@ export function Step5Instalacoes({ project, pipesByName, manualPipeQuantities }:
               { value: "solar", label: "Solar" },
               { value: "gas", label: "A gás (aquecedor)" },
             ]}
-            className="mb-6"
+            className="mb-4"
           />
+
+          {/* Padrão global de acabamento elétrico. Cada ponto declarado abaixo
+              (tomada / interruptor / luz) usa esta escolha para o material. */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+            <Select
+              id="outletType"
+              name="outletType"
+              label="Tomada padrão"
+              defaultValue={inst?.outletType ?? "SIMPLES"}
+              options={[
+                { value: "SIMPLES", label: "Simples (2P+T 10A)" },
+                { value: "DUPLA",   label: "Dupla (conjunto 2 tomadas)" },
+                { value: "TRIPLA",  label: "Tripla (conjunto 3 tomadas)" },
+              ]}
+            />
+            <Select
+              id="switchType"
+              name="switchType"
+              label="Interruptor padrão"
+              defaultValue={inst?.switchType ?? "SIMPLES"}
+              options={[
+                { value: "SIMPLES", label: "Simples (1 tecla)" },
+                { value: "DUPLO",   label: "Duplo (2 teclas)" },
+                { value: "TRIPLO",  label: "Triplo (3 teclas)" },
+              ]}
+            />
+            <Select
+              id="lightPointType"
+              name="lightPointType"
+              label="Ponto de luz padrão"
+              defaultValue={inst?.lightPointType ?? "PLAFON_LED"}
+              options={[
+                { value: "PLAFON_LED",          label: "Plafon LED integrado" },
+                { value: "RECEPTACULO_LAMPADA", label: "Receptáculo E-27 + lâmpada LED 9W" },
+              ]}
+            />
+          </div>
 
           {project.rooms.length === 0 ? (
             <p className="text-sm text-gray-500 py-4 text-center">

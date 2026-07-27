@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { redirect } from "next/navigation";
 import { WizardContainer } from "./wizard-container";
+import { ALL_PIPE_NAMES } from "@/lib/pipes-catalog";
 
 export default async function WizardPage({
   params,
@@ -40,5 +41,27 @@ export default async function WizardPage({
 
   const currentStep = etapa ? parseInt(etapa) : Math.min(project.wizardStep, 8);
 
-  return <WizardContainer project={project} currentStep={currentStep} />;
+  // Materiais da lista fixa de tubos/conexões — só os que existem no catálogo.
+  const pipeMaterials = await prisma.material.findMany({
+    where: { name: { in: ALL_PIPE_NAMES }, active: true },
+    select: { id: true, name: true, unit: true, currentPrice: true },
+  });
+  const pipesByName: Record<string, { id: string; name: string; unit: string; currentPrice: number }> = {};
+  for (const m of pipeMaterials) pipesByName[m.name] = m;
+
+  const manualRows = await prisma.manualBudgetItem.findMany({
+    where: { projectId: id },
+    select: { materialId: true, quantity: true },
+  });
+  const manualPipeQuantities: Record<string, number> = {};
+  for (const r of manualRows) manualPipeQuantities[r.materialId] = r.quantity;
+
+  return (
+    <WizardContainer
+      project={project}
+      currentStep={currentStep}
+      pipesByName={pipesByName}
+      manualPipeQuantities={manualPipeQuantities}
+    />
+  );
 }

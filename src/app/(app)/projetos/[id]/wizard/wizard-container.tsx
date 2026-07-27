@@ -23,12 +23,21 @@ const STEPS = [
   { number: 8, label: "Revisão" },
 ];
 
+import type { PipeMaterial } from "./steps/step5-manual-pipes";
+
 type WizardContainerProps = {
   project: any;
   currentStep: number;
+  pipesByName: Record<string, PipeMaterial>;
+  manualPipeQuantities: Record<string, number>;
 };
 
-export function WizardContainer({ project, currentStep }: WizardContainerProps) {
+export function WizardContainer({
+  project,
+  currentStep,
+  pipesByName,
+  manualPipeQuantities,
+}: WizardContainerProps) {
   return (
     <div className="p-8 max-w-3xl mx-auto">
       <div className="flex items-center gap-3 mb-6">
@@ -102,7 +111,13 @@ export function WizardContainer({ project, currentStep }: WizardContainerProps) 
       {currentStep === 2 && <Step2Ambientes project={project} />}
       {currentStep === 3 && <Step3Estrutura project={project} />}
       {currentStep === 4 && <Step4Cobertura project={project} />}
-      {currentStep === 5 && <Step5Instalacoes project={project} />}
+      {currentStep === 5 && (
+        <Step5Instalacoes
+          project={project}
+          pipesByName={pipesByName}
+          manualPipeQuantities={manualPipeQuantities}
+        />
+      )}
       {currentStep === 6 && <Step6Revestimentos project={project} />}
       {currentStep === 7 && <Step7Muros project={project} />}
       {currentStep === 8 && <Step7Revisao project={project} />}

@@ -7,9 +7,16 @@ import { Select } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Zap, ChevronRight, Bath } from "lucide-react";
 import { BathroomCard } from "./step5-bathroom-card";
+import { Step5ManualPipes, type PipeMaterial } from "./step5-manual-pipes";
 import { BATHROOM_ROOM_TYPE_SET } from "@/lib/fixture-library/bathroom";
 
-export function Step5Instalacoes({ project }: { project: any }) {
+type Step5Props = {
+  project: any;
+  pipesByName: Record<string, PipeMaterial>;
+  manualPipeQuantities: Record<string, number>;
+};
+
+export function Step5Instalacoes({ project, pipesByName, manualPipeQuantities }: Step5Props) {
   const [isPending, startTransition] = useTransition();
   const inst = project.installations;
 
@@ -58,6 +65,7 @@ export function Step5Instalacoes({ project }: { project: any }) {
   }
 
   return (
+    <>
     <Card>
       <CardHeader>
         <div className="flex items-center gap-3 mb-1">
@@ -160,6 +168,15 @@ export function Step5Instalacoes({ project }: { project: any }) {
           </div>
         )}
       </CardContent>
-    </Card>
+      </Card>
+
+      <div className="mt-6">
+        <Step5ManualPipes
+          projectId={project.id}
+          materialsByName={pipesByName}
+          initialQuantities={manualPipeQuantities}
+        />
+      </div>
+    </>
   );
 }

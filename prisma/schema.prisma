@@ -183,6 +183,22 @@ model Project {
   walls           ProjectWall[]
   indirectCosts   IndirectCost[]
   viability       ProjectViability?
+  manualBudgetItems ManualBudgetItem[]
+}
+
+// Linhas hidrossanitárias informadas manualmente pelo usuário — tubos e conexões
+// que o sistema não estima. O modelo é agnóstico da lista fixa: qualquer material
+// pode ser vinculado, e a lista visível na UI é filtrada por categoria/nome.
+model ManualBudgetItem {
+  id         String  @id @default(cuid())
+  projectId  String
+  materialId String
+  quantity   Float   @default(0)
+
+  project  Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  material Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, materialId])
 }
 
 model Room {
@@ -406,6 +422,7 @@ model Material {
 
   priceHistory PriceHistory[]
   budgetItems  BudgetItem[]
+  manualBudgetItems ManualBudgetItem[]
 }
 
 model PriceHistory {

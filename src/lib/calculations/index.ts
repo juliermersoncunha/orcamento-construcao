@@ -302,18 +302,16 @@ function calcEletrica(rooms: RoomInput[]): MaterialResult[] {
 }
 
 // ── Instalações Hidrossanitárias ──────────────────────────────────────────
+// Tubos e conexões NÃO são estimados. O usuário informa manualmente as
+// quantidades em "Etapa 5 › Tubos e conexões", e essas linhas entram no
+// orçamento como ManualBudgetItem. Aqui só ficam os itens de infraestrutura
+// do projeto todo — reservatório, esgoto sanitário e o box genérico dos
+// banheiros que não foram detalhados na biblioteca de equipamentos.
 function calcHidrossanitaria(rooms: RoomInput[]): MaterialResult[] {
   const wetRooms = rooms.filter((r) => (r.hydraulicDrainPoints ?? 0) > 0 || (r.hydraulicWaterInlets ?? 0) > 0);
-  const totalWaterPoints = wetRooms.length * 4;
-  const totalDrainPoints = wetRooms.length * 4;
-  const totalPoints = totalWaterPoints + totalDrainPoints;
-
-  if (totalPoints === 0) return [];
+  if (wetRooms.length === 0) return [];
 
   return [
-    { name: "Tubo PVC Água Fria 3/4\"", unit: "m", quantity: Math.ceil(totalWaterPoints * 5), phase: "INSTALACOES_HIDROSSANITARIAS", category: "HIDRAULICA" },
-    { name: "Tubo PVC Esgoto 100mm", unit: "m", quantity: Math.ceil(totalDrainPoints * 4), phase: "INSTALACOES_HIDROSSANITARIAS", category: "HIDRAULICA" },
-    { name: "Conexões e Registros", unit: "un", quantity: Math.ceil(totalPoints * 4), phase: "INSTALACOES_HIDROSSANITARIAS", category: "HIDRAULICA" },
     { name: "Caixa d'Água 1000L", unit: "un", quantity: 1, phase: "INSTALACOES_HIDROSSANITARIAS", category: "HIDRAULICA" },
     { name: "Fossa Séptica", unit: "un", quantity: 1, phase: "INSTALACOES_HIDROSSANITARIAS", category: "HIDRAULICA" },
     { name: "Box de Banheiro", unit: "un", quantity: wetRooms.length, phase: "INSTALACOES_HIDROSSANITARIAS", category: "HIDRAULICA" },

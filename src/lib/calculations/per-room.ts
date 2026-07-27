@@ -12,7 +12,10 @@ function fmt(n: number) {
   return n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-export function calculateRoomMaterials(room: RoomInput): RoomMaterialItem[] {
+export function calculateRoomMaterials(
+  room: RoomInput,
+  wallFinishType: "SO_TINTA" | "MASSA_TINTA" | "GESSO_TINTA" = "SO_TINTA"
+): RoomMaterialItem[] {
   const results: RoomMaterialItem[] = [];
   const floorArea = room.width * room.length;
   const perimeter = 2 * (room.width + room.length);
@@ -38,12 +41,22 @@ export function calculateRoomMaterials(room: RoomInput): RoomMaterialItem[] {
   }
 
   // ── Pintura ──
+  // Mesmos coeficientes do cálculo global (calcPintura em index.ts) — quem
+  // mudar aqui precisa mudar lá, senão a visão por ambiente diverge do
+  // consolidado.
   if (room.paintWalls !== false) {
     const tileH = room.wallTile ? (room.wallTileHeight ?? 1.5) : 0;
     const paintArea = perimeter * (room.height - tileH);
     if (paintArea > 0) {
-      results.push({ name: "Massa Corrida PVA (20kg)", unit: "bl", quantity: Math.ceil(paintArea * 1.0 * 1.08), category: "Pintura", formula: `${fmt(paintArea)} m² × 1,0 bl/m² × 1,08` });
-      results.push({ name: "Tinta Acrílica Fosca", unit: "L", quantity: Math.ceil(paintArea * 0.214 * 2 * 1.08), category: "Pintura", formula: `${fmt(paintArea)} m² × 0,214 L/m² × 2 demãos × 1,08` });
+      if (wallFinishType === "MASSA_TINTA") {
+        results.push({ name: "Massa corrida", unit: "kg", quantity: Math.ceil(paintArea * 1.48), category: "Pintura", formula: `${fmt(paintArea)} m² × 0,70 kg/m² × 2 demãos × 1,06` });
+        results.push({ name: "Lixa para massa", unit: "un", quantity: Math.ceil(paintArea * 0.2), category: "Pintura", formula: `${fmt(paintArea)} m² × 0,20 un/m²` });
+      } else if (wallFinishType === "GESSO_TINTA") {
+        results.push({ name: "Gesso liso", unit: "kg", quantity: Math.ceil(paintArea * 1.26), category: "Pintura", formula: `${fmt(paintArea)} m² × 1,20 kg/m² × 1,05` });
+        results.push({ name: "Lixa para massa", unit: "un", quantity: Math.ceil(paintArea * 0.2), category: "Pintura", formula: `${fmt(paintArea)} m² × 0,20 un/m²` });
+      }
+      results.push({ name: "Selador acrílico", unit: "L", quantity: Math.ceil(paintArea * 0.10), category: "Pintura", formula: `${fmt(paintArea)} m² × 0,10 L/m²` });
+      results.push({ name: "Tinta Acrílica Fosca", unit: "L", quantity: Math.ceil(paintArea * 0.18), category: "Pintura", formula: `${fmt(paintArea)} m² × 0,18 L/m² (2 demãos)` });
     }
   }
 

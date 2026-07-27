@@ -279,9 +279,10 @@ export default async function MemorialPage({
     }
   }
 
+  const wallFinishType = (project.finishes?.wallFinishType ?? "SO_TINTA") as "SO_TINTA" | "MASSA_TINTA" | "GESSO_TINTA";
   const roomMaterials = roomInputs.map((room) => ({
     roomName: room.name,
-    items: calculateRoomMaterials(room),
+    items: calculateRoomMaterials(room, wallFinishType),
   }));
 
   // ── Consolidated material list (shopping list) ──

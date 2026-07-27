@@ -7,7 +7,8 @@
 // Does NOT touch existing per-phase calculations. The room-aware report merges
 // these items into "Materiais por Ambiente"; consolidation happens on the report side.
 
-import { BATHROOM_FIXTURES, BATHROOM_DOOR_DEPENDENCIES, BATHROOM_WINDOW_DEPENDENCIES, getBathroomAccessorySpec, IMPERM_SYSTEMS } from "@/lib/fixture-library/bathroom";
+import { IMPERM_SYSTEMS } from "@/lib/fixture-library/bathroom";
+import { getFixtureSpec, getAccessorySpec, getJoineryDependencies } from "@/lib/fixture-library/registry";
 import type { FixtureQuantity, DependencySpec, MaterialResolver } from "@/lib/fixture-library/types";
 
 // ── Inputs to the engine ───────────────────────────────────────────────────
@@ -56,9 +57,11 @@ export type ImpermInput = {
 };
 
 export type RoomWallFinishInput = {
-  wallSide: string;      // FRENTE | FUNDO | ESQUERDA | DIREITA
+  wallSide: string;      // FRENTE | FUNDO | ESQUERDA | DIREITA | BOX | PIA
   hasTile: boolean;
   tileHeight: number;
+  // Cozinha modo "só parede da pia": comprimento informado; ignora o perímetro
+  wallLength?: number | null;
 };
 
 export type RoomEngineInput = {
@@ -137,6 +140,9 @@ function computeValue(name: string, config: Record<string, unknown>): number {
   const height = Number(config.height ?? 0);
   const distance = Number(config.distance ?? 0);
   const ductLength = Number(config.ductLength ?? 0);
+  // Cozinha — bancada por m² e frontão por m linear
+  const comprimento = Number(config.comprimento ?? 0);
+  const profundidade = Number(config.profundidade ?? 0);
 
   switch (name) {
     case "box.glassArea":         return width * height;
@@ -151,6 +157,8 @@ function computeValue(name: string, config: Record<string, unknown>): number {
     case "joinery.width":         return width;
     case "accessory.width":       return width;
     case "accessory.area":        return width * height;
+    case "bancada.area":          return comprimento * profundidade;
+    case "bancada.frontao":       return comprimento;
     default:                       return 0;
   }
 }
@@ -195,9 +203,9 @@ function expandFixture(
   premises: PremiseValue[],
   warnings: string[]
 ): FixtureMaterialItem[] {
-  const spec = BATHROOM_FIXTURES.find((f) => f.fixtureType === fixture.fixtureType);
+  const spec = getFixtureSpec(fixture.fixtureType);
   if (!spec) {
-    warnings.push(`Fixture "${fixture.fixtureType}" não está no catálogo do banheiro`);
+    warnings.push(`Fixture "${fixture.fixtureType}" não está no catálogo`);
     return [];
   }
   const config = fixture.configJson ? safeJson(fixture.configJson) : {};
@@ -249,12 +257,11 @@ function expandBathroomJoinery(
   room: RoomEngineInput,
   premises: PremiseValue[]
 ): FixtureMaterialItem[] {
-  // Only bathroom joineries are handled here; other subtypes fall back to the
-  // generic per-total calc (calcAcabamento).
-  if (joinery.subtype !== "banheiro") return [];
-
+  // Only joineries with a detailed subtype are handled here; other subtypes
+  // fall back to the generic per-total calc (calcAcabamento).
   const isWindow = joinery.joineryType === "JANELA";
-  const deps = isWindow ? BATHROOM_WINDOW_DEPENDENCIES : BATHROOM_DOOR_DEPENDENCIES;
+  const deps = getJoineryDependencies(joinery.subtype, isWindow);
+  if (!deps) return [];
   const sourceLabel = isWindow ? "Janela de banheiro" : "Porta de banheiro";
 
   // Config: window dimensions + options (tela mosquiteira). Doors use empty config.
@@ -301,9 +308,9 @@ function expandAccessory(
   premises: PremiseValue[],
   warnings: string[]
 ): FixtureMaterialItem[] {
-  const spec = getBathroomAccessorySpec(accessory.accessoryType);
+  const spec = getAccessorySpec(accessory.accessoryType);
   if (!spec) {
-    warnings.push(`Acessório "${accessory.accessoryType}" não está no catálogo do banheiro`);
+    warnings.push(`Acessório "${accessory.accessoryType}" não está no catálogo`);
     return [];
   }
   const config = accessory.configJson ? safeJson(accessory.configJson) : {};
@@ -466,19 +473,24 @@ function expandImperm(
 const WALL_SIDE_LABELS: Record<string, string> = {
   FRENTE: "Frente", FUNDO: "Fundo", ESQUERDA: "Esquerda", DIREITA: "Direita",
   BOX: "Área do box",
+  PIA: "Parede da pia",
 };
 
 // "BOX" não é um lado do ambiente: representa as duas paredes que formam o
 // canto do box, medidas pela largura do próprio box.
-function wallLength(room: RoomEngineInput, side: string): number {
-  if (side === "BOX") {
+// "PIA" também não é um lado — o card da cozinha manda o comprimento explícito
+// em wallLength (padrão econômico "só a parede da pia").
+function wallLength(room: RoomEngineInput, wall: RoomWallFinishInput): number {
+  if (wall.wallLength && wall.wallLength > 0) return wall.wallLength;
+  if (wall.wallSide === "BOX") {
     const box = room.fixtures.find(
       (f) => f.fixtureType === "BOX_FRONTAL" || f.fixtureType === "BOX_CANTO"
     );
     const w = box ? Number(safeJson(box.configJson ?? "{}").width ?? 1) : 1;
     return w * 2;
   }
-  return side === "FRENTE" || side === "FUNDO" ? room.width : room.length;
+  if (wall.wallSide === "PIA") return room.width; // fallback
+  return wall.wallSide === "FRENTE" || wall.wallSide === "FUNDO" ? room.width : room.length;
 }
 
 function expandWallFinish(
@@ -491,7 +503,7 @@ function expandWallFinish(
   let area = 0;
   const parts: string[] = [];
   for (const w of walls) {
-    const len = wallLength(room, w.wallSide);
+    const len = wallLength(room, w);
     area += len * w.tileHeight;
     parts.push(`${WALL_SIDE_LABELS[w.wallSide] ?? w.wallSide} ${len.toFixed(2)}×${w.tileHeight.toFixed(2)}`);
   }
@@ -557,7 +569,7 @@ export function computePointDemand(rooms: RoomEngineInput[]): PointDemand[] {
     const hydraulic: Record<string, number> = {};
     const electrical: Record<string, number> = {};
     for (const fx of room.fixtures) {
-      const spec = BATHROOM_FIXTURES.find((f) => f.fixtureType === fx.fixtureType);
+      const spec = getFixtureSpec(fx.fixtureType);
       if (!spec) continue;
       const config = fx.configJson ? safeJson(fx.configJson) : {};
       for (const p of spec.hydraulicPoints) {

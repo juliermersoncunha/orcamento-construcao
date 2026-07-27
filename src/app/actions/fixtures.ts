@@ -44,7 +44,7 @@ export type RoomEquipmentPayload = {
     coats: number;
     mechProtection: boolean;
   } | null;
-  wallFinishes: { wallSide: string; hasTile: boolean; tileHeight: number }[];
+  wallFinishes: { wallSide: string; hasTile: boolean; tileHeight: number; wallLength?: number | null }[];
 };
 
 async function assertOwnsRoom(roomId: string) {
@@ -167,7 +167,13 @@ export async function saveRoomEquipment(roomId: string, payload: RoomEquipmentPa
     for (const wf of payload.wallFinishes ?? []) {
       if (!wf.hasTile) continue;
       await tx.roomWallFinish.create({
-        data: { roomId, wallSide: wf.wallSide, hasTile: true, tileHeight: wf.tileHeight },
+        data: {
+          roomId,
+          wallSide: wf.wallSide,
+          hasTile: true,
+          tileHeight: wf.tileHeight,
+          wallLength: wf.wallLength ?? null,
+        },
       });
     }
   });

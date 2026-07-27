@@ -108,6 +108,13 @@ enum FixtureType {
   BOX_CANTO
   EXAUSTOR
   TORNEIRA_ELETRICA
+  // Cozinha padrão econômica
+  PIA_GRANITO
+  PIA_INOX
+  BANCADA_COZINHA
+  TORNEIRA_COZINHA_PAREDE
+  TORNEIRA_COZINHA_BANCADA
+  KIT_BOTIJAO_GAS
 }
 
 enum HydraulicPointType {
@@ -338,6 +345,9 @@ model RoomWallFinish {
   wallSide   String
   hasTile    Boolean @default(false)
   tileHeight Float   @default(1.5)
+  // Cozinha: modo "somente parede da pia" — o usuário informa o comprimento
+  // real (evita usar o perímetro cheio da cozinha).
+  wallLength Float?
 
   room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
 }

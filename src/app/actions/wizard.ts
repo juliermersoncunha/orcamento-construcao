@@ -406,6 +406,7 @@ export async function calculateAndSaveBudget(projectId: string) {
     } : null,
     wallFinishes: room.wallFinishes.map((w) => ({
       wallSide: w.wallSide, hasTile: w.hasTile, tileHeight: w.tileHeight,
+      wallLength: w.wallLength ?? null,
     })),
   }));
 

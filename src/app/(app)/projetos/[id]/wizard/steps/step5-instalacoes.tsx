@@ -5,10 +5,12 @@ import { saveStep5Installations } from "@/app/actions/wizard";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Zap, ChevronRight, Bath } from "lucide-react";
+import { Zap, ChevronRight, Bath, ChefHat } from "lucide-react";
 import { BathroomCard } from "./step5-bathroom-card";
+import { KitchenCard } from "./step5-kitchen-card";
 import { Step5ManualPipes, type PipeMaterial } from "./step5-manual-pipes";
 import { BATHROOM_ROOM_TYPE_SET } from "@/lib/fixture-library/bathroom";
+import { KITCHEN_ROOM_TYPE_SET } from "@/lib/fixture-library/kitchen";
 
 type Step5Props = {
   project: any;
@@ -40,6 +42,14 @@ export function Step5Instalacoes({ project, pipesByName, manualPipeQuantities }:
   }
 
   const bathrooms = (project.rooms ?? []).filter(isBathroom);
+
+  function isKitchen(room: any) {
+    if (room.roomType && KITCHEN_ROOM_TYPE_SET.has(room.roomType)) return true;
+    if (room.roomType) return false;
+    const n = (room.name ?? "").toLowerCase();
+    return n.includes("cozinha") || n.includes("copa");
+  }
+  const kitchens = (project.rooms ?? []).filter(isKitchen);
 
   // Suggest defaults by room name
   function suggestOutlets(name: string) {
@@ -164,6 +174,23 @@ export function Step5Instalacoes({ project, pipesByName, manualPipeQuantities }:
             </p>
             {bathrooms.map((room: any) => (
               <BathroomCard key={room.id} room={room} />
+            ))}
+          </div>
+        )}
+
+        {/* Equipamentos por ambiente — cozinhas */}
+        {kitchens.length > 0 && (
+          <div className="mt-8 pt-6 border-t border-gray-200">
+            <div className="flex items-center gap-2 mb-1">
+              <ChefHat className="w-4 h-4 text-orange-700" />
+              <h3 className="text-base font-semibold text-gray-900">Cozinha padrão econômica</h3>
+            </div>
+            <p className="text-sm text-gray-500 mb-4">
+              Configure a pia, torneira e itens opcionais. Tubos e conexões continuam
+              informados manualmente na seção abaixo.
+            </p>
+            {kitchens.map((room: any) => (
+              <KitchenCard key={room.id} room={room} />
             ))}
           </div>
         )}

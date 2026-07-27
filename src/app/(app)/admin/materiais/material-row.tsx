@@ -22,7 +22,15 @@ function formatDate(value: Date | string | null | undefined) {
   return d.toLocaleDateString("pt-BR");
 }
 
-export function MaterialRow({ material }: { material: any }) {
+export function MaterialRow({
+  material,
+  selected,
+  onToggleSelect,
+}: {
+  material: any;
+  selected?: boolean;
+  onToggleSelect?: () => void;
+}) {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(material.name);
   const [price, setPrice] = useState(String(material.currentPrice));
@@ -91,6 +99,7 @@ export function MaterialRow({ material }: { material: any }) {
   if (editing) {
     return (
       <tr className="border-b border-gray-50 bg-amber-50/40">
+        {onToggleSelect && <td className="py-2 w-8" />}
         <td className="py-2 pr-4">
           <input
             value={name}
@@ -149,7 +158,18 @@ export function MaterialRow({ material }: { material: any }) {
   const shownDate = formatDate(material.priceDate);
 
   return (
-    <tr className={`border-b border-gray-50 ${!material.active ? "opacity-40" : ""}`}>
+    <tr className={`border-b border-gray-50 ${!material.active ? "opacity-40" : ""} ${selected ? "bg-amber-50/60" : ""}`}>
+      {onToggleSelect && (
+        <td className="py-2 w-8">
+          <input
+            type="checkbox"
+            checked={!!selected}
+            onChange={onToggleSelect}
+            className="rounded border-gray-300 text-amber-600 focus:ring-amber-500"
+            aria-label={`Selecionar ${material.name}`}
+          />
+        </td>
+      )}
       <td className="py-2 pr-4">
         <button
           onClick={startEditing}

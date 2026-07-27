@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MaterialCategory } from "@prisma/client";
 import { MaterialForm } from "./material-form";
-import { MaterialRow } from "./material-row";
+import { MaterialsCatalog } from "./materials-catalog";
 
 const categoryLabels: Record<MaterialCategory, string> = {
   TERRAPLENAGEM: "Terraplenagem",
@@ -72,39 +72,22 @@ export default async function MateriaisPage() {
 
       <MaterialForm />
 
-      <div className="flex flex-col gap-6 mt-8">
-        {categoryOrder.map((category) => {
-          const items = byCategory.get(category);
-          if (!items || items.length === 0) return null;
-          return (
-            <Card key={category}>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">{categoryLabels[category]}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-gray-100">
-                        <th className="text-left font-medium text-gray-500 py-2">Material</th>
-                        <th className="text-center font-medium text-gray-500 py-2">Unidade</th>
-                        <th className="text-right font-medium text-gray-500 py-2">Preço (R$)</th>
-                        <th className="text-center font-medium text-gray-500 py-2">Data do preço</th>
-                        <th className="text-center font-medium text-gray-500 py-2">Status</th>
-                        <th className="py-2"></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {items.map((material) => (
-                        <MaterialRow key={material.id} material={material} />
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
+      <div className="mt-8">
+        <MaterialsCatalog
+          materialsByCategory={categoryOrder
+            .map((c) => [c, byCategory.get(c) ?? []] as const)
+            .filter(([, list]) => list.length > 0)
+            .map(([c, list]) => [c, list.map((m) => ({
+              id: m.id,
+              name: m.name,
+              unit: m.unit,
+              category: m.category,
+              currentPrice: m.currentPrice,
+              priceDate: m.priceDate,
+              active: m.active,
+            }))])}
+          categoryLabels={categoryLabels}
+        />
       </div>
     </div>
   );

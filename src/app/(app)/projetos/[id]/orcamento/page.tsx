@@ -10,6 +10,8 @@ import Link from "next/link";
 import { PhaseType, LaborModel } from "@prisma/client";
 import { validateBudgetAgainstCaixa } from "@/lib/caixa-validation";
 import { CaixaValidationPanel } from "@/components/caixa-validation-panel";
+import { validateProject } from "@/lib/calculations/project-validation";
+import { ProjectValidationPanel } from "@/components/project-validation-panel";
 
 const PHASE_LABELS: Record<string, string> = {
   TERRAPLENAGEM: "Terraplenagem",
@@ -65,12 +67,21 @@ export default async function OrcamentoPage({
   const project = await prisma.project.findFirst({
     where: { id, userId: session.userId },
     include: {
-      rooms: { select: { width: true, length: true } },
+      rooms: {
+        include: {
+          fixtures: true,
+          joineries: true,
+          accessories: true,
+          imperm: true,
+          wallFinishes: true,
+        },
+      },
       budgetItems: {
         include: { material: true },
         orderBy: { createdAt: "asc" },
       },
       laborConfig: { include: { phases: true } },
+      installations: { include: { electricalPoints: true, hydraulicPoints: true } },
     },
   });
 
@@ -117,6 +128,70 @@ export default async function OrcamentoPage({
   const caixaValidation = totalMat > 0
     ? validateBudgetAgainstCaixa(Object.fromEntries(phaseMat), totalMat)
     : [];
+
+  // Consistência do projeto — equipamentos vs. pontos declarados vs. catálogo.
+  // Recalculado a cada render para refletir edições feitas depois de gerar.
+  const premiseRows = await prisma.globalPremise.findMany({ select: { key: true, value: true } });
+
+  const declaredByRoom = new Map<string, {
+    roomId: string; outlets: number; switches: number; lightPoints: number;
+    waterInlets: number; drainPoints: number;
+  }>();
+  for (const ep of project.installations?.electricalPoints ?? []) {
+    const d = declaredByRoom.get(ep.roomId) ?? {
+      roomId: ep.roomId, outlets: 0, switches: 0, lightPoints: 0, waterInlets: 0, drainPoints: 0,
+    };
+    d.outlets += ep.outlets; d.switches += ep.switches; d.lightPoints += ep.lightPoints;
+    declaredByRoom.set(ep.roomId, d);
+  }
+  for (const hp of project.installations?.hydraulicPoints ?? []) {
+    const d = declaredByRoom.get(hp.roomId) ?? {
+      roomId: hp.roomId, outlets: 0, switches: 0, lightPoints: 0, waterInlets: 0, drainPoints: 0,
+    };
+    d.waterInlets += hp.waterInlets; d.drainPoints += hp.drainPoints;
+    declaredByRoom.set(hp.roomId, d);
+  }
+
+  const zeroPriceMaterials = Array.from(
+    new Set(
+      project.budgetItems
+        .filter((i) => i.unitPriceSnapshot === 0 && i.quantity > 0)
+        .map((i) => i.material.name)
+    )
+  ).sort();
+
+  const projectIssues = validateProject({
+    rooms: project.rooms.map((room) => ({
+      id: room.id, name: room.name, roomType: room.roomType,
+      width: room.width, length: room.length, height: room.height,
+      fixtures: room.fixtures.map((f) => ({
+        id: f.id, roomId: f.roomId, fixtureType: f.fixtureType,
+        quantity: f.quantity, configJson: f.configJson,
+        includedComponents: f.includedComponents,
+      })),
+      joineries: room.joineries.map((j) => ({
+        id: j.id, roomId: j.roomId, joineryType: j.joineryType, subtype: j.subtype,
+        quantity: j.quantity, includedComponents: j.includedComponents,
+        width: j.width, height: j.height, configJson: j.configJson,
+      })),
+      accessories: room.accessories.map((a) => ({
+        id: a.id, roomId: a.roomId, accessoryType: a.accessoryType,
+        quantity: a.quantity, configJson: a.configJson,
+      })),
+      imperm: room.imperm ? {
+        roomId: room.imperm.roomId, scope: room.imperm.scope, area: room.imperm.area,
+        wallHeight: room.imperm.wallHeight, ralos: room.imperm.ralos,
+        tubulacoes: room.imperm.tubulacoes, system: room.imperm.system,
+        coats: room.imperm.coats, mechProtection: room.imperm.mechProtection,
+      } : null,
+      wallFinishes: room.wallFinishes.map((w) => ({
+        wallSide: w.wallSide, hasTile: w.hasTile, tileHeight: w.tileHeight,
+      })),
+    })),
+    declared: Array.from(declaredByRoom.values()),
+    premises: premiseRows,
+    zeroPriceMaterials,
+  });
 
   // Ordered phases present in budget
   const orderedPhases = PHASE_ORDER.filter((p) => byPhase.has(p));
@@ -209,6 +284,12 @@ export default async function OrcamentoPage({
             <p className="text-xs text-gray-400 mt-0.5">{formatNumber(totalFloorArea)} m² construídos</p>
           )}
         </div>
+      </div>
+
+      {/* Consistência do projeto — vem antes da validação de faixas porque
+          aponta o que torna os próprios números não confiáveis */}
+      <div className="mb-6">
+        <ProjectValidationPanel issues={projectIssues} />
       </div>
 
       {/* Validação Caixa */}

@@ -78,6 +78,23 @@ export function Step6Revestimentos({ project }: { project: any }) {
             </div>
           </div>
 
+          {/* Acabamento de parede antes da pintura */}
+          <div>
+            <p className="text-sm font-semibold text-gray-800 mb-1">Acabamento de parede (antes da pintura)</p>
+            <p className="text-xs text-gray-500 mb-2">
+              Vale para o projeto todo. Padrão econômico: só reboco e tinta.
+            </p>
+            <select
+              name="wallFinishType"
+              defaultValue={finishes?.wallFinishType ?? "SO_TINTA"}
+              className="w-full rounded border border-gray-300 bg-white px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+            >
+              <option value="SO_TINTA">Só reboco + tinta (padrão econômico)</option>
+              <option value="MASSA_TINTA">Reboco + massa corrida + tinta</option>
+              <option value="GESSO_TINTA">Reboco + gesso liso + tinta</option>
+            </select>
+          </div>
+
           {/* Room finishes */}
           <div>
             <p className="text-sm font-semibold text-gray-800 mb-3">Acabamentos por Cômodo</p>

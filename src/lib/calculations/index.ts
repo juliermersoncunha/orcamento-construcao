@@ -48,6 +48,8 @@ export type FinishesInput = {
   doors: number;
   windows: number;
   externalDoors: number;
+  // Acabamento antes da pintura. Default MCMV: só reboco + tinta.
+  wallFinishType?: "SO_TINTA" | "MASSA_TINTA" | "GESSO_TINTA";
 };
 
 export type CalculationInput = {
@@ -366,7 +368,15 @@ function calcRevestimentos(rooms: RoomInput[]): MaterialResult[] {
 }
 
 // ── Pintura ────────────────────────────────────────────────────────────────
-function calcPintura(rooms: RoomInput[]): MaterialResult[] {
+// Consumos (por m² por demão, com perdas típicas):
+//   Tinta acrílica standard: 1/12 L/m², duas demãos, perda 8%   → 0,18 L/m²
+//   Selador acrílico:        0,10 L/m², uma demão               → 0,10 L/m²
+//   Massa corrida:           0,70 kg/m², duas demãos, perda 6%  → 1,48 kg/m²
+//   Gesso liso:              1,20 kg/m², uma demão, perda 5%    → 1,26 kg/m²
+//
+// Padrão MCMV é "SO_TINTA" — reboco + tinta direto. Massa e gesso são opções
+// de acabamento superior, escolhidas em ProjectFinishes.wallFinishType.
+function calcPintura(rooms: RoomInput[], finish: FinishesInput["wallFinishType"] = "SO_TINTA"): MaterialResult[] {
   let paintWallArea = 0;
 
   for (const room of rooms) {
@@ -378,14 +388,38 @@ function calcPintura(rooms: RoomInput[]): MaterialResult[] {
 
   if (paintWallArea <= 0) return [];
 
-  const LOSS = 1.08;
-  const massaBuckets = Math.ceil(paintWallArea * 1.0 * LOSS);
-  const tintaLitros = Math.ceil(paintWallArea * 0.214 * 2 * LOSS);
+  const items: MaterialResult[] = [];
 
-  return [
-    { name: "Massa Corrida PVA (20kg)", unit: "bl", quantity: massaBuckets, phase: "PINTURA", category: "PINTURA" },
-    { name: "Tinta Acrílica Fosca", unit: "L", quantity: tintaLitros, phase: "PINTURA", category: "PINTURA" },
-  ];
+  if (finish === "MASSA_TINTA") {
+    items.push({
+      name: "Massa corrida", unit: "kg", category: "PINTURA", phase: "PINTURA",
+      quantity: Math.ceil(paintWallArea * 1.48),
+    });
+    items.push({
+      name: "Lixa para massa", unit: "un", category: "PINTURA", phase: "PINTURA",
+      quantity: Math.ceil(paintWallArea * 0.2), // ~1 folha a cada 5 m²
+    });
+  } else if (finish === "GESSO_TINTA") {
+    items.push({
+      name: "Gesso liso", unit: "kg", category: "PINTURA", phase: "PINTURA",
+      quantity: Math.ceil(paintWallArea * 1.26),
+    });
+    items.push({
+      name: "Lixa para massa", unit: "un", category: "PINTURA", phase: "PINTURA",
+      quantity: Math.ceil(paintWallArea * 0.2),
+    });
+  }
+
+  items.push({
+    name: "Selador acrílico", unit: "L", category: "PINTURA", phase: "PINTURA",
+    quantity: Math.ceil(paintWallArea * 0.10),
+  });
+  items.push({
+    name: "Tinta Acrílica Fosca", unit: "L", category: "PINTURA", phase: "PINTURA",
+    quantity: Math.ceil(paintWallArea * 0.18),
+  });
+
+  return items;
 }
 
 // ── Acabamento (Esquadrias) ────────────────────────────────────────────────
@@ -426,7 +460,7 @@ export function calculateMaterials(input: CalculationInput): MaterialResult[] {
     ...calcEletrica(input.rooms),
     ...calcHidrossanitaria(input.rooms),
     ...calcRevestimentos(input.rooms),
-    ...calcPintura(input.rooms),
+    ...calcPintura(input.rooms, input.finishes.wallFinishType),
     ...calcAcabamento(input.finishes),
   ];
 }

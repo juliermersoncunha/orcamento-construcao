@@ -205,11 +205,13 @@ export async function saveStep6Finishes(projectId: string, formData: FormData) {
       doors: parseInt(formData.get("doors") as string) || 0,
       windows: parseInt(formData.get("windows") as string) || 0,
       externalDoors: parseInt(formData.get("externalDoors") as string) || 1,
+      wallFinishType: (formData.get("wallFinishType") as string) || "SO_TINTA",
     },
     update: {
       doors: parseInt(formData.get("doors") as string) || 0,
       windows: parseInt(formData.get("windows") as string) || 0,
       externalDoors: parseInt(formData.get("externalDoors") as string) || 1,
+      wallFinishType: (formData.get("wallFinishType") as string) || "SO_TINTA",
     },
   });
 
@@ -349,6 +351,7 @@ export async function calculateAndSaveBudget(projectId: string) {
       doors: project.finishes?.doors ?? 0,
       windows: project.finishes?.windows ?? 0,
       externalDoors: project.finishes?.externalDoors ?? 1,
+      wallFinishType: (project.finishes?.wallFinishType ?? "SO_TINTA") as "SO_TINTA" | "MASSA_TINTA" | "GESSO_TINTA",
     },
     heatingType: project.installations?.heatingType ?? "eletrico",
   };

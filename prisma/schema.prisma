@@ -401,6 +401,9 @@ model ProjectFinishes {
   doors         Int    @default(0)
   windows       Int    @default(0)
   externalDoors Int    @default(1)
+  // Acabamento de parede antes da pintura: SO_TINTA | MASSA_TINTA | GESSO_TINTA.
+  // Padrão MCMV é só reboco + tinta; massa/gesso são acabamentos superiores.
+  wallFinishType String @default("SO_TINTA")
 
   project      Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
   roomFinishes RoomFinish[]

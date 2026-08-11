@@ -103,6 +103,8 @@ export async function saveStep3Structure(projectId: string, formData: FormData) 
     sapataLargura: f("sapataLargura", 0.60),
     sapataCompr: f("sapataCompr", 0.60),
     sapataAltura: f("sapataAltura", 0.30),
+    escavacaoM3: f("escavacaoM3"),
+    compactacaoM2: f("compactacaoM2"),
   };
 
   await prisma.projectStructure.upsert({
@@ -345,6 +347,8 @@ export async function calculateAndSaveBudget(projectId: string) {
       sapataLargura: project.structure?.sapataLargura ?? 0.60,
       sapataCompr: project.structure?.sapataCompr ?? 0.60,
       sapataAltura: project.structure?.sapataAltura ?? 0.30,
+      escavacaoM3: project.structure?.escavacaoM3 ?? 0,
+      compactacaoM2: project.structure?.compactacaoM2 ?? 0,
     },
     roofing: {
       roofType: project.roofing?.roofType ?? "duas_aguas",

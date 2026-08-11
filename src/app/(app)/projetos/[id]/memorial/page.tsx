@@ -217,6 +217,8 @@ export default async function MemorialPage({
         sapataLargura: project.structure.sapataLargura,
         sapataCompr: project.structure.sapataCompr,
         sapataAltura: project.structure.sapataAltura,
+        escavacaoM3: project.structure.escavacaoM3,
+        compactacaoM2: project.structure.compactacaoM2,
       }
     : {
         foundationType: "sapata_corrida",
@@ -235,6 +237,8 @@ export default async function MemorialPage({
         sapataLargura: 0.60,
         sapataCompr: 0.60,
         sapataAltura: 0.30,
+        escavacaoM3: 0,
+        compactacaoM2: 0,
       };
 
   const roofingInput: RoofingInput = project.roofing

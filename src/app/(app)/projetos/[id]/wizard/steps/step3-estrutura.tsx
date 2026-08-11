@@ -78,6 +78,31 @@ export function Step3Estrutura({ project }: { project: any }) {
             />
           </div>
 
+          {/* Terraplenagem */}
+          <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-4">
+            <p className="text-sm font-semibold text-zinc-700 mb-3">Terraplenagem</p>
+            <div className="grid grid-cols-2 gap-3">
+              <Input
+                id="escavacaoM3"
+                name="escavacaoM3"
+                type="number"
+                label="Escavação (m³)"
+                defaultValue={s?.escavacaoM3 ?? 0}
+                min="0"
+                step="0.1"
+              />
+              <Input
+                id="compactacaoM2"
+                name="compactacaoM2"
+                type="number"
+                label="Compactação de aterro (m²)"
+                defaultValue={s?.compactacaoM2 ?? 0}
+                min="0"
+                step="0.1"
+              />
+            </div>
+          </div>
+
           {/* Sapatas */}
           <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-4">
             <p className="text-sm font-semibold text-zinc-700 mb-3">Sapatas</p>

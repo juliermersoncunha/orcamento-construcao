@@ -33,6 +33,8 @@ export type StructureInput = {
   sapataQtd: number;
   sapataLargura: number;
   sapataCompr: number;
+  escavacaoM3: number;
+  compactacaoM2: number;
   sapataAltura: number;
 };
 
@@ -107,15 +109,16 @@ function concretoTraco123(volumeM3: number, phase: string, category: string): Ma
   ];
 }
 
-// ── Terraplenagem ──────────────────────────────────────────────────────────
-function calcTerraplenagem(rooms: RoomInput[], structure: StructureInput): MaterialResult[] {
-  const area = totalFloorArea(rooms);
-  const soilVolume = round1(area * 0.30 * structure.floors);
-
-  return [
-    { name: "Escavação e Terraplenagem", unit: "m³", quantity: soilVolume, phase: "TERRAPLENAGEM", category: "TERRAPLENAGEM" },
-    { name: "Compactação de Aterro", unit: "m²", quantity: Math.ceil(area), phase: "TERRAPLENAGEM", category: "TERRAPLENAGEM" },
-  ];
+// ── Terraplenagem (manual) ─────────────────────────────────────────────────
+function calcTerraplenagem(structure: StructureInput): MaterialResult[] {
+  const results: MaterialResult[] = [];
+  if (structure.escavacaoM3 > 0) {
+    results.push({ name: "Escavação e Terraplenagem", unit: "m³", quantity: round1(structure.escavacaoM3), phase: "TERRAPLENAGEM", category: "TERRAPLENAGEM" });
+  }
+  if (structure.compactacaoM2 > 0) {
+    results.push({ name: "Compactação de Aterro", unit: "m²", quantity: Math.ceil(structure.compactacaoM2), phase: "TERRAPLENAGEM", category: "TERRAPLENAGEM" });
+  }
+  return results;
 }
 
 // ── Fundação (sapatas) ────────────────────────────────────────────────────
@@ -486,7 +489,7 @@ function calcAcabamento(finishes: FinishesInput): MaterialResult[] {
 // ── Função principal ───────────────────────────────────────────────────────
 export function calculateMaterials(input: CalculationInput): MaterialResult[] {
   return [
-    ...calcTerraplenagem(input.rooms, input.structure),
+    ...calcTerraplenagem(input.structure),
     ...calcFundacao(input.structure),
     ...calcEstrutura(input.structure),
     ...calcAlvenaria(input.rooms, input.finishes, input.structure),

@@ -70,21 +70,24 @@ export function generateExplanations(
   const wallArea = totalWallArea(rooms);
   const result: Record<string, CalcExplanation[]> = {};
 
-  // ── Terraplenagem ──
+  // ── Terraplenagem (manual) ──
   {
-    const soilVolume = round1(area * 0.3 * structure.floors);
-    result["TERRAPLENAGEM"] = [
-      {
+    const items: CalcExplanation[] = [];
+    if (structure.escavacaoM3 > 0) {
+      items.push({
         materialName: "Escavação e Terraplenagem",
-        formula: `Área total (${fmt(area)} m²) × 0,30 m³/m² × ${structure.floors} pav.`,
-        result: `${fmt(area * 0.3 * structure.floors)} → ${fmt(soilVolume)} m³`,
-      },
-      {
+        formula: `Valor informado manualmente`,
+        result: `${fmt(structure.escavacaoM3)} m³`,
+      });
+    }
+    if (structure.compactacaoM2 > 0) {
+      items.push({
         materialName: "Compactação de Aterro",
-        formula: `Área total (${fmt(area)} m²) arredondada`,
-        result: `${Math.ceil(area)} m²`,
-      },
-    ];
+        formula: `Valor informado manualmente`,
+        result: `${Math.ceil(structure.compactacaoM2)} m²`,
+      });
+    }
+    if (items.length > 0) result["TERRAPLENAGEM"] = items;
   }
 
   // ── Fundação (sapatas) ──

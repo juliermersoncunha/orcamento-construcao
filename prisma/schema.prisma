@@ -255,6 +255,10 @@ model ProjectStructure {
   sapataCompr    Float   @default(0.60)
   sapataAltura   Float   @default(0.30)
 
+  // Terraplenagem — valores manuais
+  escavacaoM3    Float   @default(0)
+  compactacaoM2  Float   @default(0)
+
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 }
 

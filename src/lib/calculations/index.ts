@@ -534,7 +534,8 @@ function calcAcabamento(finishes: FinishesInput): MaterialResult[] {
     // Uma soleira por vão. O batente dos ambientes detalhados (banheiro) vem da
     // biblioteca de equipamentos, com o marco e a ferragem próprios daquela porta.
     results.push({ name: "Soleira de Porta", unit: "un", quantity: totalDoors, phase: "ACABAMENTO", category: "ESQUADRIA" });
-    results.push({ name: "Fechadura Completa", unit: "un", quantity: totalDoors, phase: "ACABAMENTO", category: "ESQUADRIA" });
+    // Fechadura saiu do cálculo automático por decisão do usuário — lançada
+    // manualmente na Etapa 8. Não recolocar sem alinhar.
   }
 
   return results;

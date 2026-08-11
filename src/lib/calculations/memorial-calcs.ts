@@ -558,13 +558,8 @@ export function generateExplanations(
     }
     if (totalDoors > 0) {
       explanations.push({
-        materialName: "Batente/Marco de Porta",
+        materialName: "Soleira de Porta",
         formula: `${finishes.externalDoors} ext. + ${finishes.doors} int.`,
-        result: `${totalDoors} un`,
-      });
-      explanations.push({
-        materialName: "Fechadura Completa",
-        formula: `1 por porta`,
         result: `${totalDoors} un`,
       });
     }

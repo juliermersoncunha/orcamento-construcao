@@ -37,9 +37,7 @@ export const BATHROOM_FIXTURES: FixtureSpec[] = [
       { material: "Anel de vedação para vaso",          unit: "un",  category: "ACESSORIOS_HIDRAULICOS", quantity: { qty: 1 } },
       { material: "Kit fixação de vaso",                unit: "kit", category: "ACESSORIOS_HIDRAULICOS", quantity: { qty: 1 }, canBeIncluded: true },
       { material: "Engate flexível PVC 30cm",           unit: "un",  category: "ACESSORIOS_HIDRAULICOS", quantity: { qty: 1 } },
-      { material: "Registro angular 1/2\" x 1/2\"",     unit: "un",  category: "METAIS_SANITARIOS",     quantity: { qty: 1 } },
       { material: "Fita veda-rosca",                    unit: "rolo",category: "ACESSORIOS_HIDRAULICOS", quantity: { formula: "premise:VEDA_ROSCA_POR_CONEXAO", multiplier: 3 } },
-      { material: "Silicone sanitário",                 unit: "tubo",category: "ACESSORIOS_HIDRAULICOS", quantity: { formula: "premise:SILICONE_POR_INSTALACAO" } },
     ],
   },
   {
@@ -59,7 +57,6 @@ export const BATHROOM_FIXTURES: FixtureSpec[] = [
       { material: "Anel de vedação para vaso",              unit: "un",  category: "ACESSORIOS_HIDRAULICOS", quantity: { qty: 1 } },
       { material: "Kit fixação de vaso",                    unit: "kit", category: "ACESSORIOS_HIDRAULICOS", quantity: { qty: 1 }, canBeIncluded: true },
       { material: "Fita veda-rosca",                        unit: "rolo",category: "ACESSORIOS_HIDRAULICOS", quantity: { formula: "premise:VEDA_ROSCA_POR_CONEXAO", multiplier: 3 } },
-      { material: "Silicone sanitário",                     unit: "tubo",category: "ACESSORIOS_HIDRAULICOS", quantity: { formula: "premise:SILICONE_POR_INSTALACAO" } },
     ],
   },
 
@@ -80,15 +77,9 @@ export const BATHROOM_FIXTURES: FixtureSpec[] = [
       { material: "Lavatório suspenso",             unit: "un",  category: "LOUCAS_SANITARIAS",     quantity: { qty: 1 } },
       { material: "Torneira para lavatório",        unit: "un",  category: "METAIS_SANITARIOS",     quantity: { qty: 1 }, onlyIf: (c) => c.hotWater !== true },
       { material: "Misturador monocomando lavatório", unit: "un", category: "METAIS_SANITARIOS",   quantity: { qty: 1 }, onlyIf: (c) => c.hotWater === true },
-      { material: "Válvula de escoamento",          unit: "un",  category: "METAIS_SANITARIOS",     quantity: { qty: 1 } },
-      { material: "Sifão sanfonado",                unit: "un",  category: "ACESSORIOS_HIDRAULICOS", quantity: { qty: 1 } },
       { material: "Engate flexível PVC 30cm",       unit: "un",  category: "ACESSORIOS_HIDRAULICOS", quantity: { qty: 1 }, onlyIf: (c) => c.hotWater !== true },
       { material: "Engate flexível PVC 30cm",       unit: "un",  category: "ACESSORIOS_HIDRAULICOS", quantity: { qty: 2 }, onlyIf: (c) => c.hotWater === true },
-      { material: "Registro angular 1/2\" x 1/2\"", unit: "un",  category: "METAIS_SANITARIOS",     quantity: { qty: 1 }, onlyIf: (c) => c.hotWater !== true },
-      { material: "Registro angular 1/2\" x 1/2\"", unit: "un",  category: "METAIS_SANITARIOS",     quantity: { qty: 2 }, onlyIf: (c) => c.hotWater === true },
-      { material: "Kit fixação de lavatório",       unit: "kit", category: "ACESSORIOS_HIDRAULICOS", quantity: { qty: 1 } },
       { material: "Fita veda-rosca",                unit: "rolo",category: "ACESSORIOS_HIDRAULICOS", quantity: { formula: "premise:VEDA_ROSCA_POR_CONEXAO", multiplier: 4 } },
-      { material: "Silicone sanitário",             unit: "tubo",category: "ACESSORIOS_HIDRAULICOS", quantity: { formula: "premise:SILICONE_POR_INSTALACAO" } },
     ],
   },
   {
@@ -108,15 +99,9 @@ export const BATHROOM_FIXTURES: FixtureSpec[] = [
       { material: "Lavatório com coluna",             unit: "cj",  category: "LOUCAS_SANITARIAS",     quantity: { qty: 1 } },
       { material: "Torneira para lavatório",          unit: "un",  category: "METAIS_SANITARIOS",     quantity: { qty: 1 }, onlyIf: (c) => c.hotWater !== true },
       { material: "Misturador monocomando lavatório", unit: "un",  category: "METAIS_SANITARIOS",     quantity: { qty: 1 }, onlyIf: (c) => c.hotWater === true },
-      { material: "Válvula de escoamento",            unit: "un",  category: "METAIS_SANITARIOS",     quantity: { qty: 1 } },
-      { material: "Sifão sanfonado",                  unit: "un",  category: "ACESSORIOS_HIDRAULICOS", quantity: { qty: 1 } },
       { material: "Engate flexível PVC 30cm",         unit: "un",  category: "ACESSORIOS_HIDRAULICOS", quantity: { qty: 1 }, onlyIf: (c) => c.hotWater !== true },
       { material: "Engate flexível PVC 30cm",         unit: "un",  category: "ACESSORIOS_HIDRAULICOS", quantity: { qty: 2 }, onlyIf: (c) => c.hotWater === true },
-      { material: "Registro angular 1/2\" x 1/2\"",   unit: "un",  category: "METAIS_SANITARIOS",     quantity: { qty: 1 }, onlyIf: (c) => c.hotWater !== true },
-      { material: "Registro angular 1/2\" x 1/2\"",   unit: "un",  category: "METAIS_SANITARIOS",     quantity: { qty: 2 }, onlyIf: (c) => c.hotWater === true },
-      { material: "Kit fixação de lavatório",         unit: "kit", category: "ACESSORIOS_HIDRAULICOS", quantity: { qty: 1 } },
       { material: "Fita veda-rosca",                  unit: "rolo",category: "ACESSORIOS_HIDRAULICOS", quantity: { formula: "premise:VEDA_ROSCA_POR_CONEXAO", multiplier: 4 } },
-      { material: "Silicone sanitário",               unit: "tubo",category: "ACESSORIOS_HIDRAULICOS", quantity: { formula: "premise:SILICONE_POR_INSTALACAO" } },
     ],
   },
 
@@ -208,8 +193,6 @@ export const BATHROOM_FIXTURES: FixtureSpec[] = [
     electricalPoints: [],
     dependencies: [
       { material: "Caixa sifonada 100mm",  unit: "un", category: "ACESSORIOS_HIDRAULICOS", quantity: { qty: 1 } },
-      { material: "Grelha para caixa sifonada", unit: "un", category: "ACESSORIOS_HIDRAULICOS", quantity: { qty: 1 } },
-      { material: "Silicone sanitário",    unit: "tubo", category: "ACESSORIOS_HIDRAULICOS", quantity: { formula: "premise:SILICONE_POR_INSTALACAO" } },
     ],
   },
   {
@@ -222,7 +205,6 @@ export const BATHROOM_FIXTURES: FixtureSpec[] = [
     dependencies: [
       { material: "Ralo sifonado 100mm", unit: "un", category: "ACESSORIOS_HIDRAULICOS", quantity: { qty: 1 } },
       { material: "Grelha 10x10cm",       unit: "un", category: "ACESSORIOS_HIDRAULICOS", quantity: { qty: 1 } },
-      { material: "Silicone sanitário",  unit: "tubo", category: "ACESSORIOS_HIDRAULICOS", quantity: { formula: "premise:SILICONE_POR_INSTALACAO" } },
     ],
   },
   {
@@ -236,7 +218,6 @@ export const BATHROOM_FIXTURES: FixtureSpec[] = [
     dependencies: [
       { material: "Ralo seco 100mm",     unit: "un", category: "ACESSORIOS_HIDRAULICOS", quantity: { qty: 1 } },
       { material: "Grelha 10x10cm",       unit: "un", category: "ACESSORIOS_HIDRAULICOS", quantity: { qty: 1 } },
-      { material: "Silicone sanitário",  unit: "tubo", category: "ACESSORIOS_HIDRAULICOS", quantity: { formula: "premise:SILICONE_POR_INSTALACAO" } },
     ],
   },
   {
@@ -252,7 +233,6 @@ export const BATHROOM_FIXTURES: FixtureSpec[] = [
     electricalPoints: [],
     dependencies: [
       { material: "Ralo linear inox",     unit: "un", category: "ACESSORIOS_HIDRAULICOS", quantity: { qty: 1 } },
-      { material: "Silicone sanitário",  unit: "tubo", category: "ACESSORIOS_HIDRAULICOS", quantity: { formula: "premise:SILICONE_POR_INSTALACAO" } },
     ],
   },
 
@@ -305,7 +285,6 @@ export const BATHROOM_FIXTURES: FixtureSpec[] = [
         formulaLabel: (c) => `${c.width ?? 1} m × ${c.height ?? 1.9} m`,
       },
       { material: "Kit fixação de box",  unit: "kit",  category: "VIDROS_BOX",              quantity: { qty: 1 } },
-      { material: "Silicone sanitário",  unit: "tubo", category: "ACESSORIOS_HIDRAULICOS", quantity: { formula: "premise:SILICONE_POR_INSTALACAO", multiplier: 2 } },
     ],
   },
 
@@ -358,20 +337,13 @@ export const BATHROOM_DOOR_PRESET = {
 
 // Materials generated by a bathroom door (independent of Fixture, keyed by joinery)
 export const BATHROOM_DOOR_DEPENDENCIES: DependencySpec[] = [
-  { material: "Folha de porta interna",                 unit: "un",   category: "ESQUADRIA",              quantity: { qty: 1 } },
   { material: "Batente / marco de porta",               unit: "un",   category: "ESQUADRIA",              quantity: { qty: 1 }, canBeIncluded: true },
   { material: "Kit de alisar (guarnição)",              unit: "kit",  category: "ESQUADRIA",              quantity: { qty: 1 }, canBeIncluded: true },
   { material: "Kit 3 dobradiças",                        unit: "kit",  category: "ESQUADRIA",              quantity: { qty: 1 } },
   { material: "Fechadura banheiro (privacidade)",       unit: "un",   category: "ESQUADRIA",              quantity: { qty: 1 } },
-  // Parafusos/buchas da porta saíram: item de valor irrisório para MCMV, que
-  // o pedreiro traz junto com a ferragem. Não recolocar sem precificar.
-  { material: "Espuma expansiva PU 500ml",              unit: "un",   category: "ESQUADRIA",              quantity: { formula: "premise:ESPUMA_POR_PORTA" } },
-  {
-    material: "Soleira de granito",
-    unit: "m", category: "REVESTIMENTO",
-    quantity: { compute: "joinery.width" },
-    formulaLabel: (c: Record<string, unknown>) => `largura da porta ${c.width ?? 0} m`,
-  },
+  // Parafusos/buchas, espuma expansiva, folha de porta e soleira de granito
+  // saíram por decisão do usuário — lançados manualmente na Etapa 8.
+  // Não recolocar sem precificar.
 ];
 
 // Materials generated by a bathroom window (keyed by joinery, subtype "banheiro").
@@ -413,12 +385,6 @@ const SCREWS_REINFORCED: DependencySpec = {
   unit: "kit", category: "ACESSORIOS_BANHEIRO",
   quantity: { qty: 1 },
 };
-const SILICONE: DependencySpec = {
-  material: "Silicone sanitário",
-  unit: "tubo", category: "ACESSORIOS_HIDRAULICOS",
-  quantity: { formula: "premise:SILICONE_POR_INSTALACAO" },
-};
-
 // A simple "one unit + plain fixation" accessory.
 function simpleAccessory(type: string, label: string, material: string): AccessorySpec {
   return {
@@ -451,7 +417,6 @@ export const BATHROOM_ACCESSORY_SPECS: AccessorySpec[] = [
         formulaLabel: dims,
       },
       { material: "Kit fixação para espelho", unit: "kit", category: "ACESSORIOS_BANHEIRO", quantity: { qty: 1 } },
-      SILICONE,
     ],
   },
   {
@@ -464,7 +429,6 @@ export const BATHROOM_ACCESSORY_SPECS: AccessorySpec[] = [
         formulaLabel: (c) => `largura ${c.width ?? 0} m`,
       },
       SCREWS_REINFORCED,
-      SILICONE,
     ],
   },
   {
@@ -491,7 +455,6 @@ export const BATHROOM_ACCESSORY_SPECS: AccessorySpec[] = [
         quantity: { qty: 1 },
         formulaLabel: dims,
       },
-      SILICONE,
     ],
   },
   {

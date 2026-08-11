@@ -10,6 +10,7 @@
 import { IMPERM_SYSTEMS } from "@/lib/fixture-library/bathroom";
 import { getFixtureSpec, getAccessorySpec, getJoineryDependencies } from "@/lib/fixture-library/registry";
 import type { FixtureQuantity, DependencySpec, MaterialResolver } from "@/lib/fixture-library/types";
+import { argamassaParede } from "@/lib/room-classification";
 
 // ── Inputs to the engine ───────────────────────────────────────────────────
 
@@ -524,7 +525,8 @@ function expandWallFinish(
 
   const items: FixtureMaterialItem[] = [
     mk("Revestimento Cerâmico (parede)", "m²", "REVESTIMENTO", Math.ceil(area * LOSS_TILE), `${parts.join(" + ")} = ${area.toFixed(2)} m² × 1,10`),
-    mk("Argamassa AC-I (assentamento azulejo)", "sc", "REVESTIMENTO", Math.ceil(area * 0.45), `${area.toFixed(2)} m² × 0,45 sc/m²`),
+    // Banheiro é área molhada: AC-III. Cozinha e demais: AC-I.
+    mk(argamassaParede(room.roomType, room.name), "sc", "REVESTIMENTO", Math.ceil(area * 0.45), `${area.toFixed(2)} m² × 0,45 sc/m²`),
     mk("Rejunte", "kg", "REVESTIMENTO", Math.ceil(area * 0.4 * LOSS_ARG), `${area.toFixed(2)} m² × 0,40 kg/m² × 1,06`),
   ];
   if (espacador > 0) {

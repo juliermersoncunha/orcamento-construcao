@@ -83,7 +83,7 @@ async function main() {
     { name: "Piso Cerâmico", unit: "m²", category: "REVESTIMENTO", price: 45.00 },
     { name: "Argamassa AC-II (assentamento piso)", unit: "sc", category: "REVESTIMENTO", price: 28.00 },
     { name: "Piso Porcelanato", unit: "m²", category: "REVESTIMENTO", price: 95.00 },
-    { name: "Argamassa AC-III (assentamento porcelanato)", unit: "sc", category: "REVESTIMENTO", price: 32.00 },
+    { name: "Argamassa AC-III", unit: "sc", category: "REVESTIMENTO", price: 32.00 },
     { name: "Rejunte", unit: "kg", category: "REVESTIMENTO", price: 12.00 },
     { name: "Revestimento Cerâmico (parede)", unit: "m²", category: "REVESTIMENTO", price: 42.00 },
     { name: "Argamassa AC-I (assentamento azulejo)", unit: "sc", category: "REVESTIMENTO", price: 25.00 },

@@ -1,5 +1,6 @@
 export type RoomInput = {
   name: string;
+  roomType?: string | null;
   width: number;
   length: number;
   height: number;
@@ -60,6 +61,11 @@ export type RoofingInput = {
 
 import { ELECTRICAL_FINISH_DEFAULTS, outletMaterialsPerPoint, switchMaterialsPerPoint, lightPointMaterialsPerPoint } from "./electrical-finishes";
 import type { ElectricalFinishes } from "./electrical-finishes";
+import {
+  isBathroomRoom,
+  ARGAMASSA_PAREDE_BANHEIRO,
+  ARGAMASSA_PAREDE_GERAL,
+} from "../room-classification";
 
 export type FinishesInput = {
   doors: number;
@@ -400,7 +406,10 @@ function calcRevestimentos(rooms: RoomInput[]): MaterialResult[] {
   const results: MaterialResult[] = [];
   let ceramicFloor = 0;
   let porcelainFloor = 0;
-  let wallTileArea = 0;
+  // Azulejo de parede separado por ambiente: banheiro usa AC-III (área
+  // molhada), os demais usam AC-I. O revestimento e o rejunte são os mesmos.
+  let bathWallTile = 0;
+  let otherWallTile = 0;
 
   for (const room of rooms) {
     const floorArea = room.width * room.length;
@@ -412,9 +421,13 @@ function calcRevestimentos(rooms: RoomInput[]): MaterialResult[] {
 
     const perimeter = 2 * (room.width + room.length);
     if (room.wallTile && !room.skipWallTile) {
-      wallTileArea += perimeter * (room.wallTileHeight ?? 1.5);
+      const a = perimeter * (room.wallTileHeight ?? 1.5);
+      if (isBathroomRoom(room.roomType, room.name)) bathWallTile += a;
+      else otherWallTile += a;
     }
   }
+
+  const wallTileArea = bathWallTile + otherWallTile;
 
   const LOSS_FLOOR = 1.10;
   const LOSS_TILE = 1.10;
@@ -429,13 +442,18 @@ function calcRevestimentos(rooms: RoomInput[]): MaterialResult[] {
   if (porcelainFloor > 0) {
     const area = Math.ceil(porcelainFloor * LOSS_FLOOR);
     results.push({ name: "Piso Porcelanato", unit: "m²", quantity: area, phase: "REVESTIMENTOS", category: "REVESTIMENTO" });
-    results.push({ name: "Argamassa AC-III (assentamento porcelanato)", unit: "sc", quantity: Math.ceil(porcelainFloor * 0.4 * LOSS_ARG), phase: "REVESTIMENTOS", category: "REVESTIMENTO" });
+    results.push({ name: "Argamassa AC-III", unit: "sc", quantity: Math.ceil(porcelainFloor * 0.4 * LOSS_ARG), phase: "REVESTIMENTOS", category: "REVESTIMENTO" });
     results.push({ name: "Rejunte", unit: "kg", quantity: Math.ceil(porcelainFloor * 0.4 * LOSS_ARG), phase: "REVESTIMENTOS", category: "REVESTIMENTO" });
   }
   if (wallTileArea > 0) {
     const area = Math.ceil(wallTileArea * LOSS_TILE);
     results.push({ name: "Revestimento Cerâmico (parede)", unit: "m²", quantity: area, phase: "REVESTIMENTOS", category: "REVESTIMENTO" });
-    results.push({ name: "Argamassa AC-I (assentamento azulejo)", unit: "sc", quantity: Math.ceil(wallTileArea * 0.45), phase: "REVESTIMENTOS", category: "REVESTIMENTO" });
+    if (bathWallTile > 0) {
+      results.push({ name: ARGAMASSA_PAREDE_BANHEIRO, unit: "sc", quantity: Math.ceil(bathWallTile * 0.45), phase: "REVESTIMENTOS", category: "REVESTIMENTO" });
+    }
+    if (otherWallTile > 0) {
+      results.push({ name: ARGAMASSA_PAREDE_GERAL, unit: "sc", quantity: Math.ceil(otherWallTile * 0.45), phase: "REVESTIMENTOS", category: "REVESTIMENTO" });
+    }
     results.push({ name: "Rejunte", unit: "kg", quantity: Math.ceil(wallTileArea * 0.4 * LOSS_ARG), phase: "REVESTIMENTOS", category: "REVESTIMENTO" });
   }
 

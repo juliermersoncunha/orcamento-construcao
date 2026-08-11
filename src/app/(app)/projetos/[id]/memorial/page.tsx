@@ -184,6 +184,7 @@ export default async function MemorialPage({
     const hp = r.hydraulicPoints[0];
     return {
       name: r.name,
+      roomType: r.roomType,
       width: r.width,
       length: r.length,
       height: r.height,

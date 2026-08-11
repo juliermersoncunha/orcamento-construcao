@@ -74,7 +74,7 @@ async function main() {
     ["Piso Cerâmico", "m²", "REVESTIMENTO", 45.00],
     ["Argamassa AC-II (assentamento piso)", "sc", "REVESTIMENTO", 28.00],
     ["Piso Porcelanato", "m²", "REVESTIMENTO", 95.00],
-    ["Argamassa AC-III (assentamento porcelanato)", "sc", "REVESTIMENTO", 32.00],
+    ["Argamassa AC-III", "sc", "REVESTIMENTO", 32.00],
     ["Rejunte", "kg", "REVESTIMENTO", 12.00],
     ["Revestimento Cerâmico (parede)", "m²", "REVESTIMENTO", 42.00],
     ["Argamassa AC-I (assentamento azulejo)", "sc", "REVESTIMENTO", 25.00],

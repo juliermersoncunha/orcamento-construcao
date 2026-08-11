@@ -4,6 +4,7 @@ import {
   outletMaterialsPerPoint, switchMaterialsPerPoint, lightPointMaterialsPerPoint,
 } from "./electrical-finishes";
 import type { ElectricalFinishes } from "./electrical-finishes";
+import { argamassaParede } from "../room-classification";
 
 export type RoomMaterialItem = {
   name: string;
@@ -29,7 +30,7 @@ export function calculateRoomMaterials(
   // ── Revestimento de piso ──
   if (room.floorType === "porcelanato") {
     results.push({ name: "Piso Porcelanato", unit: "m²", quantity: Math.ceil(floorArea * 1.10), category: "Revestimento", formula: `${fmt(floorArea)} m² × 1,10 perda` });
-    results.push({ name: "Argamassa AC-III (assentamento porcelanato)", unit: "sc", quantity: Math.ceil(floorArea * 0.4 * 1.06), category: "Revestimento", formula: `${fmt(floorArea)} m² × 0,40 sc/m² × 1,06` });
+    results.push({ name: "Argamassa AC-III", unit: "sc", quantity: Math.ceil(floorArea * 0.4 * 1.06), category: "Revestimento", formula: `${fmt(floorArea)} m² × 0,40 sc/m² × 1,06` });
     results.push({ name: "Rejunte", unit: "kg", quantity: Math.ceil(floorArea * 0.4 * 1.06), category: "Revestimento", formula: `${fmt(floorArea)} m² × 0,40 kg/m² × 1,06` });
   } else if (room.floorType !== "madeira" && room.floorType !== "cimento") {
     results.push({ name: "Piso Cerâmico", unit: "m²", quantity: Math.ceil(floorArea * 1.10), category: "Revestimento", formula: `${fmt(floorArea)} m² × 1,10 perda` });
@@ -42,7 +43,8 @@ export function calculateRoomMaterials(
     const h = room.wallTileHeight ?? 1.5;
     const wallTileArea = perimeter * h;
     results.push({ name: "Revestimento Cerâmico (parede)", unit: "m²", quantity: Math.ceil(wallTileArea * 1.10), category: "Revestimento", formula: `${fmt(perimeter)} m × ${fmt(h)} m × 1,10 perda` });
-    results.push({ name: "Argamassa AC-I (assentamento azulejo)", unit: "sc", quantity: Math.ceil(wallTileArea * 0.45), category: "Revestimento", formula: `${fmt(wallTileArea)} m² × 0,45 sc/m²` });
+    // Banheiro é área molhada: AC-III. Demais ambientes: AC-I.
+    results.push({ name: argamassaParede(room.roomType, room.name), unit: "sc", quantity: Math.ceil(wallTileArea * 0.45), category: "Revestimento", formula: `${fmt(wallTileArea)} m² × 0,45 sc/m²` });
     results.push({ name: "Rejunte", unit: "kg", quantity: Math.ceil(wallTileArea * 0.4 * 1.06), category: "Revestimento", formula: `${fmt(wallTileArea)} m² × 0,40 kg/m² × 1,06` });
   }
 

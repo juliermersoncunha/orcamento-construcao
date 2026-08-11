@@ -329,6 +329,7 @@ export async function calculateAndSaveBudget(projectId: string) {
     const hasCustomWallTile = room.wallFinishes.some((w) => w.hasTile);
     return {
       name: room.name,
+      roomType: room.roomType,
       width: room.width,
       length: room.length,
       height: room.height,

@@ -12,6 +12,8 @@ import { validateBudgetAgainstCaixa } from "@/lib/caixa-validation";
 import { CaixaValidationPanel } from "@/components/caixa-validation-panel";
 import { validateProject } from "@/lib/calculations/project-validation";
 import { ProjectValidationPanel } from "@/components/project-validation-panel";
+import { MissingMaterialsPanel } from "@/components/missing-materials-panel";
+import { MATERIAL_CATEGORIES } from "@/lib/material-categories";
 
 const PHASE_LABELS: Record<string, string> = {
   TERRAPLENAGEM: "Terraplenagem",
@@ -128,6 +130,19 @@ export default async function OrcamentoPage({
   const caixaValidation = totalMat > 0
     ? validateBudgetAgainstCaixa(Object.fromEntries(phaseMat), totalMat)
     : [];
+
+  // Checklist de revisão: o que está ativo no catálogo e não entrou aqui.
+  // Com tubos, cabos, madeiramento e esquadrias informados manualmente, é o
+  // lugar onde um esquecimento aparece.
+  const usedMaterialIds = new Set(project.budgetItems.map((i) => i.materialId));
+  const missingMaterials = (
+    await prisma.material.findMany({
+      where: { active: true, id: { notIn: [...usedMaterialIds] } },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, unit: true, currentPrice: true, category: true },
+    })
+  ).map((m) => ({ ...m, category: m.category as string }));
+  const categoryLabels = Object.fromEntries(MATERIAL_CATEGORIES.map((c) => [c.value, c.label]));
 
   // Consistência do projeto — equipamentos vs. pontos declarados vs. catálogo.
   // Recalculado a cada render para refletir edições feitas depois de gerar.
@@ -300,6 +315,11 @@ export default async function OrcamentoPage({
           <CaixaValidationPanel results={caixaValidation} totalMat={totalMat} />
         </div>
       )}
+
+      {/* Checklist de revisão — cadastrado mas fora deste orçamento */}
+      <div className="mb-6">
+        <MissingMaterialsPanel materials={missingMaterials} categoryLabels={categoryLabels} />
+      </div>
 
       {/* Items by phase */}
       <div className="flex flex-col gap-6">

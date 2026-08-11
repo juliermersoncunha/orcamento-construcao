@@ -227,6 +227,8 @@ export default async function MemorialPage({
         platibandaAltura: project.structure.platibandaAltura,
         lajeType: project.structure.lajeType,
         formasM2: project.structure.formasM2,
+        radierEspessura: project.structure.radierEspessura,
+        radierArea: project.structure.radierArea,
       }
     : {
         foundationType: "sapata_corrida",
@@ -255,6 +257,8 @@ export default async function MemorialPage({
         platibandaAltura: 0,
         lajeType: "forro",
         formasM2: 0,
+        radierEspessura: 0.10,
+        radierArea: 0,
       };
 
   const roofingInput: RoofingInput = project.roofing

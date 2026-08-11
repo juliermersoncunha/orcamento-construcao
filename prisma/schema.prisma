@@ -273,6 +273,10 @@ model ProjectStructure {
   // Fôrmas de madeira — quantidade informada manualmente (0 = calcula automático)
   formasM2       Float   @default(0)
 
+  // Radier — espessura (m) e área (m²); concreto pelo traço 1:2:3
+  radierEspessura Float  @default(0.10)
+  radierArea      Float  @default(0)
+
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 }
 

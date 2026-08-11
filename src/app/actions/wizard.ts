@@ -113,6 +113,8 @@ export async function saveStep3Structure(projectId: string, formData: FormData) 
     platibandaAltura: f("platibandaAltura"),
     lajeType: (formData.get("lajeType") as string) || "forro",
     formasM2: f("formasM2"),
+    radierEspessura: f("radierEspessura", 0.10),
+    radierArea: f("radierArea"),
   };
 
   await prisma.projectStructure.upsert({
@@ -369,6 +371,8 @@ export async function calculateAndSaveBudget(projectId: string) {
       platibandaAltura: project.structure?.platibandaAltura ?? 0,
       lajeType: project.structure?.lajeType ?? "forro",
       formasM2: project.structure?.formasM2 ?? 0,
+      radierEspessura: project.structure?.radierEspessura ?? 0.10,
+      radierArea: project.structure?.radierArea ?? 0,
     },
     roofing: {
       roofType: project.roofing?.roofType ?? "duas_aguas",

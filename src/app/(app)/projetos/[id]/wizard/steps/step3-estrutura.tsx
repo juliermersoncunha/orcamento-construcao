@@ -13,6 +13,7 @@ export function Step3Estrutura({ project }: { project: any }) {
   const s = project.structure;
   const [hasPlatibanda, setHasPlatibanda] = useState<boolean>(s?.hasPlatibanda ?? false);
   const [hasLaje, setHasLaje] = useState<boolean>(s?.hasLaje ?? false);
+  const [foundationType, setFoundationType] = useState<string>(s?.foundationType ?? "sapata_corrida");
 
   function handleSubmit(formData: FormData) {
     startTransition(() => saveStep3Structure(project.id, formData));
@@ -36,7 +37,8 @@ export function Step3Estrutura({ project }: { project: any }) {
               id="foundationType"
               name="foundationType"
               label="Tipo de fundação"
-              defaultValue={s?.foundationType ?? "sapata_corrida"}
+              value={foundationType}
+              onChange={(e) => setFoundationType(e.target.value)}
               options={[
                 { value: "radier", label: "Radier" },
                 { value: "sapata_corrida", label: "Sapata Corrida" },
@@ -104,6 +106,36 @@ export function Step3Estrutura({ project }: { project: any }) {
               />
             </div>
           </div>
+
+          {/* Radier — só quando a fundação é radier */}
+          {foundationType === "radier" && (
+            <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-4">
+              <p className="text-sm font-semibold text-zinc-700 mb-1">Radier</p>
+              <p className="text-xs text-zinc-500 mb-3">
+                Concreto no traço 1:2:3 (mesma proporção da laje). Volume = área × espessura.
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <Input
+                  id="radierArea"
+                  name="radierArea"
+                  type="number"
+                  label="Área do radier (m²)"
+                  defaultValue={s?.radierArea ?? 0}
+                  min="0"
+                  step="0.1"
+                />
+                <Input
+                  id="radierEspessura"
+                  name="radierEspessura"
+                  type="number"
+                  label="Espessura (m)"
+                  defaultValue={s?.radierEspessura ?? 0.10}
+                  min="0"
+                  step="0.01"
+                />
+              </div>
+            </div>
+          )}
 
           {/* Alvenaria — perímetros manuais */}
           <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-4">
@@ -177,7 +209,8 @@ export function Step3Estrutura({ project }: { project: any }) {
             )}
           </div>
 
-          {/* Sapatas */}
+          {/* Sapatas — ocultas quando a fundação é radier */}
+          {foundationType !== "radier" && (
           <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-4">
             <p className="text-sm font-semibold text-zinc-700 mb-3">Sapatas</p>
             <div className="grid grid-cols-4 gap-3">
@@ -219,6 +252,7 @@ export function Step3Estrutura({ project }: { project: any }) {
               />
             </div>
           </div>
+          )}
 
           {/* Pilares */}
           <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-4">
@@ -330,7 +364,7 @@ export function Step3Estrutura({ project }: { project: any }) {
                 id="formasM2"
                 name="formasM2"
                 type="number"
-                label="Fôrmas de madeira — total (m²) · 0 = calcular automático"
+                label="Fôrmas de madeira — total (m²) · entrada manual"
                 defaultValue={s?.formasM2 ?? 0}
                 min="0"
                 step="0.1"

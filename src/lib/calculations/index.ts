@@ -44,6 +44,8 @@ export type StructureInput = {
   platibandaAltura: number;
   lajeType: string;   // "forro" | "piso"
   formasM2: number;   // fôrmas de madeira manual; 0 = calcula automático
+  radierEspessura: number;
+  radierArea: number;
 };
 
 export type RoofingInput = {
@@ -140,21 +142,25 @@ function calcTerraplenagem(structure: StructureInput): MaterialResult[] {
   return results;
 }
 
-// ── Fundação (sapatas) ────────────────────────────────────────────────────
+// ── Fundação (radier ou sapatas) ──────────────────────────────────────────
 function calcFundacao(structure: StructureInput): MaterialResult[] {
+  // Radier: laje de fundação. Volume = área × espessura, concreto no traço 1:2:3
+  // (mesmo rendimento da laje: 0,140 m³/saco).
+  if (structure.foundationType === "radier") {
+    const volRadier = structure.radierArea * structure.radierEspessura;
+    if (volRadier <= 0) return [];
+    return concretoPorRendimento(volRadier, "FUNDACAO", "FUNDACAO");
+  }
+
   const vol = structure.sapataQtd * structure.sapataLargura * structure.sapataCompr * structure.sapataAltura;
   if (vol <= 0) return [];
 
-  const results: MaterialResult[] = [
+  // Fôrmas de madeira são 100% manuais (calcFormasManual) — aqui só sai concreto
+  // e armação da sapata.
+  return [
     ...concretoTraco123(vol, "FUNDACAO", "FUNDACAO"),
     { name: "Armação de Sapata", unit: "un", quantity: structure.sapataQtd, phase: "FUNDACAO", category: "FUNDACAO" },
   ];
-  // Fôrmas entram manualmente (uma linha única) quando formasM2 > 0.
-  if (structure.formasM2 <= 0) {
-    results.push({ name: "Fôrmas de Madeira (compensado 18mm)", unit: "m²", quantity: Math.ceil(vol * 10), phase: "FUNDACAO", category: "FUNDACAO" });
-  }
-
-  return results;
 }
 
 // ── Estrutura (pilares + vigas) ───────────────────────────────────────────
@@ -174,9 +180,7 @@ function calcEstrutura(structure: StructureInput): MaterialResult[] {
   if (structure.vigaMetros > 0) {
     results.push({ name: "Armação de Viga", unit: "m", quantity: round1(structure.vigaMetros), phase: "ESTRUTURA_ALVENARIA", category: "ESTRUTURA" });
   }
-  if (structure.formasM2 <= 0) {
-    results.push({ name: "Fôrmas de Madeira (compensado 18mm)", unit: "m²", quantity: Math.ceil(volTotal * 10), phase: "ESTRUTURA_ALVENARIA", category: "ESTRUTURA" });
-  }
+  // Fôrmas de madeira são 100% manuais (calcFormasManual).
 
   return results;
 }
@@ -258,13 +262,8 @@ function calcEscada(structure: StructureInput): MaterialResult[] {
 
   const lances = structure.floors - 1;
   const vol = 2 * lances;
-  const results: MaterialResult[] = [
-    ...concretoTraco123(vol, "ESCADA", "ESTRUTURA"),
-  ];
-  if (structure.formasM2 <= 0) {
-    results.push({ name: "Fôrmas de Madeira (compensado 18mm)", unit: "m²", quantity: 15 * lances, phase: "ESCADA", category: "ESTRUTURA" });
-  }
-  return results;
+  // Fôrmas de madeira são 100% manuais (calcFormasManual).
+  return concretoTraco123(vol, "ESCADA", "ESTRUTURA");
 }
 
 // ── Fôrmas de madeira (manual) ─────────────────────────────────────────────
@@ -293,7 +292,7 @@ const FIBROCIMENTO_COMPRIMENTOS: Record<string, number> = {
 const FIBROCIMENTO_TAMANHO_PADRAO = "2,44 x 1,1";
 
 // Consumo em peças por m² de telhado, e o nome exato do material no catálogo.
-function tileConsumption(roofing: RoofingInput): { name: string; perM2: number } {
+export function tileConsumption(roofing: RoofingInput): { name: string; perM2: number } {
   if (roofing.tileType === "fibrocimento") {
     const size = roofing.tileSize && FIBROCIMENTO_COMPRIMENTOS[roofing.tileSize]
       ? roofing.tileSize
@@ -327,17 +326,23 @@ function calcCobertura(rooms: RoomInput[], roofing: RoofingInput): MaterialResul
   const { name: tileName, perM2 } = tileConsumption(roofing);
 
   const tiles = Math.ceil(roofArea * perM2 * LOSS);
-  // Madeiramento (caibro/ripa) pode ser informado manualmente; 0 = automático.
-  const caibros = (roofing.caibroM ?? 0) > 0 ? Math.ceil(roofing.caibroM as number) : Math.ceil(roofArea * 3.5);
-  const ripas = (roofing.ripaM ?? 0) > 0 ? Math.ceil(roofing.ripaM as number) : Math.ceil(roofArea * 6);
   const ridgePieces = Math.ceil(roofArea * 0.15);
 
-  return [
+  const results: MaterialResult[] = [
     { name: tileName, unit: "un", quantity: tiles, phase: "COBERTURA", category: "COBERTURA" },
-    { name: "Caibro 5x7cm (pinus)", unit: "m", quantity: caibros, phase: "COBERTURA", category: "COBERTURA" },
-    { name: "Ripa 2,5x5cm (pinus)", unit: "m", quantity: ripas, phase: "COBERTURA", category: "COBERTURA" },
-    { name: "Cumeeira", unit: "un", quantity: ridgePieces, phase: "COBERTURA", category: "COBERTURA" },
   ];
+  // Madeiramento é 100% manual — só entra o que o usuário informar na Etapa 4.
+  const caibros = Math.ceil(roofing.caibroM ?? 0);
+  const ripas = Math.ceil(roofing.ripaM ?? 0);
+  if (caibros > 0) {
+    results.push({ name: "Caibro 5x7cm (pinus)", unit: "m", quantity: caibros, phase: "COBERTURA", category: "COBERTURA" });
+  }
+  if (ripas > 0) {
+    results.push({ name: "Ripa 2,5x5cm (pinus)", unit: "m", quantity: ripas, phase: "COBERTURA", category: "COBERTURA" });
+  }
+  results.push({ name: "Cumeeira", unit: "un", quantity: ridgePieces, phase: "COBERTURA", category: "COBERTURA" });
+
+  return results;
 }
 
 // ── Instalações Elétricas ──────────────────────────────────────────────────

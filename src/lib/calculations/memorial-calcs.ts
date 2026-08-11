@@ -1,4 +1,5 @@
 import type { RoomInput, StructureInput, RoofingInput, FinishesInput } from "./index";
+import { tileConsumption } from "./index";
 
 export type CalcExplanation = {
   materialName: string;
@@ -111,8 +112,20 @@ export function generateExplanations(
     if (items.length > 0) result["TERRAPLENAGEM"] = items;
   }
 
-  // ── Fundação (sapatas) ──
-  {
+  // ── Fundação (radier ou sapatas) ──
+  if (structure.foundationType === "radier") {
+    const volRadier = structure.radierArea * structure.radierEspessura;
+    if (volRadier > 0) {
+      result["FUNDACAO"] = [
+        {
+          materialName: "Volume de concreto – radier",
+          formula: `Área (${fmt(structure.radierArea)} m²) × espessura (${fmt(structure.radierEspessura)} m)`,
+          result: `${fmt(volRadier)} m³`,
+        },
+        ...tracoRendimentoExplanations(volRadier, "radier", "FUNDACAO"),
+      ];
+    }
+  } else {
     const vol = structure.sapataQtd * structure.sapataLargura * structure.sapataCompr * structure.sapataAltura;
     if (vol > 0) {
       result["FUNDACAO"] = [
@@ -127,11 +140,6 @@ export function generateExplanations(
           formula: `${structure.sapataQtd} sapatas — peça fabricada`,
           result: `${structure.sapataQtd} un`,
         },
-        ...(structure.formasM2 > 0 ? [] : [{
-          materialName: "Fôrmas de Madeira (compensado 18mm)",
-          formula: `Volume concreto (${fmt(vol)} m³) × 10 m²/m³`,
-          result: `${fmt(vol * 10)} → ${Math.ceil(vol * 10)} m²`,
-        }]),
       ];
     }
   }
@@ -184,22 +192,20 @@ export function generateExplanations(
           result: `${fmt(structure.vigaMetros)} m`,
         });
       }
-      if (structure.formasM2 > 0) {
-        explanations.push({
-          materialName: "Fôrmas de Madeira (compensado 18mm)",
-          formula: `Valor informado manualmente`,
-          result: `${Math.ceil(structure.formasM2)} m²`,
-        });
-      } else {
-        explanations.push({
-          materialName: "Fôrmas de Madeira (compensado 18mm)",
-          formula: `Volume concreto (${fmt(volTotal)} m³) × 10 m²/m³`,
-          result: `${fmt(volTotal * 10)} → ${Math.ceil(volTotal * 10)} m²`,
-        });
-      }
-
       result["ESTRUTURA_ALVENARIA_ESTRUTURA"] = explanations;
     }
+  }
+
+  // ── Fôrmas de madeira (manual) ──
+  if (structure.formasM2 > 0) {
+    result["ESTRUTURA_ALVENARIA_ESTRUTURA"] = [
+      ...(result["ESTRUTURA_ALVENARIA_ESTRUTURA"] ?? []),
+      {
+        materialName: "Fôrmas de Madeira (compensado 18mm)",
+        formula: `Valor informado manualmente`,
+        result: `${Math.ceil(structure.formasM2)} m²`,
+      },
+    ];
   }
 
   // ── Alvenaria ──
@@ -313,11 +319,6 @@ export function generateExplanations(
         result: `${fmt(vol)} m³`,
       },
       ...tracoExplanations(vol, "escada", "ESCADA"),
-      ...(structure.formasM2 > 0 ? [] : [{
-        materialName: "Fôrmas de Madeira (escada)",
-        formula: `${lances} lance(s) × 15 m²/lance`,
-        result: `${15 * lances} m²`,
-      }]),
     ];
   }
 
@@ -325,14 +326,7 @@ export function generateExplanations(
   if (roofing.hasRoof && roofing.roofType !== "laje_impermeabilizada") {
     const inclRad = toRadians(roofing.inclination);
     const roofArea = round1((area / Math.cos(inclRad)) * 1.15);
-    const tilesCoverage =
-      roofing.tileType === "ceramica" ? 25
-      : roofing.tileType === "fibrocimento" ? 10
-      : 8;
-    const tileName =
-      roofing.tileType === "ceramica" ? "Telha Cerâmica"
-      : roofing.tileType === "fibrocimento" ? "Telha de Fibrocimento"
-      : "Telha Metálica";
+    const { name: tileName, perM2 } = tileConsumption(roofing);
 
     result["COBERTURA"] = [
       {
@@ -342,31 +336,23 @@ export function generateExplanations(
       },
       {
         materialName: tileName,
-        formula: `Telhado (${fmt(roofArea)} m²) × ${tilesCoverage} un/m² × 1,10 perda`,
-        result: `${fmt(roofArea * tilesCoverage * 1.1)} → ${Math.ceil(roofArea * tilesCoverage * 1.1)} un`,
+        formula: `Telhado (${fmt(roofArea)} m²) × ${perM2.toLocaleString("pt-BR", { maximumFractionDigits: 3 })} un/m² × 1,10 perda`,
+        result: `${fmt(roofArea * perM2 * 1.1)} → ${Math.ceil(roofArea * perM2 * 1.1)} un`,
       },
-      (roofing.caibroM ?? 0) > 0
-        ? {
+      ...((roofing.caibroM ?? 0) > 0
+        ? [{
             materialName: "Caibro 5x7cm (pinus)",
-            formula: `Valor informado manualmente`,
+            formula: `Valor informado manualmente (madeiramento)`,
             result: `${Math.ceil(roofing.caibroM as number)} m`,
-          }
-        : {
-            materialName: "Caibro 5x7cm (pinus)",
-            formula: `Telhado (${fmt(roofArea)} m²) × 3,5 m/m²`,
-            result: `${fmt(roofArea * 3.5)} → ${Math.ceil(roofArea * 3.5)} m`,
-          },
-      (roofing.ripaM ?? 0) > 0
-        ? {
+          }]
+        : []),
+      ...((roofing.ripaM ?? 0) > 0
+        ? [{
             materialName: "Ripa 2,5x5cm (pinus)",
-            formula: `Valor informado manualmente`,
+            formula: `Valor informado manualmente (madeiramento)`,
             result: `${Math.ceil(roofing.ripaM as number)} m`,
-          }
-        : {
-            materialName: "Ripa 2,5x5cm (pinus)",
-            formula: `Telhado (${fmt(roofArea)} m²) × 6 m/m²`,
-            result: `${fmt(roofArea * 6)} → ${Math.ceil(roofArea * 6)} m`,
-          },
+          }]
+        : []),
       {
         materialName: "Cumeeira",
         formula: `Telhado (${fmt(roofArea)} m²) × 0,15 un/m²`,

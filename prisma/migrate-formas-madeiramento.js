@@ -21,9 +21,11 @@ async function main() {
 
   await client.query(`
     ALTER TABLE "ProjectStructure"
-      ADD COLUMN IF NOT EXISTS "formasM2" DOUBLE PRECISION NOT NULL DEFAULT 0
+      ADD COLUMN IF NOT EXISTS "formasM2"        DOUBLE PRECISION NOT NULL DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS "radierEspessura" DOUBLE PRECISION NOT NULL DEFAULT 0.10,
+      ADD COLUMN IF NOT EXISTS "radierArea"      DOUBLE PRECISION NOT NULL DEFAULT 0
   `);
-  console.log(`  ProjectStructure += "formasM2"`);
+  console.log(`  ProjectStructure += "formasM2", "radierEspessura", "radierArea"`);
 
   await client.query(`
     ALTER TABLE "ProjectRoofing"
@@ -34,10 +36,10 @@ async function main() {
 
   const { rows } = await client.query(`
     SELECT table_name, column_name FROM information_schema.columns
-     WHERE (table_name = 'ProjectStructure' AND column_name = 'formasM2')
+     WHERE (table_name = 'ProjectStructure' AND column_name IN ('formasM2','radierEspessura','radierArea'))
         OR (table_name = 'ProjectRoofing' AND column_name IN ('caibroM','ripaM'))
   `);
-  console.log("  verify:", rows.length === 3 ? "OK" : `only ${rows.length}/3 found`);
+  console.log("  verify:", rows.length === 5 ? "OK" : `only ${rows.length}/5 found`);
 
   await client.end();
   console.log("Done.");

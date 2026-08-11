@@ -98,12 +98,12 @@ const MATERIALS = [
   { name: "Kit de alisar (guarnição)",                unit: "kit", category: "ESQUADRIA" },
   { name: "Kit 3 dobradiças",                          unit: "kit", category: "ESQUADRIA" },
   { name: "Fechadura banheiro (privacidade)",         unit: "un",  category: "ESQUADRIA" },
-  { name: "Kit parafusos e buchas para porta",       unit: "kit", category: "ESQUADRIA" },
+  // "Kit parafusos e buchas para porta" removido — saiu da biblioteca do banheiro.
   { name: "Espuma expansiva PU 500ml",                unit: "un",  category: "ESQUADRIA" },
   // Esquadria — janela do banheiro
   { name: "Janela de alumínio (banheiro)",            unit: "un",  category: "ESQUADRIA" },
   { name: "Peitoril de granito",                      unit: "m",   category: "ESQUADRIA" },
-  { name: "Kit fixação de janela",                    unit: "kit", category: "ESQUADRIA" },
+  // "Kit fixação de janela" removido — saiu da biblioteca do banheiro.
   { name: "Selante PU 400ml",                         unit: "un",  category: "ESQUADRIA" },
   { name: "Tela mosquiteira",                         unit: "m²",  category: "ESQUADRIA" },
   // Revestimento — acabamentos do banheiro

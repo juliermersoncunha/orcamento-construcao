@@ -363,7 +363,8 @@ export const BATHROOM_DOOR_DEPENDENCIES: DependencySpec[] = [
   { material: "Kit de alisar (guarnição)",              unit: "kit",  category: "ESQUADRIA",              quantity: { qty: 1 }, canBeIncluded: true },
   { material: "Kit 3 dobradiças",                        unit: "kit",  category: "ESQUADRIA",              quantity: { qty: 1 } },
   { material: "Fechadura banheiro (privacidade)",       unit: "un",   category: "ESQUADRIA",              quantity: { qty: 1 } },
-  { material: "Kit parafusos e buchas para porta",     unit: "kit",  category: "ESQUADRIA",              quantity: { qty: 1 } },
+  // Parafusos/buchas da porta saíram: item de valor irrisório para MCMV, que
+  // o pedreiro traz junto com a ferragem. Não recolocar sem precificar.
   { material: "Espuma expansiva PU 500ml",              unit: "un",   category: "ESQUADRIA",              quantity: { formula: "premise:ESPUMA_POR_PORTA" } },
   {
     material: "Soleira de granito",
@@ -384,7 +385,8 @@ export const BATHROOM_WINDOW_DEPENDENCIES: DependencySpec[] = [
     quantity: { compute: "window.width" },
     formulaLabel: (c: Record<string, unknown>) => `largura ${c.width ?? 0} m`,
   },
-  { material: "Kit fixação de janela",         unit: "kit", category: "ESQUADRIA", quantity: { qty: 1 } },
+  // Kit de fixação da janela saiu pelo mesmo motivo do kit de parafusos da
+  // porta — valor irrisório, vem junto com a esquadria.
   { material: "Selante PU 400ml",              unit: "un",  category: "ESQUADRIA", quantity: { formula: "premise:SELANTE_POR_JANELA" } },
   {
     material: "Tela mosquiteira",

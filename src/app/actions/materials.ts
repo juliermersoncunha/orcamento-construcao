@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { MaterialCategory } from "@prisma/client";
+import { MATERIAL_CATEGORY_VALUES } from "@/lib/material-categories";
 
 async function requireAdmin() {
   const session = await getSession();
@@ -13,14 +14,12 @@ async function requireAdmin() {
   return session;
 }
 
-// Must stay in sync with CATEGORIES in material-form.tsx and the MaterialCategory enum.
 const MaterialSchema = z.object({
   name: z.string().min(2, { error: "Nome obrigatório." }).trim(),
   unit: z.string().min(1, { error: "Unidade obrigatória." }).trim(),
-  category: z.enum([
-    "TERRAPLENAGEM","FUNDACAO","ESTRUTURA","ALVENARIA","LAJE","COBERTURA",
-    "ELETRICA","HIDRAULICA","REVESTIMENTO","PINTURA","ESQUADRIA","ACABAMENTO","OUTROS",
-  ]),
+  // Vem de material-categories.ts, a mesma lista que alimenta o <select> —
+  // assim o formulário nunca oferece uma categoria que o servidor rejeita.
+  category: z.enum(MATERIAL_CATEGORY_VALUES),
   currentPrice: z.coerce.number().min(0, { error: "Preço não pode ser negativo." }),
   priceDate: z
     .string()

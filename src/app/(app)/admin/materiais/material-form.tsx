@@ -7,23 +7,13 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Plus } from "lucide-react";
+import { MATERIAL_CATEGORIES } from "@/lib/material-categories";
 
 const initialState: MaterialFormState = {};
 
-const CATEGORIES = [
-  { value: "TERRAPLENAGEM", label: "Terraplenagem" },
-  { value: "FUNDACAO", label: "Fundação" },
-  { value: "ESTRUTURA", label: "Estrutura" },
-  { value: "ALVENARIA", label: "Alvenaria" },
-  { value: "LAJE", label: "Laje" },
-  { value: "COBERTURA", label: "Cobertura" },
-  { value: "ELETRICA", label: "Elétrica" },
-  { value: "HIDRAULICA", label: "Hidráulica/Hidrossanitária" },
-  { value: "REVESTIMENTO", label: "Revestimento" },
-  { value: "PINTURA", label: "Pintura" },
-  { value: "ESQUADRIA", label: "Esquadria/Acabamento" },
-  { value: "OUTROS", label: "Outros" },
-];
+// Lista completa vem de material-categories.ts — o <select> precisa oferecer
+// exatamente o que o servidor aceita.
+const CATEGORIES = MATERIAL_CATEGORIES.map((c) => ({ value: c.value, label: c.label }));
 
 export type SupplierOption = { id: string; name: string };
 

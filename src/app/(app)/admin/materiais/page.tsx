@@ -7,35 +7,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MaterialCategory } from "@prisma/client";
 import { MaterialForm } from "./material-form";
 import { MaterialsCatalog } from "./materials-catalog";
+import { MATERIAL_CATEGORY_LABELS, MATERIAL_CATEGORY_ORDER } from "@/lib/material-categories";
 
-const categoryLabels: Record<MaterialCategory, string> = {
-  TERRAPLENAGEM: "Terraplenagem",
-  FUNDACAO: "Fundação",
-  ESTRUTURA: "Estrutura",
-  ALVENARIA: "Alvenaria",
-  LAJE: "Laje",
-  COBERTURA: "Cobertura",
-  ELETRICA: "Elétrica",
-  HIDRAULICA: "Hidráulica/Hidrossanitária",
-  REVESTIMENTO: "Revestimento",
-  PINTURA: "Pintura",
-  ESQUADRIA: "Esquadria/Acabamento",
-  ACABAMENTO: "Acabamento",
-  LOUCAS_SANITARIAS: "Louças sanitárias",
-  METAIS_SANITARIOS: "Metais sanitários",
-  ACESSORIOS_HIDRAULICOS: "Acessórios hidráulicos",
-  IMPERMEABILIZACAO: "Impermeabilização",
-  VIDROS_BOX: "Vidros e box",
-  ACESSORIOS_BANHEIRO: "Acessórios de banheiro",
-  OUTROS: "Outros",
-};
-
-const categoryOrder: MaterialCategory[] = [
-  "TERRAPLENAGEM","FUNDACAO","ESTRUTURA","ALVENARIA","LAJE","COBERTURA",
-  "ELETRICA","HIDRAULICA","REVESTIMENTO","PINTURA","ESQUADRIA","ACABAMENTO",
-  "LOUCAS_SANITARIAS","METAIS_SANITARIOS","ACESSORIOS_HIDRAULICOS",
-  "IMPERMEABILIZACAO","VIDROS_BOX","ACESSORIOS_BANHEIRO","OUTROS"
-];
+const categoryLabels = MATERIAL_CATEGORY_LABELS as Record<MaterialCategory, string>;
+const categoryOrder = MATERIAL_CATEGORY_ORDER as MaterialCategory[];
 
 export default async function MateriaisPage() {
   const session = await getSession();

@@ -63,6 +63,8 @@ export type RoomWallFinishInput = {
   tileHeight: number;
   // Cozinha modo "só parede da pia": comprimento informado; ignora o perímetro
   wallLength?: number | null;
+  // Vãos que cortam a faixa azulejada desta parede, em m².
+  openingsM2?: number | null;
 };
 
 export type RoomEngineInput = {
@@ -502,8 +504,13 @@ function expandWallFinish(room: RoomEngineInput): FixtureMaterialItem[] {
   const parts: string[] = [];
   for (const w of walls) {
     const len = wallLength(room, w);
-    area += len * w.tileHeight;
-    parts.push(`${WALL_SIDE_LABELS[w.wallSide] ?? w.wallSide} ${len.toFixed(2)}×${w.tileHeight.toFixed(2)}`);
+    const vaos = Math.max(w.openingsM2 ?? 0, 0);
+    const bruta = len * w.tileHeight;
+    area += Math.max(bruta - vaos, 0);
+    parts.push(
+      `${WALL_SIDE_LABELS[w.wallSide] ?? w.wallSide} ${len.toFixed(2)}×${w.tileHeight.toFixed(2)}` +
+      (vaos > 0 ? ` − ${vaos.toFixed(2)} vãos` : "")
+    );
   }
   if (area <= 0) return [];
 

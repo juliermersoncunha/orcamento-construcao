@@ -191,6 +191,7 @@ export default async function MemorialPage({
       floorType: rf?.floorType,
       wallTile: rf?.wallTile,
       wallTileHeight: rf?.wallTileHeight,
+      wallTileOpenings: rf?.wallTileOpenings,
       paintWalls: rf?.paintWalls,
       electricalOutlets: ep?.outlets,
       electricalSwitches: ep?.switches,
@@ -271,6 +272,8 @@ export default async function MemorialPage({
         tileSize: project.roofing.tileSize,
         caibroM: project.roofing.caibroM,
         ripaM: project.roofing.ripaM,
+        linhaM: project.roofing.linhaM,
+        barroteM: project.roofing.barroteM,
       }
     : { roofType: "duas_aguas", tileType: "ceramica", inclination: 30, hasRoof: true };
 

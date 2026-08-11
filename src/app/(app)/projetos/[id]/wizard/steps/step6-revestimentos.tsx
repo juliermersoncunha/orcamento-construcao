@@ -55,29 +55,48 @@ function RoomWallTile({ room, rf, suggested }: { room: any; rf: any; suggested: 
           </select>
         </div>
         {mode === "TODAS" && (
-          <Input
-            label="Altura do azulejo (m)"
-            name={`wallTileHeight_${room.id}`}
-            type="number"
-            defaultValue={rf?.wallTileHeight ?? 1.5}
-            step="0.1"
-            min="0"
-          />
+          <div className="grid grid-cols-2 gap-3">
+            <Input
+              label="Altura do azulejo (m)"
+              name={`wallTileHeight_${room.id}`}
+              type="number"
+              defaultValue={rf?.wallTileHeight ?? 1.5}
+              step="0.1"
+              min="0"
+            />
+            <Input
+              label="Descontar vãos (m²)"
+              name={`wallTileOpenings_${room.id}`}
+              type="number"
+              defaultValue={rf?.wallTileOpenings ?? 0}
+              step="0.1"
+              min="0"
+            />
+          </div>
         )}
       </div>
+      {mode === "TODAS" && (
+        <p className="text-xs text-gray-500 mt-2">
+          Vãos: some as áreas de porta e janela que cortam a faixa azulejada. Uma porta
+          numa faixa de 1,50 m desconta 0,90 × 1,50 = 1,35 m². Janela alta de banheiro,
+          acima do azulejo, não desconta nada.
+        </p>
+      )}
 
       {mode === "ESCOLHER" && (
         <div className="mt-3">
           <p className="text-xs text-gray-500 mb-2">
             Marque só as paredes revestidas. O comprimento vem das medidas do cômodo —
-            altere se a parede revestida for menor (ex.: só o trecho da bancada).
+            altere se a parede revestida for menor (ex.: só o trecho da bancada). Em
+            &quot;vãos&quot;, informe a área de porta/janela que corta a faixa azulejada
+            daquela parede (porta numa faixa de 1,50 m = 0,90 × 1,50 = 1,35 m²).
           </p>
           <div className="flex flex-col gap-2">
             {CARDINAL_WALL_SIDES.map((side) => {
               const w = byside[side];
               const padrao = defaultWallLength(side as CardinalWallSide, room.width, room.length);
               return (
-                <div key={side} className="grid grid-cols-[auto_1fr_1fr] gap-2 items-center">
+                <div key={side} className="grid grid-cols-[auto_1fr_1fr_1fr] gap-2 items-center">
                   <label className="flex items-center gap-2 cursor-pointer w-28">
                     <input
                       type="checkbox"
@@ -103,6 +122,14 @@ function RoomWallTile({ room, rf, suggested }: { room: any; rf: any; suggested: 
                     name={`wallH_${room.id}_${side}`}
                     type="number"
                     defaultValue={w?.tileHeight ?? rf?.wallTileHeight ?? 1.5}
+                    step="0.1"
+                    min="0"
+                  />
+                  <Input
+                    label="Vãos (m²)"
+                    name={`wallV_${room.id}_${side}`}
+                    type="number"
+                    defaultValue={w?.openingsM2 ?? 0}
                     step="0.1"
                     min="0"
                   />

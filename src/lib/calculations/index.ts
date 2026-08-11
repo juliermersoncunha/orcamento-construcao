@@ -7,6 +7,7 @@ export type RoomInput = {
   floorType?: string;
   wallTile?: boolean;
   wallTileHeight?: number;
+  wallTileOpenings?: number;   // m² de porta/janela que cortam a faixa azulejada
   paintWalls?: boolean;
   electricalOutlets?: number;
   electricalSwitches?: number;
@@ -55,8 +56,10 @@ export type RoofingInput = {
   inclination: number;
   hasRoof: boolean;
   tileSize?: string | null;   // fibrocimento: "2,44 x 1,1" | "1,83 x 1,1"
-  caibroM?: number;           // madeiramento manual; 0 = calcula automático
+  caibroM?: number;           // madeiramento manual; 0 = não entra
   ripaM?: number;
+  linhaM?: number;
+  barroteM?: number;
 };
 
 import { ELECTRICAL_FINISH_DEFAULTS, outletMaterialsPerPoint, switchMaterialsPerPoint, lightPointMaterialsPerPoint } from "./electrical-finishes";
@@ -338,13 +341,17 @@ function calcCobertura(rooms: RoomInput[], roofing: RoofingInput): MaterialResul
     { name: tileName, unit: "un", quantity: tiles, phase: "COBERTURA", category: "COBERTURA" },
   ];
   // Madeiramento é 100% manual — só entra o que o usuário informar na Etapa 4.
-  const caibros = Math.ceil(roofing.caibroM ?? 0);
-  const ripas = Math.ceil(roofing.ripaM ?? 0);
-  if (caibros > 0) {
-    results.push({ name: "Caibro 5x7cm (pinus)", unit: "m", quantity: caibros, phase: "COBERTURA", category: "COBERTURA" });
-  }
-  if (ripas > 0) {
-    results.push({ name: "Ripa 2,5x5cm (pinus)", unit: "m", quantity: ripas, phase: "COBERTURA", category: "COBERTURA" });
+  const madeiramento: [number | undefined, string][] = [
+    [roofing.caibroM,  "Caibro 5x7cm (pinus)"],
+    [roofing.ripaM,    "Ripa 2,5x5cm (pinus)"],
+    [roofing.linhaM,   "Linha 6x12cm (pinus)"],
+    [roofing.barroteM, "Barrote 6x6cm (pinus)"],
+  ];
+  for (const [metros, nome] of madeiramento) {
+    const qtd = Math.ceil(metros ?? 0);
+    if (qtd > 0) {
+      results.push({ name: nome, unit: "m", quantity: qtd, phase: "COBERTURA", category: "COBERTURA" });
+    }
   }
   results.push({ name: "Cumeeira", unit: "un", quantity: ridgePieces, phase: "COBERTURA", category: "COBERTURA" });
 
@@ -421,7 +428,10 @@ function calcRevestimentos(rooms: RoomInput[]): MaterialResult[] {
 
     const perimeter = 2 * (room.width + room.length);
     if (room.wallTile && !room.skipWallTile) {
-      const a = perimeter * (room.wallTileHeight ?? 1.5);
+      const a = Math.max(
+        perimeter * (room.wallTileHeight ?? 1.5) - Math.max(room.wallTileOpenings ?? 0, 0),
+        0
+      );
       if (isBathroomRoom(room.roomType, room.name)) bathWallTile += a;
       else otherWallTile += a;
     }

@@ -187,6 +187,7 @@ export default async function OrcamentoPage({
       wallFinishes: room.wallFinishes.map((w) => ({
         wallSide: w.wallSide, hasTile: w.hasTile, tileHeight: w.tileHeight,
         wallLength: w.wallLength ?? null,
+        openingsM2: w.openingsM2 ?? 0,
       })),
     })),
     declared: Array.from(declaredByRoom.values()),

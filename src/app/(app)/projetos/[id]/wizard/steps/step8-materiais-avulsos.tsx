@@ -42,6 +42,26 @@ export const PHASE_OPTIONS: { value: string; label: string }[] = [
 
 const PHASE_LABEL = Object.fromEntries(PHASE_OPTIONS.map((p) => [p.value, p.label]));
 
+// Categorias do catálogo que costumam entrar em cada fase. Serve só para ordenar
+// a lista: ao abrir o campo, o que pertence à fase escolhida aparece primeiro,
+// mas nada fica escondido — digitar busca no catálogo inteiro.
+const PHASE_CATEGORIES: Record<string, string[]> = {
+  TERRAPLENAGEM: ["TERRAPLENAGEM"],
+  FUNDACAO: ["FUNDACAO"],
+  ESTRUTURA_ALVENARIA: ["ESTRUTURA", "ALVENARIA"],
+  LAJE: ["LAJE"],
+  COBERTURA: ["COBERTURA"],
+  INSTALACOES_ELETRICAS: ["ELETRICA"],
+  INSTALACOES_HIDROSSANITARIAS: [
+    "HIDRAULICA", "LOUCAS_SANITARIAS", "METAIS_SANITARIOS", "ACESSORIOS_HIDRAULICOS",
+  ],
+  ESCADA: ["ESTRUTURA"],
+  REVESTIMENTOS: ["REVESTIMENTO", "IMPERMEABILIZACAO"],
+  PINTURA: ["PINTURA"],
+  ACABAMENTO: ["ACABAMENTO", "ESQUADRIA", "VIDROS_BOX", "ACESSORIOS_BANHEIRO"],
+  OUTROS: ["OUTROS"],
+};
+
 function brl(n: number) {
   return n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
@@ -61,13 +81,21 @@ export function Step8MateriaisAvulsos({ projectId, materials, rows }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  // Busca simples por trecho do nome — o catálogo tem centenas de itens e um
-  // <select> puro fica impraticável.
+  const [open, setOpen] = useState(false);
+
+  // Sem busca, a lista já vem preenchida com os materiais da fase escolhida —
+  // não é preciso adivinhar o nome. Digitando, busca no catálogo inteiro.
   const matches = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return [];
-    return materials.filter((m) => m.name.toLowerCase().includes(q)).slice(0, 12);
-  }, [search, materials]);
+    if (q) {
+      return materials.filter((m) => m.name.toLowerCase().includes(q)).slice(0, 30);
+    }
+    const cats = PHASE_CATEGORIES[phase] ?? [];
+    return materials
+      .filter((m) => cats.includes(m.category))
+      .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"))
+      .slice(0, 30);
+  }, [search, materials, phase]);
 
   const chosen = materials.find((m) => m.id === materialId) ?? null;
 
@@ -148,8 +176,10 @@ export function Step8MateriaisAvulsos({ projectId, materials, rows }: Props) {
               <input
                 id="search"
                 value={chosen ? chosen.name : search}
-                onChange={(e) => { setSearch(e.target.value); setMaterialId(""); }}
-                placeholder="Digite parte do nome…"
+                onChange={(e) => { setSearch(e.target.value); setMaterialId(""); setOpen(true); }}
+                onFocus={() => { setOpen(true); if (chosen) setMaterialId(""); }}
+                onBlur={() => setTimeout(() => setOpen(false), 150)}
+                placeholder="Clique para ver os materiais da fase, ou digite para buscar…"
                 className={`bg-white ${inputClass}`}
                 autoComplete="off"
               />
@@ -157,13 +187,19 @@ export function Step8MateriaisAvulsos({ projectId, materials, rows }: Props) {
           </div>
 
           {/* Resultados da busca */}
-          {!chosen && matches.length > 0 && (
+          {open && !chosen && matches.length > 0 && (
             <div className="mb-3 rounded-md border border-gray-200 bg-white divide-y divide-gray-100 max-h-56 overflow-y-auto">
+              {search.trim() === "" && (
+                <p className="px-3 py-1.5 text-xs text-gray-500 bg-gray-50 sticky top-0">
+                  Materiais de {PHASE_LABEL[phase]} — digite para buscar em todo o catálogo
+                </p>
+              )}
               {matches.map((m) => (
                 <button
                   key={m.id}
                   type="button"
-                  onClick={() => { setMaterialId(m.id); setSearch(""); }}
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => { setMaterialId(m.id); setSearch(""); setOpen(false); }}
                   className="w-full text-left px-3 py-2 text-sm hover:bg-amber-50 flex items-center justify-between gap-3"
                 >
                   <span className="text-gray-800">{m.name}</span>
@@ -177,7 +213,7 @@ export function Step8MateriaisAvulsos({ projectId, materials, rows }: Props) {
               ))}
             </div>
           )}
-          {!chosen && search.trim() !== "" && matches.length === 0 && (
+          {open && !chosen && search.trim() !== "" && matches.length === 0 && (
             <p className="mb-3 text-sm text-gray-500">
               Nenhum material encontrado. Cadastre-o em Admin › Materiais e Preços.
             </p>

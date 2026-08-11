@@ -98,8 +98,8 @@ export function Step4Cobertura({ project }: { project: any }) {
               <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-4">
                 <p className="text-sm font-semibold text-zinc-700 mb-1">Madeiramento</p>
                 <p className="text-xs text-zinc-500 mb-3">
-                  Deixe em 0 para o sistema estimar pela área do telhado, ou informe a
-                  metragem que você levantou.
+                  Informe a metragem que você levantou. O que ficar em 0 não entra no
+                  orçamento — o sistema não estima madeiramento.
                 </p>
                 <div className="grid grid-cols-2 gap-3">
                   <Input
@@ -117,6 +117,24 @@ export function Step4Cobertura({ project }: { project: any }) {
                     type="number"
                     label="Ripa 2,5×5cm (m)"
                     defaultValue={r?.ripaM ?? 0}
+                    min="0"
+                    step="0.1"
+                  />
+                  <Input
+                    id="linhaM"
+                    name="linhaM"
+                    type="number"
+                    label="Linha 6×12cm (m)"
+                    defaultValue={r?.linhaM ?? 0}
+                    min="0"
+                    step="0.1"
+                  />
+                  <Input
+                    id="barroteM"
+                    name="barroteM"
+                    type="number"
+                    label="Barrote 6×6cm (m)"
+                    defaultValue={r?.barroteM ?? 0}
                     min="0"
                     step="0.1"
                   />

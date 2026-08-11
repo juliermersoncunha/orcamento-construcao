@@ -296,6 +296,8 @@ model ProjectRoofing {
   // Madeiramento informado manualmente (0 = calcula automático)
   caibroM     Float   @default(0)
   ripaM       Float   @default(0)
+  linhaM      Float   @default(0)
+  barroteM    Float   @default(0)
 
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 }
@@ -383,6 +385,10 @@ model RoomWallFinish {
   // Cozinha: modo "somente parede da pia" — o usuário informa o comprimento
   // real (evita usar o perímetro cheio da cozinha).
   wallLength Float?
+  // Vãos (porta/janela) que cortam a faixa azulejada desta parede. Informado em
+  // m², porque só o trecho que cruza a faixa conta — uma janela alta de banheiro
+  // fica acima do azulejo e não desconta nada.
+  openingsM2 Float   @default(0)
 
   room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
 }
@@ -451,6 +457,8 @@ model RoomFinish {
   floorType      String  @default("ceramica")
   wallTile       Boolean @default(false)
   wallTileHeight Float   @default(1.5)
+  // Desconto de vãos no azulejo quando o modo é "todas as paredes".
+  wallTileOpenings Float @default(0)
   paintWalls     Boolean @default(true)
 
   finishes ProjectFinishes @relation(fields: [finishesId], references: [id], onDelete: Cascade)

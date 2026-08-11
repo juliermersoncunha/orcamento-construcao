@@ -148,6 +148,8 @@ export async function saveStep4Roofing(projectId: string, formData: FormData) {
       tileSize: (formData.get("tileSize") as string) || null,
       caibroM: parseFloat(formData.get("caibroM") as string) || 0,
       ripaM: parseFloat(formData.get("ripaM") as string) || 0,
+      linhaM: parseFloat(formData.get("linhaM") as string) || 0,
+      barroteM: parseFloat(formData.get("barroteM") as string) || 0,
     },
     update: {
       roofType: formData.get("roofType") as string,
@@ -157,6 +159,8 @@ export async function saveStep4Roofing(projectId: string, formData: FormData) {
       tileSize: (formData.get("tileSize") as string) || null,
       caibroM: parseFloat(formData.get("caibroM") as string) || 0,
       ripaM: parseFloat(formData.get("ripaM") as string) || 0,
+      linhaM: parseFloat(formData.get("linhaM") as string) || 0,
+      barroteM: parseFloat(formData.get("barroteM") as string) || 0,
     },
   });
 
@@ -254,6 +258,7 @@ export async function saveStep6Finishes(projectId: string, formData: FormData) {
         floorType: formData.get(`floorType_${room.id}`) as string || "ceramica",
         wallTile: mode === "TODAS",
         wallTileHeight: height,
+        wallTileOpenings: parseFloat(formData.get(`wallTileOpenings_${room.id}`) as string) || 0,
         paintWalls: formData.get(`paintWalls_${room.id}`) !== "false",
       },
     });
@@ -276,6 +281,7 @@ export async function saveStep6Finishes(projectId: string, formData: FormData) {
             hasTile: true,
             tileHeight: h,
             wallLength: Number.isFinite(len) && len > 0 ? len : null,
+            openingsM2: parseFloat(formData.get(`wallV_${room.id}_${side}`) as string) || 0,
           },
         });
       }
@@ -365,6 +371,7 @@ export async function calculateAndSaveBudget(projectId: string) {
       floorType: rf?.floorType,
       wallTile: rf?.wallTile,
       wallTileHeight: rf?.wallTileHeight,
+      wallTileOpenings: rf?.wallTileOpenings,
       paintWalls: rf?.paintWalls,
       electricalOutlets: ep?.outlets,
       electricalSwitches: ep?.switches,
@@ -415,6 +422,8 @@ export async function calculateAndSaveBudget(projectId: string) {
       tileSize: project.roofing?.tileSize ?? null,
       caibroM: project.roofing?.caibroM ?? 0,
       ripaM: project.roofing?.ripaM ?? 0,
+      linhaM: project.roofing?.linhaM ?? 0,
+      barroteM: project.roofing?.barroteM ?? 0,
     },
     finishes: {
       doors: project.finishes?.doors ?? 0,
@@ -484,6 +493,7 @@ export async function calculateAndSaveBudget(projectId: string) {
     wallFinishes: room.wallFinishes.map((w) => ({
       wallSide: w.wallSide, hasTile: w.hasTile, tileHeight: w.tileHeight,
       wallLength: w.wallLength ?? null,
+        openingsM2: w.openingsM2 ?? 0,
     })),
   }));
 

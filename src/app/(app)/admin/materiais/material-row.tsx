@@ -45,6 +45,7 @@ export function MaterialRow({
   const [name, setName] = useState(material.name);
   const [price, setPrice] = useState(String(material.currentPrice));
   const [priceDate, setPriceDate] = useState(toInputDate(material.priceDate));
+  const [unit, setUnit] = useState(material.unit);
   const [quantity, setQuantity] = useState(material.quantity == null ? "" : String(material.quantity));
   const [brand, setBrand] = useState(material.brand ?? "");
   const [supplierId, setSupplierId] = useState(material.supplierId ?? "");
@@ -55,6 +56,7 @@ export function MaterialRow({
     setName(material.name);
     setPrice(String(material.currentPrice));
     setPriceDate(toInputDate(material.priceDate));
+    setUnit(material.unit);
     setQuantity(material.quantity == null ? "" : String(material.quantity));
     setBrand(material.brand ?? "");
     setSupplierId(material.supplierId ?? "");
@@ -82,11 +84,16 @@ export function MaterialRow({
       setError("Quantidade inválida.");
       return;
     }
+    if (unit.trim() === "") {
+      setError("Unidade obrigatória.");
+      return;
+    }
     startTransition(async () => {
       const result = await updateMaterial(material.id, {
         name,
         price: p,
         priceDate: priceDate || null,
+        unit,
         quantity: q,
         brand,
         supplierId: supplierId || null,
@@ -155,7 +162,15 @@ export function MaterialRow({
             ))}
           </select>
         </td>
-        <td className="py-2 px-2 text-center text-gray-500">{material.unit}</td>
+        <td className="py-2 px-2 text-center">
+          <input
+            value={unit}
+            onChange={(e) => setUnit(e.target.value)}
+            onKeyDown={onKeyDown}
+            placeholder="un"
+            className={`w-16 text-center ${inputClass}`}
+          />
+        </td>
         <td className="py-2 px-2 text-center">
           <input
             type="number"
@@ -247,7 +262,11 @@ export function MaterialRow({
           {material.supplier?.name ?? <span className="text-gray-300">—</span>}
         </button>
       </td>
-      <td className="py-2 px-2 text-center text-gray-500">{material.unit}</td>
+      <td className="py-2 px-2 text-center">
+        <button onClick={startEditing} className="text-gray-500 hover:text-amber-700">
+          {material.unit}
+        </button>
+      </td>
       <td className="py-2 px-2 text-center">
         <button onClick={startEditing} className="text-gray-600 hover:text-amber-700">
           {shownQty ?? <span className="text-gray-300">—</span>}

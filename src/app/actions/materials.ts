@@ -77,6 +77,7 @@ export async function updateMaterial(
     name: string;
     price: number;
     priceDate: string | null;
+    unit?: string;
     quantity?: number | null;
     brand?: string | null;
     supplierId?: string | null;
@@ -89,6 +90,11 @@ export async function updateMaterial(
   if (!Number.isFinite(input.price) || input.price < 0) {
     return { error: "Preço inválido." };
   }
+  // Unidade em branco quebraria a leitura do orçamento — mantém a atual.
+  const unit = input.unit?.trim();
+  if (input.unit !== undefined && !unit) {
+    return { error: "Unidade obrigatória." };
+  }
 
   const current = await prisma.material.findUnique({ where: { id: materialId } });
   if (!current) return { error: "Material não encontrado." };
@@ -100,6 +106,7 @@ export async function updateMaterial(
     where: { id: materialId },
     data: {
       name,
+      ...(unit ? { unit } : {}),
       currentPrice: input.price,
       priceDate,
       quantity:

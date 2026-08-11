@@ -3,6 +3,7 @@ import { getSession } from "@/lib/session";
 import { redirect } from "next/navigation";
 import { WizardContainer } from "./wizard-container";
 import { ALL_PIPE_NAMES } from "@/lib/pipes-catalog";
+import { ALL_ELECTRICAL_NAMES } from "@/lib/electrical-catalog";
 
 export default async function WizardPage({
   params,
@@ -41,9 +42,10 @@ export default async function WizardPage({
 
   const currentStep = etapa ? parseInt(etapa) : Math.min(project.wizardStep, 8);
 
-  // Materiais da lista fixa de tubos/conexões — só os que existem no catálogo.
+  // Materiais das listas fixas de entrada manual (tubos/conexões e
+  // cabos/infraestrutura elétrica) — só os que existem no catálogo.
   const pipeMaterials = await prisma.material.findMany({
-    where: { name: { in: ALL_PIPE_NAMES }, active: true },
+    where: { name: { in: [...ALL_PIPE_NAMES, ...ALL_ELECTRICAL_NAMES] }, active: true },
     select: { id: true, name: true, unit: true, currentPrice: true },
   });
   const pipesByName: Record<string, { id: string; name: string; unit: string; currentPrice: number }> = {};

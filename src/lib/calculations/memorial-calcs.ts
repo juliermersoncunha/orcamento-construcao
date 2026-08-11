@@ -363,41 +363,24 @@ export function generateExplanations(
 
   // ── Elétrica ──
   {
-    const totalPoints = Math.ceil(area * 0.22);
-    if (totalPoints > 0) {
-      result["INSTALACOES_ELETRICAS"] = [
-        {
-          materialName: "Pontos elétricos estimados",
-          formula: `Área total (${fmt(area)} m²) × 0,22 pontos/m²`,
-          result: `${fmt(area * 0.22)} → ${totalPoints} pontos`,
-        },
-        {
-          materialName: "Conduíte Corrugado 3/4\"",
-          formula: `${totalPoints} pontos × 3 m/ponto`,
-          result: `${totalPoints * 3} m`,
-        },
-        {
-          materialName: "Fio Flexível 2,5mm²",
-          formula: `${totalPoints} pontos × 4 m/ponto`,
-          result: `${totalPoints * 4} m`,
-        },
-        {
-          materialName: "Caixa de Passagem 4x4/4x2",
-          formula: `1 caixa por ponto`,
-          result: `${totalPoints} un`,
-        },
-        {
-          materialName: "Quadro de Distribuição",
-          formula: `1 por unidade habitacional`,
-          result: `1 un`,
-        },
-        {
-          materialName: "Disjuntor/DR",
-          formula: `${totalPoints} pontos ÷ 8 + 1 (geral)`,
-          result: `${Math.ceil(totalPoints / 8) + 1} un`,
-        },
-      ];
+    const declaredOutlets = rooms.reduce((s, r) => s + (r.electricalOutlets ?? 0), 0);
+    const declaredSwitches = rooms.reduce((s, r) => s + (r.electricalSwitches ?? 0), 0);
+    const declaredLights = rooms.reduce((s, r) => s + (r.electricalLightPoints ?? 0), 0);
+    const items: CalcExplanation[] = [];
+
+    if (declaredOutlets + declaredSwitches + declaredLights > 0) {
+      items.push({
+        materialName: "Pontos declarados por ambiente",
+        formula: `Soma da tabela de pontos da Etapa 5`,
+        result: `${declaredOutlets} tomada(s), ${declaredSwitches} interruptor(es), ${declaredLights} ponto(s) de luz`,
+      });
     }
+    items.push({
+      materialName: "Cabos, eletrodutos, caixas e disjuntores",
+      formula: `Entrada manual — "Etapa 5 › Cabos e infraestrutura elétrica"`,
+      result: `sem estimativa automática`,
+    });
+    result["INSTALACOES_ELETRICAS"] = items;
   }
 
   // ── Hidrossanitária ──

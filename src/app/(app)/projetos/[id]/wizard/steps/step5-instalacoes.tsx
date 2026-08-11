@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Zap, ChevronRight, Bath, ChefHat } from "lucide-react";
 import { BathroomCard } from "./step5-bathroom-card";
 import { KitchenCard } from "./step5-kitchen-card";
-import { Step5ManualPipes, type PipeMaterial } from "./step5-manual-pipes";
+import { Step5ManualPipes, Step5ManualElectrical, type PipeMaterial } from "./step5-manual-pipes";
 import { BATHROOM_ROOM_TYPE_SET } from "@/lib/fixture-library/bathroom";
 import { KITCHEN_ROOM_TYPE_SET } from "@/lib/fixture-library/kitchen";
 
@@ -233,6 +233,14 @@ export function Step5Instalacoes({ project, pipesByName, manualPipeQuantities }:
         )}
       </CardContent>
       </Card>
+
+      <div className="mt-6">
+        <Step5ManualElectrical
+          projectId={project.id}
+          materialsByName={pipesByName}
+          initialQuantities={manualPipeQuantities}
+        />
+      </div>
 
       <div className="mt-6">
         <Step5ManualPipes

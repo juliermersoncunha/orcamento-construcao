@@ -350,31 +350,16 @@ function calcEletrica(
   rooms: RoomInput[],
   electrical: ElectricalFinishes = ELECTRICAL_FINISH_DEFAULTS
 ): MaterialResult[] {
-  // Prioriza pontos declarados por ambiente; cai para estimativa por área
-  // só se ninguém declarou (compatibilidade com projetos antigos).
+  // Cabo, eletroduto, caixa, quadro e disjuntor NÃO são estimados — vêm da
+  // entrada manual em "Etapa 5 › Cabos e infraestrutura elétrica". Aqui só
+  // saem os acabamentos dos pontos que o usuário declarou por ambiente.
   const declared = rooms.reduce((acc, r) => ({
     outlets: acc.outlets + (r.electricalOutlets ?? 0),
     switches: acc.switches + (r.electricalSwitches ?? 0),
     lightPoints: acc.lightPoints + (r.electricalLightPoints ?? 0),
   }), { outlets: 0, switches: 0, lightPoints: 0 });
-  const declaredTotal = declared.outlets + declared.switches + declared.lightPoints;
 
-  const totalPoints = declaredTotal > 0
-    ? declaredTotal
-    : Math.ceil(totalFloorArea(rooms) * 0.22);
-
-  if (totalPoints === 0) return [];
-
-  const items: MaterialResult[] = [
-    { name: "Conduíte Corrugado 3/4\" (flexível)", unit: "m", quantity: Math.ceil(totalPoints * 3), phase: "INSTALACOES_ELETRICAS", category: "ELETRICA" },
-    { name: "Fio Flexível 2,5mm²", unit: "m", quantity: Math.ceil(totalPoints * 4), phase: "INSTALACOES_ELETRICAS", category: "ELETRICA" },
-    { name: "Caixa de Passagem 4x4/4x2", unit: "un", quantity: totalPoints, phase: "INSTALACOES_ELETRICAS", category: "ELETRICA" },
-    { name: "Quadro de Distribuição", unit: "un", quantity: 1, phase: "INSTALACOES_ELETRICAS", category: "ELETRICA" },
-    { name: "Disjuntor/DR", unit: "un", quantity: Math.ceil(totalPoints / 8) + 1, phase: "INSTALACOES_ELETRICAS", category: "ELETRICA" },
-  ];
-
-  // Acabamentos: só quando o usuário declarou os pontos (o cálculo por área
-  // não distingue tomada/interruptor/luz — seria arbitrário).
+  const items: MaterialResult[] = [];
   if (declared.outlets > 0) {
     const m = outletMaterialsPerPoint(electrical.outletType);
     items.push({ name: m.name, unit: m.unit, quantity: declared.outlets * m.qty, phase: "INSTALACOES_ELETRICAS", category: "ELETRICA" });

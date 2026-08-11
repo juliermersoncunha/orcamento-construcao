@@ -9,6 +9,7 @@ import type { CalculationInput, RoomInput } from "@/lib/calculations";
 import { resolveRoomFixtures } from "@/lib/calculations/fixture-engine";
 import type { RoomEngineInput } from "@/lib/calculations/fixture-engine";
 import { MaterialCategory, PhaseType } from "@prisma/client";
+import { ALL_ELECTRICAL_NAMES } from "@/lib/electrical-catalog";
 
 async function getProject(projectId: string) {
   const session = await getSession();
@@ -531,18 +532,24 @@ export async function calculateAndSaveBudget(projectId: string) {
     });
   }
 
-  // Manual items (tubos e conexões informados pelo usuário na Etapa 5)
+  // Itens manuais da Etapa 5 — tubos/conexões e cabos/infraestrutura elétrica.
+  // A fase sai da lista a que o material pertence, senão a elétrica cairia
+  // dentro do bloco hidrossanitário do orçamento.
+  const electricalNames = new Set(ALL_ELECTRICAL_NAMES);
   const manualRows = await prisma.manualBudgetItem.findMany({
     where: { projectId },
     include: { material: true },
   });
   for (const row of manualRows) {
     if (row.quantity <= 0) continue;
+    const phase = electricalNames.has(row.material.name)
+      ? "INSTALACOES_ELETRICAS"
+      : "INSTALACOES_HIDROSSANITARIAS";
     await prisma.budgetItem.create({
       data: {
         projectId,
         materialId: row.materialId,
-        phase: "INSTALACOES_HIDROSSANITARIAS" as PhaseType,
+        phase: phase as PhaseType,
         quantity: row.quantity,
         unitPriceSnapshot: row.material.currentPrice,
         sourceKind: "MANUAL",

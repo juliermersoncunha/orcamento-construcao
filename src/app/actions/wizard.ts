@@ -487,7 +487,15 @@ export async function calculateAndSaveBudget(projectId: string) {
   async function resolveMaterial(name: string, unit: string, category: string) {
     const cached = matCache.get(name);
     if (cached) return cached;
-    let material = await prisma.material.findFirst({ where: { name, active: true } });
+    // Busca sem filtrar por `active`: um material desativado — que é o que a
+    // tela de catálogo recomenda fazer em vez de excluir — precisa ser
+    // reaproveitado com o preço que já tem. Filtrando por ativo, o resolver não
+    // o encontrava e criava uma cópia nova a R$ 0 a cada geração de orçamento.
+    // Prefere o ativo quando houver homônimos.
+    let material = await prisma.material.findFirst({
+      where: { name },
+      orderBy: { active: "desc" },
+    });
     if (!material) {
       material = await prisma.material.create({
         data: { name, unit, category: category as MaterialCategory, currentPrice: 0 },

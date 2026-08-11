@@ -77,6 +77,7 @@ export async function updateMaterial(
     price: number;
     priceDate: string | null;
     unit?: string;
+    category?: string;
     quantity?: number | null;
     brand?: string | null;
     supplierId?: string | null;
@@ -94,6 +95,13 @@ export async function updateMaterial(
   if (input.unit !== undefined && !unit) {
     return { error: "Unidade obrigatória." };
   }
+  // Categoria só muda para um valor do enum — recusa em vez de gravar lixo.
+  if (
+    input.category !== undefined &&
+    !MATERIAL_CATEGORY_VALUES.includes(input.category as (typeof MATERIAL_CATEGORY_VALUES)[number])
+  ) {
+    return { error: "Categoria inválida." };
+  }
 
   const current = await prisma.material.findUnique({ where: { id: materialId } });
   if (!current) return { error: "Material não encontrado." };
@@ -106,6 +114,7 @@ export async function updateMaterial(
     data: {
       name,
       ...(unit ? { unit } : {}),
+      ...(input.category ? { category: input.category as MaterialCategory } : {}),
       currentPrice: input.price,
       priceDate,
       quantity:

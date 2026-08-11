@@ -5,6 +5,7 @@ import { updateMaterial, toggleMaterialActive, deleteMaterial } from "@/app/acti
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Check, X, Pencil, Trash2 } from "lucide-react";
+import { MATERIAL_CATEGORIES } from "@/lib/material-categories";
 
 export type SupplierOption = { id: string; name: string };
 
@@ -46,6 +47,7 @@ export function MaterialRow({
   const [price, setPrice] = useState(String(material.currentPrice));
   const [priceDate, setPriceDate] = useState(toInputDate(material.priceDate));
   const [unit, setUnit] = useState(material.unit);
+  const [category, setCategory] = useState(material.category);
   const [quantity, setQuantity] = useState(material.quantity == null ? "" : String(material.quantity));
   const [brand, setBrand] = useState(material.brand ?? "");
   const [supplierId, setSupplierId] = useState(material.supplierId ?? "");
@@ -57,6 +59,7 @@ export function MaterialRow({
     setPrice(String(material.currentPrice));
     setPriceDate(toInputDate(material.priceDate));
     setUnit(material.unit);
+    setCategory(material.category);
     setQuantity(material.quantity == null ? "" : String(material.quantity));
     setBrand(material.brand ?? "");
     setSupplierId(material.supplierId ?? "");
@@ -94,6 +97,7 @@ export function MaterialRow({
         price: p,
         priceDate: priceDate || null,
         unit,
+        category,
         quantity: q,
         brand,
         supplierId: supplierId || null,
@@ -139,6 +143,18 @@ export function MaterialRow({
             autoFocus
             className={`w-full ${inputClass}`}
           />
+          {/* Área (categoria) fica sob o nome: muda a seção onde o material
+              aparece no catálogo, sem precisar de coluna própria na tabela. */}
+          <select
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            title="Área do material"
+            className={`mt-1 w-full bg-white text-xs ${inputClass}`}
+          >
+            {MATERIAL_CATEGORIES.map((c) => (
+              <option key={c.value} value={c.value}>{c.label}</option>
+            ))}
+          </select>
           {error && <p className="text-xs text-red-600 mt-1">{error}</p>}
         </td>
         <td className="py-2 px-2">

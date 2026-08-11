@@ -494,10 +494,7 @@ function wallLength(room: RoomEngineInput, wall: RoomWallFinishInput): number {
   return wall.wallSide === "FRENTE" || wall.wallSide === "FUNDO" ? room.width : room.length;
 }
 
-function expandWallFinish(
-  room: RoomEngineInput,
-  premises: PremiseValue[]
-): FixtureMaterialItem[] {
+function expandWallFinish(room: RoomEngineInput): FixtureMaterialItem[] {
   const walls = (room.wallFinishes ?? []).filter((w) => w.hasTile);
   if (walls.length === 0) return [];
 
@@ -512,7 +509,6 @@ function expandWallFinish(
 
   const LOSS_TILE = 1.10;
   const LOSS_ARG = 1.06;
-  const espacador = area * findPremise(premises, "ESPACADOR_POR_M2");
 
   const mk = (materialName: string, unit: string, category: string, quantity: number, formula: string): FixtureMaterialItem => ({
     materialName, unit, category,
@@ -529,9 +525,7 @@ function expandWallFinish(
     mk(argamassaParede(room.roomType, room.name), "sc", "REVESTIMENTO", Math.ceil(area * 0.45), `${area.toFixed(2)} m² × 0,45 sc/m²`),
     mk("Rejunte", "kg", "REVESTIMENTO", Math.ceil(area * 0.4 * LOSS_ARG), `${area.toFixed(2)} m² × 0,40 kg/m² × 1,06`),
   ];
-  if (espacador > 0) {
-    items.push(mk("Espaçador para revestimento", "pct", "REVESTIMENTO", espacador, `${area.toFixed(2)} m² × ${findPremise(premises, "ESPACADOR_POR_M2")} pct/m²`));
-  }
+  // Espaçador saiu por decisão do usuário — lançado manualmente na Etapa 8.
   return items;
 }
 
@@ -553,7 +547,7 @@ export function resolveRoomFixtures(
     for (const j of room.joineries) items.push(...expandBathroomJoinery(j, room, premises));
     for (const a of room.accessories) items.push(...expandAccessory(a, room, premises, warnings));
     if (room.imperm) items.push(...expandImperm(room.imperm, room, premises, warnings));
-    items.push(...expandWallFinish(room, premises));
+    items.push(...expandWallFinish(room));
   }
   return { items, warnings };
 }

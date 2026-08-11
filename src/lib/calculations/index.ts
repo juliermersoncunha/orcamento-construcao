@@ -519,12 +519,9 @@ function calcPintura(rooms: RoomInput[], finish: FinishesInput["wallFinishType"]
 function calcAcabamento(finishes: FinishesInput): MaterialResult[] {
   const results: MaterialResult[] = [];
 
-  if (finishes.externalDoors > 0) {
-    results.push({ name: "Porta Externa (painel/madeira)", unit: "un", quantity: finishes.externalDoors, phase: "ACABAMENTO", category: "ESQUADRIA" });
-  }
-  if (finishes.doors > 0) {
-    results.push({ name: "Porta Interna (madeira)", unit: "un", quantity: finishes.doors, phase: "ACABAMENTO", category: "ESQUADRIA" });
-  }
+  // Portas saíram do cálculo automático: os nomes genéricos não casavam com as
+  // portas realmente cadastradas (Timborana, laminada), entrando a R$ 0 e
+  // deixando a porta de verdade fora do orçamento. Lançadas na Etapa 8.
   if (finishes.windows > 0) {
     results.push({ name: "Janela (alumínio)", unit: "un", quantity: finishes.windows, phase: "ACABAMENTO", category: "ESQUADRIA" });
   }

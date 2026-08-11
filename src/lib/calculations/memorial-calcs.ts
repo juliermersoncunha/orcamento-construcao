@@ -535,20 +535,7 @@ export function generateExplanations(
   {
     const totalDoors = finishes.doors + finishes.externalDoors;
     const explanations: CalcExplanation[] = [];
-    if (finishes.externalDoors > 0) {
-      explanations.push({
-        materialName: "Porta Externa (painel/madeira)",
-        formula: `Quantidade informada na etapa de acabamentos`,
-        result: `${finishes.externalDoors} un`,
-      });
-    }
-    if (finishes.doors > 0) {
-      explanations.push({
-        materialName: "Porta Interna (madeira)",
-        formula: `Quantidade informada na etapa de acabamentos`,
-        result: `${finishes.doors} un`,
-      });
-    }
+    // Portas saíram do cálculo automático — lançadas na Etapa 8.
     if (finishes.windows > 0) {
       explanations.push({
         materialName: "Janela (alumínio)",

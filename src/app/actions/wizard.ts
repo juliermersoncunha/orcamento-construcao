@@ -282,7 +282,9 @@ export async function saveStep7Walls(projectId: string, formData: FormData) {
     ),
     prisma.project.update({
       where: { id: projectId },
-      data: { wizardStep: Math.max(project.wizardStep, 8) },
+      // A Etapa 8 (materiais avulsos) é opcional, então já liberamos a Revisão
+      // junto — quem não tiver nada a lançar avança direto.
+      data: { wizardStep: Math.max(project.wizardStep, 9) },
     }),
   ]);
 
@@ -542,9 +544,12 @@ export async function calculateAndSaveBudget(projectId: string) {
   });
   for (const row of manualRows) {
     if (row.quantity <= 0) continue;
-    const phase = electricalNames.has(row.material.name)
-      ? "INSTALACOES_ELETRICAS"
-      : "INSTALACOES_HIDROSSANITARIAS";
+    // Fase explícita da Etapa 8 manda; sem ela, deduz pela lista de origem.
+    const phase =
+      row.phase ??
+      (electricalNames.has(row.material.name)
+        ? "INSTALACOES_ELETRICAS"
+        : "INSTALACOES_HIDROSSANITARIAS");
     await prisma.budgetItem.create({
       data: {
         projectId,

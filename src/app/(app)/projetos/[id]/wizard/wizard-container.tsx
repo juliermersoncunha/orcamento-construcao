@@ -11,6 +11,11 @@ import { Step5Instalacoes } from "./steps/step5-instalacoes";
 import { Step6Revestimentos } from "./steps/step6-revestimentos";
 import { Step7Muros } from "./steps/step7-muros";
 import { Step7Revisao } from "./steps/step7-revisao";
+import {
+  Step8MateriaisAvulsos,
+  type CatalogMaterial,
+  type ManualPhaseRow,
+} from "./steps/step8-materiais-avulsos";
 
 const STEPS = [
   { number: 1, label: "Identificação" },
@@ -20,7 +25,8 @@ const STEPS = [
   { number: 5, label: "Instalações" },
   { number: 6, label: "Revestimentos" },
   { number: 7, label: "Muros" },
-  { number: 8, label: "Revisão" },
+  { number: 8, label: "Materiais" },
+  { number: 9, label: "Revisão" },
 ];
 
 import type { PipeMaterial } from "./steps/step5-manual-pipes";
@@ -30,6 +36,8 @@ type WizardContainerProps = {
   currentStep: number;
   pipesByName: Record<string, PipeMaterial>;
   manualPipeQuantities: Record<string, number>;
+  catalogMaterials: CatalogMaterial[];
+  manualPhaseRows: ManualPhaseRow[];
 };
 
 export function WizardContainer({
@@ -37,6 +45,8 @@ export function WizardContainer({
   currentStep,
   pipesByName,
   manualPipeQuantities,
+  catalogMaterials,
+  manualPhaseRows,
 }: WizardContainerProps) {
   return (
     <div className="p-8 max-w-3xl mx-auto">
@@ -120,7 +130,14 @@ export function WizardContainer({
       )}
       {currentStep === 6 && <Step6Revestimentos project={project} />}
       {currentStep === 7 && <Step7Muros project={project} />}
-      {currentStep === 8 && <Step7Revisao project={project} />}
+      {currentStep === 8 && (
+        <Step8MateriaisAvulsos
+          projectId={project.id}
+          materials={catalogMaterials}
+          rows={manualPhaseRows}
+        />
+      )}
+      {currentStep === 9 && <Step7Revisao project={project} />}
     </div>
   );
 }

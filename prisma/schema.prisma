@@ -201,6 +201,9 @@ model ManualBudgetItem {
   projectId  String
   materialId String
   quantity   Float   @default(0)
+  // Fase escolhida pelo usuário na Etapa 8. Quando nula, a fase é deduzida
+  // da lista a que o material pertence (tubos → hidro, cabos → elétrica).
+  phase      PhaseType?
 
   project  Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   material Material @relation(fields: [materialId], references: [id], onDelete: Cascade)

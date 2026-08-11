@@ -37,7 +37,7 @@ export function Step7Revisao({ project }: { project: any }) {
           <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center">
             <Calculator className="w-4 h-4 text-amber-700" />
           </div>
-          <CardTitle>Etapa 8 — Revisão e Geração do Orçamento</CardTitle>
+          <CardTitle>Etapa 9 — Revisão e Geração do Orçamento</CardTitle>
         </div>
         <CardDescription>Verifique os dados e gere o levantamento de materiais.</CardDescription>
       </CardHeader>

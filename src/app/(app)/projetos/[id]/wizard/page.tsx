@@ -40,7 +40,7 @@ export default async function WizardPage({
 
   if (!project) redirect("/projetos");
 
-  const currentStep = etapa ? parseInt(etapa) : Math.min(project.wizardStep, 8);
+  const currentStep = etapa ? parseInt(etapa) : Math.min(project.wizardStep, 9);
 
   // Materiais das listas fixas de entrada manual (tubos/conexões e
   // cabos/infraestrutura elétrica) — só os que existem no catálogo.
@@ -53,10 +53,30 @@ export default async function WizardPage({
 
   const manualRows = await prisma.manualBudgetItem.findMany({
     where: { projectId: id },
-    select: { materialId: true, quantity: true },
+    include: { material: { select: { name: true, unit: true, currentPrice: true } } },
   });
   const manualPipeQuantities: Record<string, number> = {};
   for (const r of manualRows) manualPipeQuantities[r.materialId] = r.quantity;
+
+  // Etapa 8 — materiais avulsos: só as linhas com fase escolhida pelo usuário.
+  // As demais pertencem aos blocos de tubos/cabos da Etapa 5.
+  const manualPhaseRows = manualRows
+    .filter((r) => r.phase !== null)
+    .map((r) => ({
+      materialId: r.materialId,
+      name: r.material.name,
+      unit: r.material.unit,
+      quantity: r.quantity,
+      currentPrice: r.material.currentPrice,
+      phase: r.phase as string,
+    }));
+
+  // Catálogo completo para o buscador da Etapa 8.
+  const catalogMaterials = await prisma.material.findMany({
+    where: { active: true },
+    orderBy: { name: "asc" },
+    select: { id: true, name: true, unit: true, currentPrice: true, category: true },
+  });
 
   return (
     <WizardContainer
@@ -64,6 +84,8 @@ export default async function WizardPage({
       currentStep={currentStep}
       pipesByName={pipesByName}
       manualPipeQuantities={manualPipeQuantities}
+      catalogMaterials={catalogMaterials}
+      manualPhaseRows={manualPhaseRows}
     />
   );
 }

@@ -145,7 +145,7 @@ export function Step5ManualItems({
             <p className="text-xs text-gray-500">
               {savedAt
                 ? `Salvo às ${savedAt.toLocaleTimeString()}`
-                : "As quantidades entram no orçamento quando você gerar/regerar na Etapa 8."}
+                : "As quantidades entram no orçamento quando você gerar/regerar na Etapa 9."}
             </p>
             <Button type="button" onClick={handleSave} disabled={isPending}>
               <Save className="w-4 h-4 mr-2" />

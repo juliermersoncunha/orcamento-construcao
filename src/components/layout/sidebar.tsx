@@ -10,6 +10,7 @@ import {
   Users,
   LogOut,
   SlidersHorizontal,
+  Truck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -19,6 +20,7 @@ const navItems = [
 
 const adminItems = [
   { href: "/admin/materiais", label: "Materiais e Preços", icon: Package },
+  { href: "/admin/fornecedores", label: "Fornecedores", icon: Truck },
   { href: "/admin/premissas", label: "Premissas de Cálculo", icon: SlidersHorizontal },
   { href: "/admin/usuarios", label: "Usuários", icon: Users },
 ];

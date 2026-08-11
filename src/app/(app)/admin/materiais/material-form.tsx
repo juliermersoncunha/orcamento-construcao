@@ -25,8 +25,15 @@ const CATEGORIES = [
   { value: "OUTROS", label: "Outros" },
 ];
 
-export function MaterialForm() {
+export type SupplierOption = { id: string; name: string };
+
+export function MaterialForm({ suppliers = [] }: { suppliers?: SupplierOption[] }) {
   const [state, formAction, isPending] = useActionState(createMaterial, initialState);
+
+  const supplierOptions = [
+    { value: "", label: "— sem fornecedor —" },
+    ...suppliers.map((s) => ({ value: s.id, label: s.name })),
+  ];
 
   return (
     <Card>
@@ -55,6 +62,33 @@ export function MaterialForm() {
               required
             />
             <Input
+              id="quantity"
+              name="quantity"
+              type="number"
+              label="Quantidade"
+              placeholder="Ex: 18 (balde 18 kg)"
+              step="0.01"
+              min="0"
+              error={state.errors?.quantity?.[0]}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
+            <Input
+              id="brand"
+              name="brand"
+              label="Marca / fabricante"
+              placeholder="Ex: Suvinil"
+              error={state.errors?.brand?.[0]}
+            />
+            <Select
+              id="supplierId"
+              name="supplierId"
+              label="Fornecedor"
+              options={supplierOptions}
+              error={state.errors?.supplierId?.[0]}
+            />
+            <Input
               id="currentPrice"
               name="currentPrice"
               type="number"
@@ -64,7 +98,15 @@ export function MaterialForm() {
               min="0"
               error={state.errors?.currentPrice?.[0]}
             />
+            <Input
+              id="priceDate"
+              name="priceDate"
+              type="date"
+              label="Data do preço"
+              error={state.errors?.priceDate?.[0]}
+            />
           </div>
+
           <div className="flex items-end gap-4">
             <div className="flex-1">
               <Select
@@ -73,15 +115,6 @@ export function MaterialForm() {
                 label="Categoria"
                 options={CATEGORIES}
                 error={state.errors?.category?.[0]}
-              />
-            </div>
-            <div className="flex-1">
-              <Input
-                id="priceDate"
-                name="priceDate"
-                type="date"
-                label="Data do preço"
-                error={state.errors?.priceDate?.[0]}
               />
             </div>
             <Button type="submit" disabled={isPending}>

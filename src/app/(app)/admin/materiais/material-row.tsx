@@ -6,6 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Check, X, Pencil, Trash2 } from "lucide-react";
 
+export type SupplierOption = { id: string; name: string };
+
 // Date <-> yyyy-MM-dd for <input type="date">, read in local time so the day doesn't shift.
 function toInputDate(value: Date | string | null | undefined) {
   if (!value) return "";
@@ -22,12 +24,20 @@ function formatDate(value: Date | string | null | undefined) {
   return d.toLocaleDateString("pt-BR");
 }
 
+// 18 → "18"; 1.5 → "1,5" (sem zeros à toa)
+function formatQty(q: number | null | undefined) {
+  if (q == null || !Number.isFinite(q)) return null;
+  return String(q).replace(".", ",");
+}
+
 export function MaterialRow({
   material,
+  suppliers = [],
   selected,
   onToggleSelect,
 }: {
   material: any;
+  suppliers?: SupplierOption[];
   selected?: boolean;
   onToggleSelect?: () => void;
 }) {
@@ -35,6 +45,9 @@ export function MaterialRow({
   const [name, setName] = useState(material.name);
   const [price, setPrice] = useState(String(material.currentPrice));
   const [priceDate, setPriceDate] = useState(toInputDate(material.priceDate));
+  const [quantity, setQuantity] = useState(material.quantity == null ? "" : String(material.quantity));
+  const [brand, setBrand] = useState(material.brand ?? "");
+  const [supplierId, setSupplierId] = useState(material.supplierId ?? "");
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -42,6 +55,9 @@ export function MaterialRow({
     setName(material.name);
     setPrice(String(material.currentPrice));
     setPriceDate(toInputDate(material.priceDate));
+    setQuantity(material.quantity == null ? "" : String(material.quantity));
+    setBrand(material.brand ?? "");
+    setSupplierId(material.supplierId ?? "");
     setError(null);
     setEditing(true);
   }
@@ -61,11 +77,19 @@ export function MaterialRow({
       setError("Nome obrigatório.");
       return;
     }
+    const q = quantity.trim() === "" ? null : Number(quantity.replace(",", "."));
+    if (q !== null && (!Number.isFinite(q) || q <= 0)) {
+      setError("Quantidade inválida.");
+      return;
+    }
     startTransition(async () => {
       const result = await updateMaterial(material.id, {
         name,
         price: p,
         priceDate: priceDate || null,
+        quantity: q,
+        brand,
+        supplierId: supplierId || null,
       });
       if (result?.error) {
         setError(result.error);
@@ -110,7 +134,40 @@ export function MaterialRow({
           />
           {error && <p className="text-xs text-red-600 mt-1">{error}</p>}
         </td>
+        <td className="py-2 px-2">
+          <input
+            value={brand}
+            onChange={(e) => setBrand(e.target.value)}
+            onKeyDown={onKeyDown}
+            placeholder="marca"
+            className={`w-28 ${inputClass}`}
+          />
+        </td>
+        <td className="py-2 px-2">
+          <select
+            value={supplierId}
+            onChange={(e) => setSupplierId(e.target.value)}
+            className={`w-36 bg-white ${inputClass}`}
+          >
+            <option value="">— sem fornecedor —</option>
+            {suppliers.map((s) => (
+              <option key={s.id} value={s.id}>{s.name}</option>
+            ))}
+          </select>
+        </td>
         <td className="py-2 px-2 text-center text-gray-500">{material.unit}</td>
+        <td className="py-2 px-2 text-center">
+          <input
+            type="number"
+            value={quantity}
+            onChange={(e) => setQuantity(e.target.value)}
+            onKeyDown={onKeyDown}
+            step="0.01"
+            min="0"
+            placeholder="—"
+            className={`w-20 text-center ${inputClass}`}
+          />
+        </td>
         <td className="py-2 px-2 text-right">
           <input
             type="number"
@@ -156,6 +213,7 @@ export function MaterialRow({
   }
 
   const shownDate = formatDate(material.priceDate);
+  const shownQty = formatQty(material.quantity);
 
   return (
     <tr className={`border-b border-gray-50 ${!material.active ? "opacity-40" : ""} ${selected ? "bg-amber-50/60" : ""}`}>
@@ -179,7 +237,22 @@ export function MaterialRow({
           <Pencil className="w-3 h-3 text-gray-400 group-hover:text-amber-600 shrink-0" />
         </button>
       </td>
+      <td className="py-2 px-2">
+        <button onClick={startEditing} className="text-gray-600 hover:text-amber-700">
+          {material.brand ? material.brand : <span className="text-gray-300">—</span>}
+        </button>
+      </td>
+      <td className="py-2 px-2">
+        <button onClick={startEditing} className="text-gray-600 hover:text-amber-700">
+          {material.supplier?.name ?? <span className="text-gray-300">—</span>}
+        </button>
+      </td>
       <td className="py-2 px-2 text-center text-gray-500">{material.unit}</td>
+      <td className="py-2 px-2 text-center">
+        <button onClick={startEditing} className="text-gray-600 hover:text-amber-700">
+          {shownQty ?? <span className="text-gray-300">—</span>}
+        </button>
+      </td>
       <td className="py-2 px-2 text-right">
         <button
           onClick={startEditing}

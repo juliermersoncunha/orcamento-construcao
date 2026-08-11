@@ -15,11 +15,18 @@ type Material = {
   currentPrice: number;
   priceDate: Date | string | null;
   active: boolean;
+  quantity: number | null;
+  brand: string | null;
+  supplierId: string | null;
+  supplier: { id: string; name: string } | null;
 };
+
+type Supplier = { id: string; name: string };
 
 type Props = {
   materialsByCategory: [MaterialCategory, Material[]][];
   categoryLabels: Record<MaterialCategory, string>;
+  suppliers: Supplier[];
 };
 
 function formatDateBR(d: Date | string | null): string {
@@ -29,13 +36,40 @@ function formatDateBR(d: Date | string | null): string {
   return date.toLocaleDateString("pt-BR");
 }
 
-export function MaterialsCatalog({ materialsByCategory, categoryLabels }: Props) {
+export function MaterialsCatalog({ materialsByCategory, categoryLabels, suppliers }: Props) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [supplierPick, setSupplierPick] = useState("");
 
   const total = useMemo(
     () => materialsByCategory.reduce((s, [, list]) => s + list.length, 0),
     [materialsByCategory]
   );
+
+  // Quantos materiais cada fornecedor atende — mostrado no seletor para não
+  // escolher às cegas um fornecedor sem itens.
+  const countBySupplier = useMemo(() => {
+    const acc = new Map<string, number>();
+    for (const [, list] of materialsByCategory) {
+      for (const m of list) {
+        if (m.supplierId) acc.set(m.supplierId, (acc.get(m.supplierId) ?? 0) + 1);
+      }
+    }
+    return acc;
+  }, [materialsByCategory]);
+
+  // Auto seleção: marca todos os materiais do fornecedor escolhido, somando à
+  // seleção atual (não limpa o que já estava marcado).
+  function selectBySupplier(supplierId: string) {
+    setSupplierPick(supplierId);
+    if (!supplierId) return;
+    setSelected((prev) => {
+      const next = new Set(prev);
+      for (const [, list] of materialsByCategory) {
+        for (const m of list) if (m.supplierId === supplierId) next.add(m.id);
+      }
+      return next;
+    });
+  }
 
   function toggle(id: string) {
     setSelected((prev) => {
@@ -79,7 +113,10 @@ export function MaterialsCatalog({ materialsByCategory, categoryLabels }: Props)
         rows.push({
           Categoria: categoryLabels[cat],
           Material: m.name,
+          Marca: m.brand ?? "",
+          Fornecedor: m.supplier?.name ?? "",
           Unidade: m.unit,
+          Quantidade: m.quantity ?? "",
           "Preço (R$)": m.currentPrice,
           "Data do preço": formatDateBR(m.priceDate),
           Status: m.active ? "Ativo" : "Inativo",
@@ -88,13 +125,19 @@ export function MaterialsCatalog({ materialsByCategory, categoryLabels }: Props)
     }
 
     const ws = XLSX.utils.json_to_sheet(rows, {
-      header: ["Categoria", "Material", "Unidade", "Preço (R$)", "Data do preço", "Status"],
+      header: [
+        "Categoria", "Material", "Marca", "Fornecedor", "Unidade",
+        "Quantidade", "Preço (R$)", "Data do preço", "Status",
+      ],
     });
     // Larguras confortáveis por coluna.
     ws["!cols"] = [
       { wch: 26 }, // Categoria
       { wch: 48 }, // Material
+      { wch: 18 }, // Marca
+      { wch: 24 }, // Fornecedor
       { wch: 10 }, // Unidade
+      { wch: 12 }, // Quantidade
       { wch: 12 }, // Preço
       { wch: 14 }, // Data
       { wch: 10 }, // Status
@@ -130,11 +173,30 @@ export function MaterialsCatalog({ materialsByCategory, categoryLabels }: Props)
           {anySelected && (
             <button
               type="button"
-              onClick={() => setSelected(new Set())}
+              onClick={() => { setSelected(new Set()); setSupplierPick(""); }}
               className="text-xs text-gray-500 underline hover:text-gray-700"
             >
               Limpar seleção
             </button>
+          )}
+
+          {suppliers.length > 0 && (
+            <select
+              value={supplierPick}
+              onChange={(e) => selectBySupplier(e.target.value)}
+              className="rounded-md border border-gray-300 bg-white px-2 py-1 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-amber-500"
+              aria-label="Selecionar itens de um fornecedor"
+            >
+              <option value="">Selecionar por fornecedor…</option>
+              {suppliers.map((s) => {
+                const n = countBySupplier.get(s.id) ?? 0;
+                return (
+                  <option key={s.id} value={s.id} disabled={n === 0}>
+                    {s.name} ({n})
+                  </option>
+                );
+              })}
+            </select>
           )}
         </div>
         <Button
@@ -178,7 +240,10 @@ export function MaterialsCatalog({ materialsByCategory, categoryLabels }: Props)
                       <tr className="border-b border-gray-100">
                         <th className="py-2 w-8"></th>
                         <th className="text-left font-medium text-gray-500 py-2">Material</th>
+                        <th className="text-left font-medium text-gray-500 py-2 px-2">Marca</th>
+                        <th className="text-left font-medium text-gray-500 py-2 px-2">Fornecedor</th>
                         <th className="text-center font-medium text-gray-500 py-2">Unidade</th>
+                        <th className="text-center font-medium text-gray-500 py-2">Qtd</th>
                         <th className="text-right font-medium text-gray-500 py-2">Preço (R$)</th>
                         <th className="text-center font-medium text-gray-500 py-2">Data do preço</th>
                         <th className="text-center font-medium text-gray-500 py-2">Status</th>
@@ -190,6 +255,7 @@ export function MaterialsCatalog({ materialsByCategory, categoryLabels }: Props)
                         <MaterialRow
                           key={material.id}
                           material={material}
+                          suppliers={suppliers}
                           selected={selected.has(material.id)}
                           onToggleSelect={() => toggle(material.id)}
                         />

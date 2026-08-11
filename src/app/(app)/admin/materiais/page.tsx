@@ -41,9 +41,17 @@ export default async function MateriaisPage() {
   const session = await getSession();
   if (!session || session.role !== "ADMIN") redirect("/projetos");
 
-  const materials = await prisma.material.findMany({
-    orderBy: [{ category: "asc" }, { name: "asc" }],
-  });
+  const [materials, suppliers] = await Promise.all([
+    prisma.material.findMany({
+      orderBy: [{ category: "asc" }, { name: "asc" }],
+      include: { supplier: { select: { id: true, name: true } } },
+    }),
+    prisma.supplier.findMany({
+      where: { active: true },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true },
+    }),
+  ]);
 
   const byCategory = new Map<MaterialCategory, typeof materials>();
   for (const m of materials) {
@@ -55,7 +63,7 @@ export default async function MateriaisPage() {
   const zeroPrice = materials.filter((m) => m.active && m.currentPrice === 0).length;
 
   return (
-    <div className="p-8 max-w-5xl">
+    <div className="p-8 max-w-7xl">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Materiais e Preços</h1>
@@ -70,7 +78,7 @@ export default async function MateriaisPage() {
         </div>
       </div>
 
-      <MaterialForm />
+      <MaterialForm suppliers={suppliers} />
 
       <div className="mt-8">
         <MaterialsCatalog
@@ -85,8 +93,13 @@ export default async function MateriaisPage() {
               currentPrice: m.currentPrice,
               priceDate: m.priceDate,
               active: m.active,
+              quantity: m.quantity,
+              brand: m.brand,
+              supplierId: m.supplierId,
+              supplier: m.supplier,
             }))])}
           categoryLabels={categoryLabels}
+          suppliers={suppliers}
         />
       </div>
     </div>

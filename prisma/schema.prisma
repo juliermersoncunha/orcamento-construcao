@@ -454,6 +454,20 @@ model RoomFinish {
   room     Room            @relation(fields: [roomId], references: [id], onDelete: Cascade)
 }
 
+// Cadastro simplificado — só o necessário para saber de quem é o preço e
+// como comprar. Um fornecedor pode atender vários materiais.
+model Supplier {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  phone     String?
+  notes     String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  materials Material[]
+}
+
 model Material {
   id           String           @id @default(cuid())
   name         String
@@ -461,10 +475,16 @@ model Material {
   category     MaterialCategory
   currentPrice Float
   priceDate    DateTime?
+  // Quantidade da embalagem, no par com `unit` — ex.: unit "kg" + quantity 18
+  // descreve o balde de 18 kg pelo qual o preço foi cotado.
+  quantity     Float?
+  brand        String?
+  supplierId   String?
   active       Boolean          @default(true)
   createdAt    DateTime         @default(now())
   updatedAt    DateTime         @updatedAt
 
+  supplier     Supplier?        @relation(fields: [supplierId], references: [id], onDelete: SetNull)
   priceHistory PriceHistory[]
   budgetItems  BudgetItem[]
   manualBudgetItems ManualBudgetItem[]

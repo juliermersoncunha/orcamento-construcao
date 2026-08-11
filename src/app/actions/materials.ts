@@ -27,6 +27,26 @@ const MaterialSchema = z.object({
     .trim()
     .optional()
     .transform((v) => (v ? new Date(`${v}T12:00:00`) : null)),
+  // Quantidade da embalagem e marca são opcionais — o catálogo antigo não tem.
+  quantity: z
+    .string()
+    .trim()
+    .optional()
+    .transform((v) => {
+      if (!v) return null;
+      const n = Number(v.replace(",", "."));
+      return Number.isFinite(n) && n > 0 ? n : null;
+    }),
+  brand: z
+    .string()
+    .trim()
+    .optional()
+    .transform((v) => v || null),
+  supplierId: z
+    .string()
+    .trim()
+    .optional()
+    .transform((v) => v || null),
 });
 
 export type MaterialFormState = { errors?: Record<string, string[]> };
@@ -53,7 +73,14 @@ export async function createMaterial(
 
 export async function updateMaterial(
   materialId: string,
-  input: { name: string; price: number; priceDate: string | null }
+  input: {
+    name: string;
+    price: number;
+    priceDate: string | null;
+    quantity?: number | null;
+    brand?: string | null;
+    supplierId?: string | null;
+  }
 ) {
   const session = await requireAdmin();
 
@@ -71,7 +98,17 @@ export async function updateMaterial(
 
   await prisma.material.update({
     where: { id: materialId },
-    data: { name, currentPrice: input.price, priceDate },
+    data: {
+      name,
+      currentPrice: input.price,
+      priceDate,
+      quantity:
+        input.quantity == null || !Number.isFinite(input.quantity) || input.quantity <= 0
+          ? null
+          : input.quantity,
+      brand: input.brand?.trim() || null,
+      supplierId: input.supplierId || null,
+    },
   });
 
   // Only log history when the price actually changed.

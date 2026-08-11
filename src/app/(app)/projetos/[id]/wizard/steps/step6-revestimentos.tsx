@@ -1,11 +1,15 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { saveStep6Finishes } from "@/app/actions/wizard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { PaintBucket, ChevronRight } from "lucide-react";
+import {
+  CARDINAL_WALL_SIDES, CARDINAL_WALL_LABELS, defaultWallLength,
+} from "@/lib/wall-sides";
+import type { CardinalWallSide } from "@/lib/wall-sides";
 
 const FLOOR_OPTIONS = [
   { value: "ceramica", label: "Cerâmica" },
@@ -14,6 +18,111 @@ const FLOOR_OPTIONS = [
   { value: "cimento_queimado", label: "Cimento Queimado" },
   { value: "nenhum", label: "Sem acabamento" },
 ];
+
+// Azulejo de parede por cômodo. "Todas" usa o perímetro inteiro; "Escolher"
+// grava só as paredes marcadas (RoomWallFinish), que é o que evita cobrar
+// revestimento de parede que não vai ser revestida.
+function RoomWallTile({ room, rf, suggested }: { room: any; rf: any; suggested: boolean }) {
+  const cardinais = (room.wallFinishes ?? []).filter(
+    (w: any) => w.hasTile && CARDINAL_WALL_SIDES.includes(w.wallSide)
+  );
+  // Paredes que vieram dos cards da Etapa 5 (box, pia) — a Etapa 6 não mexe.
+  const especiais = (room.wallFinishes ?? []).filter(
+    (w: any) => w.hasTile && !CARDINAL_WALL_SIDES.includes(w.wallSide)
+  );
+
+  const [mode, setMode] = useState<string>(
+    cardinais.length > 0 ? "ESCOLHER" : (rf?.wallTile ?? suggested) ? "TODAS" : "NAO"
+  );
+
+  const byside: Record<string, any> = {};
+  cardinais.forEach((w: any) => { byside[w.wallSide] = w; });
+
+  return (
+    <div className="mt-3 rounded-lg border border-gray-200 bg-white p-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-medium text-gray-600">Azulejo na parede</label>
+          <select
+            name={`wallTileMode_${room.id}`}
+            value={mode}
+            onChange={(e) => setMode(e.target.value)}
+            className="w-full rounded border border-gray-300 bg-white px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+          >
+            <option value="NAO">Não tem</option>
+            <option value="TODAS">Todas as paredes</option>
+            <option value="ESCOLHER">Escolher paredes</option>
+          </select>
+        </div>
+        {mode === "TODAS" && (
+          <Input
+            label="Altura do azulejo (m)"
+            name={`wallTileHeight_${room.id}`}
+            type="number"
+            defaultValue={rf?.wallTileHeight ?? 1.5}
+            step="0.1"
+            min="0"
+          />
+        )}
+      </div>
+
+      {mode === "ESCOLHER" && (
+        <div className="mt-3">
+          <p className="text-xs text-gray-500 mb-2">
+            Marque só as paredes revestidas. O comprimento vem das medidas do cômodo —
+            altere se a parede revestida for menor (ex.: só o trecho da bancada).
+          </p>
+          <div className="flex flex-col gap-2">
+            {CARDINAL_WALL_SIDES.map((side) => {
+              const w = byside[side];
+              const padrao = defaultWallLength(side as CardinalWallSide, room.width, room.length);
+              return (
+                <div key={side} className="grid grid-cols-[auto_1fr_1fr] gap-2 items-center">
+                  <label className="flex items-center gap-2 cursor-pointer w-28">
+                    <input
+                      type="checkbox"
+                      name={`wall_${room.id}_${side}`}
+                      value="true"
+                      defaultChecked={!!w}
+                      className="w-4 h-4 rounded accent-amber-600"
+                    />
+                    <span className="text-sm text-gray-700">
+                      {CARDINAL_WALL_LABELS[side as CardinalWallSide]}
+                    </span>
+                  </label>
+                  <Input
+                    label="Compr. (m)"
+                    name={`wallL_${room.id}_${side}`}
+                    type="number"
+                    defaultValue={w?.wallLength ?? padrao}
+                    step="0.1"
+                    min="0"
+                  />
+                  <Input
+                    label="Altura (m)"
+                    name={`wallH_${room.id}_${side}`}
+                    type="number"
+                    defaultValue={w?.tileHeight ?? rf?.wallTileHeight ?? 1.5}
+                    step="0.1"
+                    min="0"
+                  />
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {especiais.length > 0 && (
+        <p className="text-xs text-blue-700 mt-2">
+          Este ambiente também tem{" "}
+          {especiais.map((w: any) => (w.wallSide === "BOX" ? "a área do box" : "a parede da pia")).join(" e ")}{" "}
+          configurado na Etapa 5 — isso é somado e não é alterado aqui.
+        </p>
+      )}
+    </div>
+  );
+}
 
 export function Step6Revestimentos({ project }: { project: any }) {
   const [isPending, startTransition] = useTransition();
@@ -127,25 +236,6 @@ export function Step6Revestimentos({ project }: { project: any }) {
                           </select>
                         </div>
                         <div className="flex flex-col gap-1">
-                          <label className="text-xs font-medium text-gray-600">Azulejo na parede?</label>
-                          <select
-                            name={`wallTile_${room.id}`}
-                            defaultValue={hasWallTile ? "true" : "false"}
-                            className="w-full rounded border border-gray-300 bg-white px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
-                          >
-                            <option value="true">Sim</option>
-                            <option value="false">Não</option>
-                          </select>
-                        </div>
-                        <Input
-                          label="Altura azulejo (m)"
-                          name={`wallTileHeight_${room.id}`}
-                          type="number"
-                          defaultValue={rf?.wallTileHeight ?? 1.5}
-                          step="0.1"
-                          min="0"
-                        />
-                        <div className="flex flex-col gap-1">
                           <label className="text-xs font-medium text-gray-600">Pintura?</label>
                           <select
                             name={`paintWalls_${room.id}`}
@@ -157,6 +247,7 @@ export function Step6Revestimentos({ project }: { project: any }) {
                           </select>
                         </div>
                       </div>
+                      <RoomWallTile room={room} rf={rf} suggested={hasWallTile} />
                     </div>
                   );
                 })}

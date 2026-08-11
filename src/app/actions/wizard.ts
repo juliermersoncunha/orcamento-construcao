@@ -10,6 +10,7 @@ import { resolveRoomFixtures } from "@/lib/calculations/fixture-engine";
 import type { RoomEngineInput } from "@/lib/calculations/fixture-engine";
 import { MaterialCategory, PhaseType } from "@prisma/client";
 import { ALL_ELECTRICAL_NAMES } from "@/lib/electrical-catalog";
+import { CARDINAL_WALL_SIDES } from "@/lib/wall-sides";
 
 async function getProject(projectId: string) {
   const session = await getSession();
@@ -241,16 +242,44 @@ export async function saveStep6Finishes(projectId: string, formData: FormData) {
   await prisma.roomFinish.deleteMany({ where: { finishesId: finishes.id } });
 
   for (const room of rooms) {
+    // "TODAS" = perímetro inteiro (cálculo genérico). "ESCOLHER" = só as paredes
+    // marcadas, que viram RoomWallFinish e passam pelo motor de ambientes.
+    const mode = (formData.get(`wallTileMode_${room.id}`) as string) || "NAO";
+    const height = parseFloat(formData.get(`wallTileHeight_${room.id}`) as string) || 1.5;
+
     await prisma.roomFinish.create({
       data: {
         finishesId: finishes.id,
         roomId: room.id,
         floorType: formData.get(`floorType_${room.id}`) as string || "ceramica",
-        wallTile: formData.get(`wallTile_${room.id}`) === "true",
-        wallTileHeight: parseFloat(formData.get(`wallTileHeight_${room.id}`) as string) || 1.5,
+        wallTile: mode === "TODAS",
+        wallTileHeight: height,
         paintWalls: formData.get(`paintWalls_${room.id}`) !== "false",
       },
     });
+
+    // Os lados cardeais são território da Etapa 6; BOX e PIA pertencem aos cards
+    // de banheiro/cozinha da Etapa 5 e não podem ser apagados daqui.
+    await prisma.roomWallFinish.deleteMany({
+      where: { roomId: room.id, wallSide: { in: [...CARDINAL_WALL_SIDES] } },
+    });
+
+    if (mode === "ESCOLHER") {
+      for (const side of CARDINAL_WALL_SIDES) {
+        if (formData.get(`wall_${room.id}_${side}`) !== "true") continue;
+        const h = parseFloat(formData.get(`wallH_${room.id}_${side}`) as string) || height;
+        const len = parseFloat(formData.get(`wallL_${room.id}_${side}`) as string);
+        await prisma.roomWallFinish.create({
+          data: {
+            roomId: room.id,
+            wallSide: side,
+            hasTile: true,
+            tileHeight: h,
+            wallLength: Number.isFinite(len) && len > 0 ? len : null,
+          },
+        });
+      }
+    }
   }
 
   await prisma.project.update({

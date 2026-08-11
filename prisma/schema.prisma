@@ -259,6 +259,17 @@ model ProjectStructure {
   escavacaoM3    Float   @default(0)
   compactacaoM2  Float   @default(0)
 
+  // Alvenaria — perímetros informados manualmente (evita duplicar paredes internas)
+  perimetroParedesExt Float  @default(0)
+  perimetroParedesInt Float  @default(0)
+  peDireito           Float  @default(2.8)
+  hasPlatibanda       Boolean @default(false)
+  platibandaML        Float  @default(0)
+  platibandaAltura    Float  @default(0)
+
+  // Laje — tipo (forro | piso) define o consumo de concreto por m²
+  lajeType       String  @default("forro")
+
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 }
 

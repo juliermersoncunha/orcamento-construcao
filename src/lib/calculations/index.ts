@@ -36,6 +36,13 @@ export type StructureInput = {
   escavacaoM3: number;
   compactacaoM2: number;
   sapataAltura: number;
+  perimetroParedesExt: number;
+  perimetroParedesInt: number;
+  peDireito: number;
+  hasPlatibanda: boolean;
+  platibandaML: number;
+  platibandaAltura: number;
+  lajeType: string;   // "forro" | "piso"
 };
 
 export type RoofingInput = {
@@ -80,13 +87,6 @@ function toRadians(degrees: number) {
 
 function totalFloorArea(rooms: RoomInput[]) {
   return rooms.reduce((sum, r) => sum + r.width * r.length, 0);
-}
-
-function totalWallArea(rooms: RoomInput[]) {
-  return rooms.reduce((sum, r) => {
-    const perimeter = 2 * (r.width + r.length);
-    return sum + perimeter * r.height;
-  }, 0);
 }
 
 function round1(n: number) {
@@ -158,11 +158,18 @@ function calcEstrutura(structure: StructureInput): MaterialResult[] {
 }
 
 function calcAlvenaria(
-  rooms: RoomInput[],
   finishes: FinishesInput,
   structure: StructureInput
 ): MaterialResult[] {
-  const wallArea = totalWallArea(rooms) * structure.floors;
+  // Perímetros informados manualmente na Etapa 3 — parede externa + interna,
+  // sem duplicar (cada parede interna entra uma vez). A platibanda é uma faixa
+  // adicional de alvenaria acima do pé-direito, no perímetro externo.
+  const perimTotal = structure.perimetroParedesExt + structure.perimetroParedesInt;
+  const platibandaArea = structure.hasPlatibanda
+    ? structure.platibandaML * structure.platibandaAltura
+    : 0;
+  const wallArea = perimTotal * structure.peDireito * structure.floors + platibandaArea;
+
   const areaVaos =
     (finishes.doors + finishes.externalDoors) * 0.9 * 2.1 +
     finishes.windows * 1.2 * 1.2;
@@ -181,7 +188,8 @@ function calcAlvenaria(
   const cimentoRebrocoInt = Math.ceil(netWallArea * 0.08 * 1.10);
   const areiaRebrocoInt = round1(netWallArea * 0.018 * 1.10);
 
-  const externalWallArea = netWallArea * 0.30;
+  const externalWallArea =
+    structure.perimetroParedesExt * structure.peDireito * structure.floors + platibandaArea;
   const cimentoRebrocoExt = Math.ceil(externalWallArea * 0.10 * 1.10);
   const areiaRebrocoExt = round1(externalWallArea * 0.024 * 1.10);
 
@@ -209,8 +217,10 @@ function calcLaje(rooms: RoomInput[], structure: StructureInput): MaterialResult
   if (!structure.hasLaje) return [];
 
   const area = totalFloorArea(rooms) * (structure.floors - 1 || 1);
-  // Laje pré-moldada/treliçada: concreto 0,065 m³/m² (referência forro/cobertura)
-  const concreteVol = round1(area * 0.065);
+  // Concreto pronto por m² conforme o tipo de laje (traço 1:2:3):
+  // forro = 0,14 m³/m² · piso = 0,11 m³/m².
+  const coefConcreto = structure.lajeType === "piso" ? 0.11 : 0.14;
+  const concreteVol = round1(area * coefConcreto);
 
   return [
     { name: "Laje pré-moldada treliçada", unit: "m²", quantity: Math.ceil(area), phase: "LAJE", category: "LAJE" },
@@ -492,7 +502,7 @@ export function calculateMaterials(input: CalculationInput): MaterialResult[] {
     ...calcTerraplenagem(input.structure),
     ...calcFundacao(input.structure),
     ...calcEstrutura(input.structure),
-    ...calcAlvenaria(input.rooms, input.finishes, input.structure),
+    ...calcAlvenaria(input.finishes, input.structure),
     ...calcLaje(input.rooms, input.structure),
     ...calcEscada(input.structure),
     ...calcCobertura(input.rooms, input.roofing),

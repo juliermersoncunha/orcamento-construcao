@@ -105,6 +105,13 @@ export async function saveStep3Structure(projectId: string, formData: FormData) 
     sapataAltura: f("sapataAltura", 0.30),
     escavacaoM3: f("escavacaoM3"),
     compactacaoM2: f("compactacaoM2"),
+    perimetroParedesExt: f("perimetroParedesExt"),
+    perimetroParedesInt: f("perimetroParedesInt"),
+    peDireito: f("peDireito", 2.8),
+    hasPlatibanda: formData.get("hasPlatibanda") === "true",
+    platibandaML: f("platibandaML"),
+    platibandaAltura: f("platibandaAltura"),
+    lajeType: (formData.get("lajeType") as string) || "forro",
   };
 
   await prisma.projectStructure.upsert({
@@ -349,6 +356,13 @@ export async function calculateAndSaveBudget(projectId: string) {
       sapataAltura: project.structure?.sapataAltura ?? 0.30,
       escavacaoM3: project.structure?.escavacaoM3 ?? 0,
       compactacaoM2: project.structure?.compactacaoM2 ?? 0,
+      perimetroParedesExt: project.structure?.perimetroParedesExt ?? 0,
+      perimetroParedesInt: project.structure?.perimetroParedesInt ?? 0,
+      peDireito: project.structure?.peDireito ?? 2.8,
+      hasPlatibanda: project.structure?.hasPlatibanda ?? false,
+      platibandaML: project.structure?.platibandaML ?? 0,
+      platibandaAltura: project.structure?.platibandaAltura ?? 0,
+      lajeType: project.structure?.lajeType ?? "forro",
     },
     roofing: {
       roofType: project.roofing?.roofType ?? "duas_aguas",

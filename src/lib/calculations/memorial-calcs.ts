@@ -22,12 +22,6 @@ function totalFloorArea(rooms: RoomInput[]) {
   return rooms.reduce((sum, r) => sum + r.width * r.length, 0);
 }
 
-function totalWallArea(rooms: RoomInput[]) {
-  return rooms.reduce((sum, r) => {
-    const perimeter = 2 * (r.width + r.length);
-    return sum + perimeter * r.height;
-  }, 0);
-}
 
 const BLOCK_LABELS: Record<string, string> = {
   tijolo_furado: "Tijolo cerâmico furado",
@@ -67,7 +61,6 @@ export function generateExplanations(
   finishes: FinishesInput
 ): Record<string, CalcExplanation[]> {
   const area = totalFloorArea(rooms);
-  const wallArea = totalWallArea(rooms);
   const result: Record<string, CalcExplanation[]> = {};
 
   // ── Terraplenagem (manual) ──
@@ -175,7 +168,11 @@ export function generateExplanations(
 
   // ── Alvenaria ──
   {
-    const wallAreaTotal = wallArea * structure.floors;
+    const perimTotal = structure.perimetroParedesExt + structure.perimetroParedesInt;
+    const platibandaArea = structure.hasPlatibanda
+      ? structure.platibandaML * structure.platibandaAltura
+      : 0;
+    const wallAreaTotal = perimTotal * structure.peDireito * structure.floors + platibandaArea;
     const areaVaos =
       (finishes.doors + finishes.externalDoors) * 0.9 * 2.1 +
       finishes.windows * 1.2 * 1.2;
@@ -185,12 +182,13 @@ export function generateExplanations(
     const totalDoors = finishes.doors + finishes.externalDoors;
 
     const chapiscoArea = netWallArea * 2;
-    const externalWallArea = netWallArea * 0.3;
+    const externalWallArea =
+      structure.perimetroParedesExt * structure.peDireito * structure.floors + platibandaArea;
 
     result["ESTRUTURA_ALVENARIA_ALVENARIA"] = [
       {
         materialName: "Área de parede bruta",
-        formula: `Σ [2×(larg+comp) × pé dir.] por cômodo${structure.floors > 1 ? ` × ${structure.floors} pav.` : ""}`,
+        formula: `(${fmt(structure.perimetroParedesExt)} m ext + ${fmt(structure.perimetroParedesInt)} m int) × ${fmt(structure.peDireito)} m pé dir.${structure.floors > 1 ? ` × ${structure.floors} pav.` : ""}${structure.hasPlatibanda ? ` + platibanda ${fmt(structure.platibandaML)}×${fmt(structure.platibandaAltura)} m` : ""}`,
         result: `${fmt(wallAreaTotal)} m²`,
       },
       {
@@ -235,7 +233,7 @@ export function generateExplanations(
       },
       {
         materialName: "Cimento CP-II (50kg) – reboco externo",
-        formula: `Parede ext. (${fmt(netWallArea)} × 30% = ${fmt(externalWallArea)} m²) × 0,10 sc/m² × 1,10`,
+        formula: `Parede ext. (${fmt(externalWallArea)} m²) × 0,10 sc/m² × 1,10`,
         result: `${fmt(externalWallArea * 0.1 * 1.1)} → ${Math.ceil(externalWallArea * 0.1 * 1.1)} sc`,
       },
       {
@@ -249,7 +247,9 @@ export function generateExplanations(
   // ── Laje pré-moldada ──
   if (structure.hasLaje) {
     const lajeArea = area * (structure.floors - 1 || 1);
-    const concreteVol = round1(lajeArea * 0.065);
+    const coefConcreto = structure.lajeType === "piso" ? 0.11 : 0.14;
+    const lajeLabel = structure.lajeType === "piso" ? "piso" : "forro";
+    const concreteVol = round1(lajeArea * coefConcreto);
 
     result["LAJE"] = [
       {
@@ -259,8 +259,8 @@ export function generateExplanations(
       },
       {
         materialName: "Volume de concreto – laje",
-        formula: `Área laje (${fmt(lajeArea)} m²) × 0,065 m³/m² [coef. forro/cobertura]`,
-        result: `${fmt(lajeArea * 0.065)} → ${fmt(concreteVol)} m³`,
+        formula: `Área laje (${fmt(lajeArea)} m²) × ${fmt(coefConcreto)} m³/m² [laje ${lajeLabel}]`,
+        result: `${fmt(lajeArea * coefConcreto)} → ${fmt(concreteVol)} m³`,
       },
       ...tracoExplanations(concreteVol, "laje", "LAJE"),
     ];

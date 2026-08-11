@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { saveStep3Structure } from "@/app/actions/wizard";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
@@ -11,6 +11,8 @@ import { Layers, ChevronRight } from "lucide-react";
 export function Step3Estrutura({ project }: { project: any }) {
   const [isPending, startTransition] = useTransition();
   const s = project.structure;
+  const [hasPlatibanda, setHasPlatibanda] = useState<boolean>(s?.hasPlatibanda ?? false);
+  const [hasLaje, setHasLaje] = useState<boolean>(s?.hasLaje ?? false);
 
   function handleSubmit(formData: FormData) {
     startTransition(() => saveStep3Structure(project.id, formData));
@@ -101,6 +103,78 @@ export function Step3Estrutura({ project }: { project: any }) {
                 step="0.1"
               />
             </div>
+          </div>
+
+          {/* Alvenaria — perímetros manuais */}
+          <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-4">
+            <p className="text-sm font-semibold text-zinc-700 mb-1">Alvenaria (paredes)</p>
+            <p className="text-xs text-zinc-500 mb-3">
+              Informe o perímetro das paredes (cada parede interna conta uma vez, sem duplicar).
+              Portas e janelas da Etapa 6 são descontadas automaticamente.
+            </p>
+            <div className="grid grid-cols-3 gap-3">
+              <Input
+                id="perimetroParedesExt"
+                name="perimetroParedesExt"
+                type="number"
+                label="Perímetro externo (m)"
+                defaultValue={s?.perimetroParedesExt ?? 0}
+                min="0"
+                step="0.1"
+              />
+              <Input
+                id="perimetroParedesInt"
+                name="perimetroParedesInt"
+                type="number"
+                label="Paredes internas (m)"
+                defaultValue={s?.perimetroParedesInt ?? 0}
+                min="0"
+                step="0.1"
+              />
+              <Input
+                id="peDireito"
+                name="peDireito"
+                type="number"
+                label="Pé-direito (m)"
+                defaultValue={s?.peDireito ?? 2.8}
+                min="0"
+                step="0.05"
+              />
+            </div>
+
+            <label className="flex items-center gap-3 cursor-pointer mt-4">
+              <input
+                type="checkbox"
+                name="hasPlatibanda"
+                value="true"
+                checked={hasPlatibanda}
+                onChange={(e) => setHasPlatibanda(e.target.checked)}
+                className="w-4 h-4 rounded accent-amber-600"
+              />
+              <span className="text-sm text-zinc-700">Possui platibanda (mureta acima do pé-direito)</span>
+            </label>
+            {hasPlatibanda && (
+              <div className="grid grid-cols-2 gap-3 mt-3">
+                <Input
+                  id="platibandaML"
+                  name="platibandaML"
+                  type="number"
+                  label="Platibanda — metros lineares (m)"
+                  defaultValue={s?.platibandaML ?? 0}
+                  min="0"
+                  step="0.1"
+                />
+                <Input
+                  id="platibandaAltura"
+                  name="platibandaAltura"
+                  type="number"
+                  label="Platibanda — altura (m)"
+                  defaultValue={s?.platibandaAltura ?? 0}
+                  min="0"
+                  step="0.05"
+                />
+              </div>
+            )}
           </div>
 
           {/* Sapatas */}
@@ -221,11 +295,26 @@ export function Step3Estrutura({ project }: { project: any }) {
                 type="checkbox"
                 name="hasLaje"
                 value="true"
-                defaultChecked={s?.hasLaje ?? false}
+                checked={hasLaje}
+                onChange={(e) => setHasLaje(e.target.checked)}
                 className="w-4 h-4 rounded accent-amber-600"
               />
               <span className="text-sm text-zinc-700">Possui laje pré-moldada/treliçada</span>
             </label>
+            {hasLaje && (
+              <div className="ml-7">
+                <Select
+                  id="lajeType"
+                  name="lajeType"
+                  label="Tipo de laje"
+                  defaultValue={s?.lajeType ?? "forro"}
+                  options={[
+                    { value: "forro", label: "Forro (0,14 m³ de concreto/m²)" },
+                    { value: "piso", label: "Piso (0,11 m³ de concreto/m²)" },
+                  ]}
+                />
+              </div>
+            )}
             <label className="flex items-center gap-3 cursor-pointer">
               <input
                 type="checkbox"

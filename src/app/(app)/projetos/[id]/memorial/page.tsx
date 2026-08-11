@@ -219,6 +219,13 @@ export default async function MemorialPage({
         sapataAltura: project.structure.sapataAltura,
         escavacaoM3: project.structure.escavacaoM3,
         compactacaoM2: project.structure.compactacaoM2,
+        perimetroParedesExt: project.structure.perimetroParedesExt,
+        perimetroParedesInt: project.structure.perimetroParedesInt,
+        peDireito: project.structure.peDireito,
+        hasPlatibanda: project.structure.hasPlatibanda,
+        platibandaML: project.structure.platibandaML,
+        platibandaAltura: project.structure.platibandaAltura,
+        lajeType: project.structure.lajeType,
       }
     : {
         foundationType: "sapata_corrida",
@@ -239,6 +246,13 @@ export default async function MemorialPage({
         sapataAltura: 0.30,
         escavacaoM3: 0,
         compactacaoM2: 0,
+        perimetroParedesExt: 0,
+        perimetroParedesInt: 0,
+        peDireito: 2.8,
+        hasPlatibanda: false,
+        platibandaML: 0,
+        platibandaAltura: 0,
+        lajeType: "forro",
       };
 
   const roofingInput: RoofingInput = project.roofing

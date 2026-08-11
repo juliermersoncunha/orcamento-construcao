@@ -43,6 +43,7 @@ export type StructureInput = {
   platibandaML: number;
   platibandaAltura: number;
   lajeType: string;   // "forro" | "piso"
+  formasM2: number;   // fôrmas de madeira manual; 0 = calcula automático
 };
 
 export type RoofingInput = {
@@ -51,6 +52,8 @@ export type RoofingInput = {
   inclination: number;
   hasRoof: boolean;
   tileSize?: string | null;   // fibrocimento: "2,44 x 1,1" | "1,83 x 1,1"
+  caibroM?: number;           // madeiramento manual; 0 = calcula automático
+  ripaM?: number;
 };
 
 import { ELECTRICAL_FINISH_DEFAULTS, outletMaterialsPerPoint, switchMaterialsPerPoint, lightPointMaterialsPerPoint } from "./electrical-finishes";
@@ -109,6 +112,22 @@ function concretoTraco123(volumeM3: number, phase: string, category: string): Ma
   ];
 }
 
+// Traço 1:2:3 rende ~0,140 m³ de concreto pronto por saco de cimento 50kg
+// (35 L cimento + 70 L areia + 105 L brita → 140 L de concreto). Usado onde o
+// volume de concreto já é conhecido (laje) e precisa ser convertido em insumos.
+const CONCRETO_YIELD_M3 = 0.140;
+const CONCRETO_AREIA_POR_SACO = 0.070;  // m³ de areia por saco
+const CONCRETO_BRITA_POR_SACO = 0.105;  // m³ de brita por saco
+function concretoPorRendimento(volumeM3: number, phase: string, category: string): MaterialResult[] {
+  if (volumeM3 <= 0) return [];
+  const sacos = volumeM3 / CONCRETO_YIELD_M3;
+  return [
+    { name: "Cimento CP-II (50kg)", unit: "sc", quantity: Math.ceil(sacos), phase, category },
+    { name: "Areia Média", unit: "m³", quantity: round1(sacos * CONCRETO_AREIA_POR_SACO), phase, category },
+    { name: "Brita 1", unit: "m³", quantity: round1(sacos * CONCRETO_BRITA_POR_SACO), phase, category },
+  ];
+}
+
 // ── Terraplenagem (manual) ─────────────────────────────────────────────────
 function calcTerraplenagem(structure: StructureInput): MaterialResult[] {
   const results: MaterialResult[] = [];
@@ -129,8 +148,11 @@ function calcFundacao(structure: StructureInput): MaterialResult[] {
   const results: MaterialResult[] = [
     ...concretoTraco123(vol, "FUNDACAO", "FUNDACAO"),
     { name: "Armação de Sapata", unit: "un", quantity: structure.sapataQtd, phase: "FUNDACAO", category: "FUNDACAO" },
-    { name: "Fôrmas de Madeira (compensado 18mm)", unit: "m²", quantity: Math.ceil(vol * 10), phase: "FUNDACAO", category: "FUNDACAO" },
   ];
+  // Fôrmas entram manualmente (uma linha única) quando formasM2 > 0.
+  if (structure.formasM2 <= 0) {
+    results.push({ name: "Fôrmas de Madeira (compensado 18mm)", unit: "m²", quantity: Math.ceil(vol * 10), phase: "FUNDACAO", category: "FUNDACAO" });
+  }
 
   return results;
 }
@@ -152,7 +174,9 @@ function calcEstrutura(structure: StructureInput): MaterialResult[] {
   if (structure.vigaMetros > 0) {
     results.push({ name: "Armação de Viga", unit: "m", quantity: round1(structure.vigaMetros), phase: "ESTRUTURA_ALVENARIA", category: "ESTRUTURA" });
   }
-  results.push({ name: "Fôrmas de Madeira (compensado 18mm)", unit: "m²", quantity: Math.ceil(volTotal * 10), phase: "ESTRUTURA_ALVENARIA", category: "ESTRUTURA" });
+  if (structure.formasM2 <= 0) {
+    results.push({ name: "Fôrmas de Madeira (compensado 18mm)", unit: "m²", quantity: Math.ceil(volTotal * 10), phase: "ESTRUTURA_ALVENARIA", category: "ESTRUTURA" });
+  }
 
   return results;
 }
@@ -217,14 +241,14 @@ function calcLaje(rooms: RoomInput[], structure: StructureInput): MaterialResult
   if (!structure.hasLaje) return [];
 
   const area = totalFloorArea(rooms) * (structure.floors - 1 || 1);
-  // Concreto pronto por m² conforme o tipo de laje (traço 1:2:3):
-  // forro = 0,14 m³/m² · piso = 0,11 m³/m².
-  const coefConcreto = structure.lajeType === "piso" ? 0.11 : 0.14;
+  // Concreto pronto por m² conforme o tipo de laje:
+  // forro = 0,048 m³/m² (48 L) · piso = 0,058 m³/m² (58 L).
+  const coefConcreto = structure.lajeType === "piso" ? 0.058 : 0.048;
   const concreteVol = round1(area * coefConcreto);
 
   return [
     { name: "Laje pré-moldada treliçada", unit: "m²", quantity: Math.ceil(area), phase: "LAJE", category: "LAJE" },
-    ...concretoTraco123(concreteVol, "LAJE", "LAJE"),
+    ...concretoPorRendimento(concreteVol, "LAJE", "LAJE"),
   ];
 }
 
@@ -234,9 +258,20 @@ function calcEscada(structure: StructureInput): MaterialResult[] {
 
   const lances = structure.floors - 1;
   const vol = 2 * lances;
-  return [
+  const results: MaterialResult[] = [
     ...concretoTraco123(vol, "ESCADA", "ESTRUTURA"),
-    { name: "Fôrmas de Madeira (compensado 18mm)", unit: "m²", quantity: 15 * lances, phase: "ESCADA", category: "ESTRUTURA" },
+  ];
+  if (structure.formasM2 <= 0) {
+    results.push({ name: "Fôrmas de Madeira (compensado 18mm)", unit: "m²", quantity: 15 * lances, phase: "ESCADA", category: "ESTRUTURA" });
+  }
+  return results;
+}
+
+// ── Fôrmas de madeira (manual) ─────────────────────────────────────────────
+function calcFormasManual(structure: StructureInput): MaterialResult[] {
+  if (structure.formasM2 <= 0) return [];
+  return [
+    { name: "Fôrmas de Madeira (compensado 18mm)", unit: "m²", quantity: Math.ceil(structure.formasM2), phase: "ESTRUTURA_ALVENARIA", category: "ESTRUTURA" },
   ];
 }
 
@@ -292,8 +327,9 @@ function calcCobertura(rooms: RoomInput[], roofing: RoofingInput): MaterialResul
   const { name: tileName, perM2 } = tileConsumption(roofing);
 
   const tiles = Math.ceil(roofArea * perM2 * LOSS);
-  const caibros = Math.ceil(roofArea * 3.5);
-  const ripas = Math.ceil(roofArea * 6);
+  // Madeiramento (caibro/ripa) pode ser informado manualmente; 0 = automático.
+  const caibros = (roofing.caibroM ?? 0) > 0 ? Math.ceil(roofing.caibroM as number) : Math.ceil(roofArea * 3.5);
+  const ripas = (roofing.ripaM ?? 0) > 0 ? Math.ceil(roofing.ripaM as number) : Math.ceil(roofArea * 6);
   const ridgePieces = Math.ceil(roofArea * 0.15);
 
   return [
@@ -502,6 +538,7 @@ export function calculateMaterials(input: CalculationInput): MaterialResult[] {
     ...calcTerraplenagem(input.structure),
     ...calcFundacao(input.structure),
     ...calcEstrutura(input.structure),
+    ...calcFormasManual(input.structure),
     ...calcAlvenaria(input.finishes, input.structure),
     ...calcLaje(input.rooms, input.structure),
     ...calcEscada(input.structure),

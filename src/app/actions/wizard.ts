@@ -112,6 +112,7 @@ export async function saveStep3Structure(projectId: string, formData: FormData) 
     platibandaML: f("platibandaML"),
     platibandaAltura: f("platibandaAltura"),
     lajeType: (formData.get("lajeType") as string) || "forro",
+    formasM2: f("formasM2"),
   };
 
   await prisma.projectStructure.upsert({
@@ -141,6 +142,8 @@ export async function saveStep4Roofing(projectId: string, formData: FormData) {
       inclination: parseFloat(formData.get("inclination") as string) || 30,
       hasRoof: formData.get("hasRoof") !== "false",
       tileSize: (formData.get("tileSize") as string) || null,
+      caibroM: parseFloat(formData.get("caibroM") as string) || 0,
+      ripaM: parseFloat(formData.get("ripaM") as string) || 0,
     },
     update: {
       roofType: formData.get("roofType") as string,
@@ -148,6 +151,8 @@ export async function saveStep4Roofing(projectId: string, formData: FormData) {
       inclination: parseFloat(formData.get("inclination") as string) || 30,
       hasRoof: formData.get("hasRoof") !== "false",
       tileSize: (formData.get("tileSize") as string) || null,
+      caibroM: parseFloat(formData.get("caibroM") as string) || 0,
+      ripaM: parseFloat(formData.get("ripaM") as string) || 0,
     },
   });
 
@@ -363,6 +368,7 @@ export async function calculateAndSaveBudget(projectId: string) {
       platibandaML: project.structure?.platibandaML ?? 0,
       platibandaAltura: project.structure?.platibandaAltura ?? 0,
       lajeType: project.structure?.lajeType ?? "forro",
+      formasM2: project.structure?.formasM2 ?? 0,
     },
     roofing: {
       roofType: project.roofing?.roofType ?? "duas_aguas",
@@ -370,6 +376,8 @@ export async function calculateAndSaveBudget(projectId: string) {
       inclination: project.roofing?.inclination ?? 30,
       hasRoof: project.roofing?.hasRoof ?? true,
       tileSize: project.roofing?.tileSize ?? null,
+      caibroM: project.roofing?.caibroM ?? 0,
+      ripaM: project.roofing?.ripaM ?? 0,
     },
     finishes: {
       doors: project.finishes?.doors ?? 0,

@@ -325,6 +325,17 @@ export function Step3Estrutura({ project }: { project: any }) {
               />
               <span className="text-sm text-zinc-700">Possui escada (para edificações com 2+ pavimentos)</span>
             </label>
+            <div className="pt-1">
+              <Input
+                id="formasM2"
+                name="formasM2"
+                type="number"
+                label="Fôrmas de madeira — total (m²) · 0 = calcular automático"
+                defaultValue={s?.formasM2 ?? 0}
+                min="0"
+                step="0.1"
+              />
+            </div>
           </div>
 
           <div className="flex justify-end mt-2">

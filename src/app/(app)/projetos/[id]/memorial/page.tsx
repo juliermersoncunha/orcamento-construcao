@@ -226,6 +226,7 @@ export default async function MemorialPage({
         platibandaML: project.structure.platibandaML,
         platibandaAltura: project.structure.platibandaAltura,
         lajeType: project.structure.lajeType,
+        formasM2: project.structure.formasM2,
       }
     : {
         foundationType: "sapata_corrida",
@@ -253,6 +254,7 @@ export default async function MemorialPage({
         platibandaML: 0,
         platibandaAltura: 0,
         lajeType: "forro",
+        formasM2: 0,
       };
 
   const roofingInput: RoofingInput = project.roofing
@@ -262,6 +264,8 @@ export default async function MemorialPage({
         inclination: project.roofing.inclination,
         hasRoof: project.roofing.hasRoof,
         tileSize: project.roofing.tileSize,
+        caibroM: project.roofing.caibroM,
+        ripaM: project.roofing.ripaM,
       }
     : { roofType: "duas_aguas", tileType: "ceramica", inclination: 30, hasRoof: true };
 

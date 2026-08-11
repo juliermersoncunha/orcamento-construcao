@@ -270,6 +270,9 @@ model ProjectStructure {
   // Laje — tipo (forro | piso) define o consumo de concreto por m²
   lajeType       String  @default("forro")
 
+  // Fôrmas de madeira — quantidade informada manualmente (0 = calcula automático)
+  formasM2       Float   @default(0)
+
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 }
 
@@ -282,6 +285,10 @@ model ProjectRoofing {
   hasRoof     Boolean @default(true)
   // Fibrocimento: "2,44 x 1,1" | "1,83 x 1,1". Define a área útil e o material.
   tileSize    String?
+
+  // Madeiramento informado manualmente (0 = calcula automático)
+  caibroM     Float   @default(0)
+  ripaM       Float   @default(0)
 
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 }

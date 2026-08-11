@@ -6,13 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { saveManualPipes } from "@/app/actions/manual-pipes";
 
-// { name → { id, unit, currentPrice } } — só o que existe no catálogo entra na UI.
-export type ManualMaterial = { id: string; name: string; unit: string; currentPrice: number };
+import type { ManualGroup } from "@/lib/manual-catalog";
 
-export type ManualGroup = {
-  key: string;
-  label: string;
-  items: { name: string; unit: string }[];
+export type ManualMaterial = {
+  id: string; name: string; unit: string; currentPrice: number; category: string;
 };
 
 type Props = {
@@ -24,7 +21,6 @@ type Props = {
   iconClassName: string;      // cor do quadrado do ícone
   focusRingClassName: string; // cor do foco dos inputs
   groups: ManualGroup[];
-  materialsByName: Record<string, ManualMaterial>;
   initialQuantities: Record<string, number>; // materialId → quantity
 };
 
@@ -37,14 +33,11 @@ export function Step5ManualItems({
   iconClassName,
   focusRingClassName,
   groups,
-  materialsByName,
   initialQuantities,
 }: Props) {
   // Só as quantidades dos materiais deste bloco — assim salvar a elétrica não
   // apaga o que foi informado nos tubos (e vice-versa).
-  const ownIds = new Set(
-    groups.flatMap((g) => g.items.map((it) => materialsByName[it.name]?.id).filter(Boolean) as string[])
-  );
+  const ownIds = new Set(groups.flatMap((g) => g.items.map((m) => m.id)));
 
   const [qty, setQty] = useState<Record<string, string>>(() => {
     const out: Record<string, string> = {};
@@ -101,18 +94,7 @@ export function Step5ManualItems({
                     </tr>
                   </thead>
                   <tbody>
-                    {group.items.map((it) => {
-                      const m = materialsByName[it.name];
-                      if (!m) {
-                        return (
-                          <tr key={it.name} className="border-t border-gray-200 text-gray-400">
-                            <td className="py-2 px-3">{it.name}</td>
-                            <td className="py-2 px-3">{it.unit}</td>
-                            <td className="py-2 px-3 text-right">—</td>
-                            <td className="py-2 px-3 text-right italic">material fora do catálogo</td>
-                          </tr>
-                        );
-                      }
+                    {group.items.map((m) => {
                       return (
                         <tr key={m.id} className="border-t border-gray-200">
                           <td className="py-2 px-3 text-gray-800">{m.name}</td>

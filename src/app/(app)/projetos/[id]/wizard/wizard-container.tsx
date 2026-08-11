@@ -29,12 +29,13 @@ const STEPS = [
   { number: 9, label: "Revisão" },
 ];
 
-import type { PipeMaterial } from "./steps/step5-manual-pipes";
+import type { ManualGroup } from "@/lib/manual-catalog";
 
 type WizardContainerProps = {
   project: any;
   currentStep: number;
-  pipesByName: Record<string, PipeMaterial>;
+  hydraulicGroups: ManualGroup[];
+  electricalGroups: ManualGroup[];
   manualPipeQuantities: Record<string, number>;
   catalogMaterials: CatalogMaterial[];
   manualPhaseRows: ManualPhaseRow[];
@@ -43,7 +44,8 @@ type WizardContainerProps = {
 export function WizardContainer({
   project,
   currentStep,
-  pipesByName,
+  hydraulicGroups,
+  electricalGroups,
   manualPipeQuantities,
   catalogMaterials,
   manualPhaseRows,
@@ -124,7 +126,8 @@ export function WizardContainer({
       {currentStep === 5 && (
         <Step5Instalacoes
           project={project}
-          pipesByName={pipesByName}
+          hydraulicGroups={hydraulicGroups}
+          electricalGroups={electricalGroups}
           manualPipeQuantities={manualPipeQuantities}
         />
       )}

@@ -8,17 +8,24 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Zap, ChevronRight, Bath, ChefHat } from "lucide-react";
 import { BathroomCard } from "./step5-bathroom-card";
 import { KitchenCard } from "./step5-kitchen-card";
-import { Step5ManualPipes, Step5ManualElectrical, type PipeMaterial } from "./step5-manual-pipes";
+import { Step5ManualPipes, Step5ManualElectrical } from "./step5-manual-pipes";
+import type { ManualGroup } from "@/lib/manual-catalog";
 import { BATHROOM_ROOM_TYPE_SET } from "@/lib/fixture-library/bathroom";
 import { KITCHEN_ROOM_TYPE_SET } from "@/lib/fixture-library/kitchen";
 
 type Step5Props = {
   project: any;
-  pipesByName: Record<string, PipeMaterial>;
+  hydraulicGroups: ManualGroup[];
+  electricalGroups: ManualGroup[];
   manualPipeQuantities: Record<string, number>;
 };
 
-export function Step5Instalacoes({ project, pipesByName, manualPipeQuantities }: Step5Props) {
+export function Step5Instalacoes({
+  project,
+  hydraulicGroups,
+  electricalGroups,
+  manualPipeQuantities,
+}: Step5Props) {
   const [isPending, startTransition] = useTransition();
   const inst = project.installations;
 
@@ -237,7 +244,7 @@ export function Step5Instalacoes({ project, pipesByName, manualPipeQuantities }:
       <div className="mt-6">
         <Step5ManualElectrical
           projectId={project.id}
-          materialsByName={pipesByName}
+          groups={electricalGroups}
           initialQuantities={manualPipeQuantities}
         />
       </div>
@@ -245,7 +252,7 @@ export function Step5Instalacoes({ project, pipesByName, manualPipeQuantities }:
       <div className="mt-6">
         <Step5ManualPipes
           projectId={project.id}
-          materialsByName={pipesByName}
+          groups={hydraulicGroups}
           initialQuantities={manualPipeQuantities}
         />
       </div>

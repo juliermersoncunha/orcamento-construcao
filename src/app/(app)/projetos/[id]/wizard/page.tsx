@@ -2,8 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { redirect } from "next/navigation";
 import { WizardContainer } from "./wizard-container";
-import { ALL_PIPE_NAMES } from "@/lib/pipes-catalog";
-import { ALL_ELECTRICAL_NAMES } from "@/lib/electrical-catalog";
+import { buildManualGroups, MANUAL_BLOCK_CATEGORIES } from "@/lib/manual-catalog";
+import type { MaterialCategory } from "@prisma/client";
 
 export default async function WizardPage({
   params,
@@ -42,14 +42,18 @@ export default async function WizardPage({
 
   const currentStep = etapa ? parseInt(etapa) : Math.min(project.wizardStep, 9);
 
-  // Materiais das listas fixas de entrada manual (tubos/conexões e
-  // cabos/infraestrutura elétrica) — só os que existem no catálogo.
-  const pipeMaterials = await prisma.material.findMany({
-    where: { name: { in: [...ALL_PIPE_NAMES, ...ALL_ELECTRICAL_NAMES] }, active: true },
-    select: { id: true, name: true, unit: true, currentPrice: true },
+  // Blocos de entrada manual da Etapa 5 — espelham o catálogo por categoria,
+  // então material novo aparece na tela sem tocar em código.
+  const manualCats = [
+    ...MANUAL_BLOCK_CATEGORIES.hidraulica,
+    ...MANUAL_BLOCK_CATEGORIES.eletrica,
+  ] as MaterialCategory[];
+  const manualMaterials = await prisma.material.findMany({
+    where: { category: { in: manualCats }, active: true },
+    select: { id: true, name: true, unit: true, currentPrice: true, category: true },
   });
-  const pipesByName: Record<string, { id: string; name: string; unit: string; currentPrice: number }> = {};
-  for (const m of pipeMaterials) pipesByName[m.name] = m;
+  const hydraulicGroups = buildManualGroups("hidraulica", manualMaterials);
+  const electricalGroups = buildManualGroups("eletrica", manualMaterials);
 
   const manualRows = await prisma.manualBudgetItem.findMany({
     where: { projectId: id },
@@ -82,7 +86,8 @@ export default async function WizardPage({
     <WizardContainer
       project={project}
       currentStep={currentStep}
-      pipesByName={pipesByName}
+      hydraulicGroups={hydraulicGroups}
+      electricalGroups={electricalGroups}
       manualPipeQuantities={manualPipeQuantities}
       catalogMaterials={catalogMaterials}
       manualPhaseRows={manualPhaseRows}

@@ -114,7 +114,7 @@ export function Step7Muros({ project }: { project: any }) {
                       <input
                         type="number"
                         min="0"
-                        step="0.1"
+                        step="any"
                         value={w.length || ""}
                         onChange={(e) => update(side, "length", parseFloat(e.target.value) || 0)}
                         placeholder="Ex: 12.5"
@@ -129,7 +129,7 @@ export function Step7Muros({ project }: { project: any }) {
                         type="number"
                         min="0.5"
                         max="5"
-                        step="0.1"
+                        step="any"
                         value={w.height || ""}
                         onChange={(e) => update(side, "height", parseFloat(e.target.value) || 2.0)}
                         placeholder="2.0"

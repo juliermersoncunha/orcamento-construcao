@@ -109,7 +109,7 @@ export function Step4Cobertura({ project }: { project: any }) {
                     label="Caibro 5×7cm (m)"
                     defaultValue={r?.caibroM ?? 0}
                     min="0"
-                    step="0.1"
+                    step="any"
                   />
                   <Input
                     id="ripaM"
@@ -118,7 +118,7 @@ export function Step4Cobertura({ project }: { project: any }) {
                     label="Ripa 2,5×5cm (m)"
                     defaultValue={r?.ripaM ?? 0}
                     min="0"
-                    step="0.1"
+                    step="any"
                   />
                   <Input
                     id="linhaM"
@@ -127,7 +127,7 @@ export function Step4Cobertura({ project }: { project: any }) {
                     label="Linha 6×12cm (m)"
                     defaultValue={r?.linhaM ?? 0}
                     min="0"
-                    step="0.1"
+                    step="any"
                   />
                   <Input
                     id="barroteM"
@@ -136,7 +136,7 @@ export function Step4Cobertura({ project }: { project: any }) {
                     label="Barrote 6×6cm (m)"
                     defaultValue={r?.barroteM ?? 0}
                     min="0"
-                    step="0.1"
+                    step="any"
                   />
                 </div>
               </div>

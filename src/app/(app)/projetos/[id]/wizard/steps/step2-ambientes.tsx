@@ -142,7 +142,7 @@ export function Step2Ambientes({ project }: { project: any }) {
                       value={room.width}
                       onChange={(e) => updateRoom(room.id, "width", e.target.value)}
                       placeholder="0,00"
-                      step="0.01"
+                      step="any"
                       min="0"
                       required
                       className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-amber-500"
@@ -152,7 +152,7 @@ export function Step2Ambientes({ project }: { project: any }) {
                       value={room.length}
                       onChange={(e) => updateRoom(room.id, "length", e.target.value)}
                       placeholder="0,00"
-                      step="0.01"
+                      step="any"
                       min="0"
                       required
                       className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-amber-500"
@@ -162,7 +162,7 @@ export function Step2Ambientes({ project }: { project: any }) {
                       value={room.height}
                       onChange={(e) => updateRoom(room.id, "height", e.target.value)}
                       placeholder="2,80"
-                      step="0.01"
+                      step="any"
                       min="0"
                       required
                       className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-amber-500"

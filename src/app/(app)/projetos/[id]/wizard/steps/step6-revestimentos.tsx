@@ -61,7 +61,7 @@ function RoomWallTile({ room, rf, suggested }: { room: any; rf: any; suggested: 
               name={`wallTileHeight_${room.id}`}
               type="number"
               defaultValue={rf?.wallTileHeight ?? 1.5}
-              step="0.1"
+              step="any"
               min="0"
             />
             <Input
@@ -69,7 +69,7 @@ function RoomWallTile({ room, rf, suggested }: { room: any; rf: any; suggested: 
               name={`wallTileOpenings_${room.id}`}
               type="number"
               defaultValue={rf?.wallTileOpenings ?? 0}
-              step="0.1"
+              step="any"
               min="0"
             />
           </div>
@@ -114,7 +114,7 @@ function RoomWallTile({ room, rf, suggested }: { room: any; rf: any; suggested: 
                     name={`wallL_${room.id}_${side}`}
                     type="number"
                     defaultValue={w?.wallLength ?? padrao}
-                    step="0.1"
+                    step="any"
                     min="0"
                   />
                   <Input
@@ -122,7 +122,7 @@ function RoomWallTile({ room, rf, suggested }: { room: any; rf: any; suggested: 
                     name={`wallH_${room.id}_${side}`}
                     type="number"
                     defaultValue={w?.tileHeight ?? rf?.wallTileHeight ?? 1.5}
-                    step="0.1"
+                    step="any"
                     min="0"
                   />
                   <Input
@@ -130,7 +130,7 @@ function RoomWallTile({ room, rf, suggested }: { room: any; rf: any; suggested: 
                     name={`wallV_${room.id}_${side}`}
                     type="number"
                     defaultValue={w?.openingsM2 ?? 0}
-                    step="0.1"
+                    step="any"
                     min="0"
                   />
                 </div>

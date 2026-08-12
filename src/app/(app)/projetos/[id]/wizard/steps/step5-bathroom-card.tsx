@@ -444,7 +444,6 @@ export function BathroomCard({ room }: { room: any }) {
               label="Altura do azulejo (m)"
               value={wallTile.height}
               onChange={(v) => { setWallTile((w) => ({ ...w, height: v })); setSaved(false); }}
-              step={0.05}
             />
           )}
         </div>
@@ -551,7 +550,6 @@ export function BathroomCard({ room }: { room: any }) {
                     <NumField
                       label="Largura (m)"
                       value={Number(f.config.width ?? 1)}
-                      step={0.05}
                       onChange={(v) => updateFixtureConfig(f.uid, "width", v)}
                     />
                   </div>
@@ -559,7 +557,6 @@ export function BathroomCard({ room }: { room: any }) {
                     <NumField
                       label="Altura (m)"
                       value={Number(f.config.height ?? 1.9)}
-                      step={0.05}
                       onChange={(v) => updateFixtureConfig(f.uid, "height", v)}
                     />
                   </div>

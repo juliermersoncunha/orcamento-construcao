@@ -93,7 +93,7 @@ export function Step3Estrutura({ project }: { project: any }) {
                 label="Escavação (m³)"
                 defaultValue={s?.escavacaoM3 ?? 0}
                 min="0"
-                step="0.1"
+                step="any"
               />
               <Input
                 id="compactacaoM2"
@@ -102,7 +102,7 @@ export function Step3Estrutura({ project }: { project: any }) {
                 label="Compactação de aterro (m²)"
                 defaultValue={s?.compactacaoM2 ?? 0}
                 min="0"
-                step="0.1"
+                step="any"
               />
             </div>
           </div>
@@ -122,7 +122,7 @@ export function Step3Estrutura({ project }: { project: any }) {
                   label="Área do radier (m²)"
                   defaultValue={s?.radierArea ?? 0}
                   min="0"
-                  step="0.1"
+                  step="any"
                 />
                 <Input
                   id="radierEspessura"
@@ -131,7 +131,7 @@ export function Step3Estrutura({ project }: { project: any }) {
                   label="Espessura (m)"
                   defaultValue={s?.radierEspessura ?? 0.10}
                   min="0"
-                  step="0.01"
+                  step="any"
                 />
               </div>
             </div>
@@ -152,7 +152,7 @@ export function Step3Estrutura({ project }: { project: any }) {
                 label="Perímetro externo (m)"
                 defaultValue={s?.perimetroParedesExt ?? 0}
                 min="0"
-                step="0.1"
+                step="any"
               />
               <Input
                 id="perimetroParedesInt"
@@ -161,7 +161,7 @@ export function Step3Estrutura({ project }: { project: any }) {
                 label="Paredes internas (m)"
                 defaultValue={s?.perimetroParedesInt ?? 0}
                 min="0"
-                step="0.1"
+                step="any"
               />
               <Input
                 id="peDireito"
@@ -170,7 +170,7 @@ export function Step3Estrutura({ project }: { project: any }) {
                 label="Pé-direito (m)"
                 defaultValue={s?.peDireito ?? 2.8}
                 min="0"
-                step="0.05"
+                step="any"
               />
             </div>
 
@@ -194,7 +194,7 @@ export function Step3Estrutura({ project }: { project: any }) {
                   label="Platibanda — metros lineares (m)"
                   defaultValue={s?.platibandaML ?? 0}
                   min="0"
-                  step="0.1"
+                  step="any"
                 />
                 <Input
                   id="platibandaAltura"
@@ -203,7 +203,7 @@ export function Step3Estrutura({ project }: { project: any }) {
                   label="Platibanda — altura (m)"
                   defaultValue={s?.platibandaAltura ?? 0}
                   min="0"
-                  step="0.05"
+                  step="any"
                 />
               </div>
             )}
@@ -230,7 +230,7 @@ export function Step3Estrutura({ project }: { project: any }) {
                 label="Largura (m)"
                 defaultValue={s?.sapataLargura ?? 0.6}
                 min="0"
-                step="0.05"
+                step="any"
               />
               <Input
                 id="sapataCompr"
@@ -239,7 +239,7 @@ export function Step3Estrutura({ project }: { project: any }) {
                 label="Comprimento (m)"
                 defaultValue={s?.sapataCompr ?? 0.6}
                 min="0"
-                step="0.05"
+                step="any"
               />
               <Input
                 id="sapataAltura"
@@ -248,7 +248,7 @@ export function Step3Estrutura({ project }: { project: any }) {
                 label="Altura (m)"
                 defaultValue={s?.sapataAltura ?? 0.3}
                 min="0"
-                step="0.05"
+                step="any"
               />
             </div>
           </div>
@@ -265,7 +265,7 @@ export function Step3Estrutura({ project }: { project: any }) {
                 label="Metros lineares totais"
                 defaultValue={s?.pilarMetros ?? 0}
                 min="0"
-                step="0.1"
+                step="any"
               />
               <Input
                 id="pilarLargura"
@@ -274,7 +274,7 @@ export function Step3Estrutura({ project }: { project: any }) {
                 label="Seção — Largura (m)"
                 defaultValue={s?.pilarLargura ?? 0.15}
                 min="0"
-                step="0.01"
+                step="any"
               />
               <Input
                 id="pilarAltura"
@@ -283,7 +283,7 @@ export function Step3Estrutura({ project }: { project: any }) {
                 label="Seção — Altura (m)"
                 defaultValue={s?.pilarAltura ?? 0.3}
                 min="0"
-                step="0.01"
+                step="any"
               />
             </div>
           </div>
@@ -299,7 +299,7 @@ export function Step3Estrutura({ project }: { project: any }) {
                 label="Metros lineares totais"
                 defaultValue={s?.vigaMetros ?? 0}
                 min="0"
-                step="0.1"
+                step="any"
               />
               <Input
                 id="vigaLargura"
@@ -308,7 +308,7 @@ export function Step3Estrutura({ project }: { project: any }) {
                 label="Seção — Largura (m)"
                 defaultValue={s?.vigaLargura ?? 0.15}
                 min="0"
-                step="0.01"
+                step="any"
               />
               <Input
                 id="vigaAltura"
@@ -317,7 +317,7 @@ export function Step3Estrutura({ project }: { project: any }) {
                 label="Seção — Altura (m)"
                 defaultValue={s?.vigaAltura ?? 0.4}
                 min="0"
-                step="0.01"
+                step="any"
               />
             </div>
           </div>
@@ -367,7 +367,7 @@ export function Step3Estrutura({ project }: { project: any }) {
                 label="Fôrmas de madeira — total (m²) · entrada manual"
                 defaultValue={s?.formasM2 ?? 0}
                 min="0"
-                step="0.1"
+                step="any"
               />
             </div>
           </div>

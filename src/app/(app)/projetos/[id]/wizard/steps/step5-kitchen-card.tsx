@@ -329,7 +329,7 @@ export function KitchenCard({ room }: { room: any }) {
             <label className="flex flex-col gap-0.5 text-xs text-gray-600">
               Comprimento da parede (m)
               <input
-                type="number" step="0.01" value={wallTile.comprimento}
+                type="number" step="any" value={wallTile.comprimento}
                 onChange={(e) => { setWallTile((w) => ({ ...w, comprimento: parseFloat(e.target.value) || 0 })); setSaved(false); }}
                 className="rounded border border-gray-300 px-1.5 py-1 text-sm"
               />
@@ -339,7 +339,7 @@ export function KitchenCard({ room }: { room: any }) {
             <label className="flex flex-col gap-0.5 text-xs text-gray-600">
               Altura (m)
               <input
-                type="number" step="0.01" value={wallTile.height}
+                type="number" step="any" value={wallTile.height}
                 onChange={(e) => { setWallTile((w) => ({ ...w, height: parseFloat(e.target.value) || 0 })); setSaved(false); }}
                 className="rounded border border-gray-300 px-1.5 py-1 text-sm"
               />

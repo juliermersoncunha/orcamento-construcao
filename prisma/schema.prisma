@@ -191,6 +191,7 @@ model Project {
   indirectCosts   IndirectCost[]
   viability       ProjectViability?
   manualBudgetItems ManualBudgetItem[]
+  scheduleStages    ScheduleStage[]
 }
 
 // Linhas hidrossanitárias informadas manualmente pelo usuário — tubos e conexões
@@ -499,6 +500,7 @@ model Material {
   priceHistory PriceHistory[]
   budgetItems  BudgetItem[]
   manualBudgetItems ManualBudgetItem[]
+  scheduleStageMaterials ScheduleStageMaterial[]
 }
 
 model PriceHistory {
@@ -617,4 +619,39 @@ model ProjectViability {
   irPercent          Float    @default(15)
 
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+// ── Cronograma da obra ──────────────────────────────────────────────────────
+// As etapas NAO sao fixas: o projeto nasce sem nenhuma e o usuario aplica um
+// modelo sugerido ou cria as suas. `order` define a sequencia e e reescrito
+// quando ele reordena.
+model ScheduleStage {
+  id          String    @id @default(cuid())
+  projectId   String
+  order       Int
+  name        String
+  deliverable String?
+  dependsOn   String?
+  days        Float     @default(0)
+  startDate   DateTime?
+  status      String    @default("PENDENTE") // PENDENTE | EM_ANDAMENTO | CONCLUIDA
+  notes       String?
+  createdAt   DateTime  @default(now())
+
+  project   Project                 @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  materials ScheduleStageMaterial[]
+
+  @@index([projectId, order])
+}
+
+model ScheduleStageMaterial {
+  id         String @id @default(cuid())
+  stageId    String
+  materialId String
+  quantity   Float  @default(0)
+
+  stage    ScheduleStage @relation(fields: [stageId], references: [id], onDelete: Cascade)
+  material Material      @relation(fields: [materialId], references: [id])
+
+  @@unique([stageId, materialId])
 }

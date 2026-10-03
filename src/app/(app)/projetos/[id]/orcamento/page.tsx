@@ -5,7 +5,7 @@ import { formatCurrency, formatNumber } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, HardHat, TrendingUp, Receipt, BarChart3, FileText } from "lucide-react";
+import { ArrowLeft, CalendarDays, HardHat, TrendingUp, Receipt, BarChart3, FileText } from "lucide-react";
 import Link from "next/link";
 import { PhaseType, LaborModel } from "@prisma/client";
 import { validateBudgetAgainstCaixa } from "@/lib/caixa-validation";
@@ -232,6 +232,12 @@ export default async function OrcamentoPage({
           </p>
         </div>
         <div className="flex gap-2 flex-wrap">
+          <Link href={`/projetos/${id}/cronograma`}>
+            <Button variant="outline" size="sm">
+              <CalendarDays className="w-4 h-4 mr-1" />
+              Cronograma
+            </Button>
+          </Link>
           <Link href={`/projetos/${id}/mao-de-obra`}>
             <Button variant="outline" size="sm">
               <HardHat className="w-4 h-4 mr-1" />

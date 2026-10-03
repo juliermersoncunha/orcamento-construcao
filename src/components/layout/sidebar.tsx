@@ -34,8 +34,8 @@ export function Sidebar({ userName, userRole }: SidebarProps) {
   const pathname = usePathname();
 
   return (
-    <aside className="w-64 shrink-0 bg-gray-900 text-white flex flex-col min-h-screen">
-      <div className="flex items-center gap-3 px-6 py-5 border-b border-gray-700">
+    <aside className="w-64 shrink-0 bg-brand-900 text-white flex flex-col min-h-screen">
+      <div className="flex items-center gap-3 px-6 py-5 border-b border-brand-800">
         <div className="w-9 h-9 rounded-lg bg-amber-500 flex items-center justify-center shrink-0">
           <HardHat className="w-5 h-5 text-white" />
         </div>
@@ -53,8 +53,8 @@ export function Sidebar({ userName, userRole }: SidebarProps) {
             className={cn(
               "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
               pathname.startsWith(href)
-                ? "bg-amber-600 text-white"
-                : "text-gray-300 hover:bg-gray-800 hover:text-white"
+                ? "bg-amber-500 text-brand-950"
+                : "text-gray-300 hover:bg-brand-800 hover:text-white"
             )}
           >
             <Icon className="w-4 h-4 shrink-0" />
@@ -76,8 +76,8 @@ export function Sidebar({ userName, userRole }: SidebarProps) {
                 className={cn(
                   "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
                   pathname.startsWith(href)
-                    ? "bg-amber-600 text-white"
-                    : "text-gray-300 hover:bg-gray-800 hover:text-white"
+                    ? "bg-amber-500 text-brand-950"
+                    : "text-gray-300 hover:bg-brand-800 hover:text-white"
                 )}
               >
                 <Icon className="w-4 h-4 shrink-0" />
@@ -88,7 +88,7 @@ export function Sidebar({ userName, userRole }: SidebarProps) {
         )}
       </nav>
 
-      <div className="px-3 py-4 border-t border-gray-700">
+      <div className="px-3 py-4 border-t border-brand-800">
         <div className="px-3 py-2 mb-1">
           <p className="text-sm font-medium text-white truncate">{userName}</p>
           <p className="text-xs text-gray-400">
@@ -98,7 +98,7 @@ export function Sidebar({ userName, userRole }: SidebarProps) {
         <form action={logout}>
           <button
             type="submit"
-            className="flex w-full items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-300 hover:bg-gray-800 hover:text-white transition-colors"
+            className="flex w-full items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-300 hover:bg-brand-800 hover:text-white transition-colors"
           >
             <LogOut className="w-4 h-4 shrink-0" />
             Sair

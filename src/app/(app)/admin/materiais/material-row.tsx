@@ -129,7 +129,7 @@ export function MaterialRow({
   }
 
   const inputClass =
-    "rounded border border-amber-400 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500";
+    "rounded border border-brand-400 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500";
 
   if (editing) {
     return (
@@ -254,7 +254,7 @@ export function MaterialRow({
             type="checkbox"
             checked={!!selected}
             onChange={onToggleSelect}
-            className="rounded border-gray-300 text-amber-600 focus:ring-amber-500"
+            className="rounded border-gray-300 text-brand-600 focus:ring-brand-500"
             aria-label={`Selecionar ${material.name}`}
           />
         </td>

@@ -254,7 +254,7 @@ export function KitchenCard({ room }: { room: any }) {
           <select
             value={roomType}
             onChange={(e) => { setRoomType(e.target.value); setSaved(false); }}
-            className="text-sm rounded-md border border-gray-300 bg-white px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-orange-500"
+            className="text-sm rounded-md border border-gray-300 bg-white px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-500"
           >
             {KITCHEN_ROOM_TYPES.map((t) => (
               <option key={t.value} value={t.value}>{t.label}</option>
@@ -294,7 +294,7 @@ export function KitchenCard({ room }: { room: any }) {
           <select
             value=""
             onChange={(e) => { if (e.target.value) addFixture(e.target.value); e.target.value = ""; }}
-            className="text-sm rounded-md border border-gray-300 bg-white px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-orange-500"
+            className="text-sm rounded-md border border-gray-300 bg-white px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-500"
           >
             <option value="">+ Adicionar equipamento…</option>
             {KITCHEN_FIXTURE_GROUPS.map((g) => (
@@ -424,7 +424,7 @@ export function KitchenCard({ room }: { room: any }) {
           type="button"
           onClick={handleSave}
           disabled={isPending}
-          className="text-sm px-3 py-1.5 rounded-md bg-orange-600 text-white hover:bg-orange-700 disabled:opacity-50"
+          className="text-sm px-3 py-1.5 rounded-md bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-50"
         >
           {isPending ? "Salvando…" : "Salvar cozinha"}
         </button>
@@ -475,7 +475,7 @@ function FixtureRow({
                     type="checkbox"
                     checked={!!val}
                     onChange={(e) => onConfig(key, e.target.checked)}
-                    className="rounded border-gray-300 text-orange-600 focus:ring-orange-500"
+                    className="rounded border-gray-300 text-orange-600 focus:ring-brand-500"
                   />
                   {field.label}
                 </label>

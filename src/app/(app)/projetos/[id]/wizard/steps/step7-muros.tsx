@@ -99,7 +99,7 @@ export function Step7Muros({ project }: { project: any }) {
                       type="checkbox"
                       checked={w.hasWall}
                       onChange={(e) => update(side, "hasWall", e.target.checked)}
-                      className="w-4 h-4 accent-amber-600"
+                      className="w-4 h-4 accent-brand-600"
                     />
                     <span className="text-sm text-gray-700">Tem muro</span>
                   </label>
@@ -118,7 +118,7 @@ export function Step7Muros({ project }: { project: any }) {
                         value={w.length || ""}
                         onChange={(e) => update(side, "length", parseFloat(e.target.value) || 0)}
                         placeholder="Ex: 12.5"
-                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
                       />
                     </div>
                     <div>
@@ -133,7 +133,7 @@ export function Step7Muros({ project }: { project: any }) {
                         value={w.height || ""}
                         onChange={(e) => update(side, "height", parseFloat(e.target.value) || 2.0)}
                         placeholder="2.0"
-                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
                       />
                     </div>
                   </div>

@@ -66,7 +66,7 @@ export function SupplierRow({ supplier }: { supplier: Supplier }) {
   }
 
   const inputClass =
-    "rounded border border-amber-400 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500";
+    "rounded border border-brand-400 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500";
 
   if (editing) {
     return (

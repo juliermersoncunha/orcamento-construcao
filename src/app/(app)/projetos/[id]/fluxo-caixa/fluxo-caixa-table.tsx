@@ -165,7 +165,7 @@ export function FluxoCaixaTable({
                             step="1"
                             value={pct || ""}
                             onChange={(e) => setPercent(row.phase, m, parseFloat(e.target.value) || 0)}
-                            className="w-full text-center rounded border border-gray-200 px-1 py-0.5 text-xs focus:outline-none focus:ring-1 focus:ring-amber-400"
+                            className="w-full text-center rounded border border-gray-200 px-1 py-0.5 text-xs focus:outline-none focus:ring-1 focus:ring-brand-400"
                             placeholder="%"
                           />
                           {val > 0 && (

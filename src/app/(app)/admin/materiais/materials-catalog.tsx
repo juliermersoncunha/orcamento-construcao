@@ -164,7 +164,7 @@ export function MaterialsCatalog({ materialsByCategory, categoryLabels, supplier
               checked={allSelected}
               ref={(el) => { if (el) el.indeterminate = anySelected && !allSelected; }}
               onChange={() => toggleAll(allSelected)}
-              className="rounded border-gray-300 text-amber-600 focus:ring-amber-500"
+              className="rounded border-gray-300 text-brand-600 focus:ring-brand-500"
             />
             {anySelected
               ? `${selected.size} de ${total} selecionado${selected.size > 1 ? "s" : ""}`
@@ -184,7 +184,7 @@ export function MaterialsCatalog({ materialsByCategory, categoryLabels, supplier
             <select
               value={supplierPick}
               onChange={(e) => selectBySupplier(e.target.value)}
-              className="rounded-md border border-gray-300 bg-white px-2 py-1 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="rounded-md border border-gray-300 bg-white px-2 py-1 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand-500"
               aria-label="Selecionar itens de um fornecedor"
             >
               <option value="">Selecionar por fornecedor…</option>
@@ -225,7 +225,7 @@ export function MaterialsCatalog({ materialsByCategory, categoryLabels, supplier
                       checked={catSelected}
                       ref={(el) => { if (el) el.indeterminate = catAny && !catSelected; }}
                       onChange={() => toggleCategory(items, catSelected)}
-                      className="rounded border-gray-300 text-amber-600 focus:ring-amber-500"
+                      className="rounded border-gray-300 text-brand-600 focus:ring-brand-500"
                       aria-label={`Selecionar todos de ${categoryLabels[category]}`}
                     />
                     <span>{categoryLabels[category]}</span>

@@ -77,7 +77,7 @@ function NumInput({
           value={value || ""}
           onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
           placeholder={placeholder ?? "0,00"}
-          className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+          className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
         />
         {suffix && <span className="text-xs text-gray-400 shrink-0">{suffix}</span>}
       </div>
@@ -175,13 +175,13 @@ export function ViabilidadeForm(props: Props) {
             ].map(({ pct, label, badge }) => (
               <label key={pct}
                 className={`flex-1 flex items-center gap-2 rounded-lg border-2 px-3 py-2 cursor-pointer transition-colors ${
-                  itivPercent === pct ? "border-amber-400 bg-amber-50" : "border-gray-200 hover:border-gray-300"
+                  itivPercent === pct ? "border-brand-500 bg-brand-50" : "border-gray-200 hover:border-gray-300"
                 }`}
               >
                 <input type="radio" name="itivPercent" value={pct}
                   checked={itivPercent === pct}
                   onChange={() => setItivPercent(pct)}
-                  className="accent-amber-600" />
+                  className="accent-brand-600" />
                 <span className="text-xs text-gray-700">{label}</span>
                 {badge && (
                   <span className="ml-auto text-xs font-medium text-green-700 bg-green-100 rounded px-1.5 py-0.5">
@@ -215,7 +215,7 @@ export function ViabilidadeForm(props: Props) {
             <input type="number" name="landDocPercent" min="0" max="20" step="0.01"
               value={landDocPercent || ""}
               onChange={(e) => setLandDocPercent(parseFloat(e.target.value) || 0)}
-              className="w-24 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+              className="w-24 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
             />
             <span className="text-xs text-gray-500">% do valor de avaliação</span>
             {landAppraisalValue > 0 && (
@@ -247,7 +247,7 @@ export function ViabilidadeForm(props: Props) {
             value={bdiPercent || ""}
             onChange={(e) => setBdiPercent(parseFloat(e.target.value) || 0)}
             placeholder="Ex: 25"
-            className="w-20 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+            className="w-20 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
           />
           {bdiPercent > 0 && (
             <span className="text-sm text-gray-600 ml-auto">= {formatCurrency(bdiValue)}</span>
@@ -282,7 +282,7 @@ export function ViabilidadeForm(props: Props) {
           className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-200 hover:bg-gray-100 transition-colors"
         >
           <div className="flex items-center gap-2">
-            <input type="checkbox" checked={hasSale} readOnly className="accent-amber-600" />
+            <input type="checkbox" checked={hasSale} readOnly className="accent-brand-600" />
             <span className="text-sm font-semibold text-gray-700">
               Haverá venda do imóvel?
             </span>
@@ -312,7 +312,7 @@ export function ViabilidadeForm(props: Props) {
                 <input type="number" name="saleDocPercent" min="0" max="30" step="0.1"
                   value={saleDocPercent || ""}
                   onChange={(e) => setSaleDocPercent(parseFloat(e.target.value) || 0)}
-                  className="w-20 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                  className="w-20 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
                 />
                 <span className="text-xs text-gray-500">% do valor venal</span>
                 {venalValue > 0 && (
@@ -328,7 +328,7 @@ export function ViabilidadeForm(props: Props) {
                 <input type="number" name="brokeragePercent" min="0" max="20" step="0.1"
                   value={brokeragePercent || ""}
                   onChange={(e) => setBrokeragePercent(parseFloat(e.target.value) || 0)}
-                  className="w-20 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                  className="w-20 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
                 />
                 <span className="text-xs text-gray-500">% do preço de venda</span>
                 {salePrice > 0 && (
@@ -344,7 +344,7 @@ export function ViabilidadeForm(props: Props) {
                 <input type="number" name="irPercent" min="0" max="30" step="0.1"
                   value={irPercent || ""}
                   onChange={(e) => setIrPercent(parseFloat(e.target.value) || 0)}
-                  className="w-20 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                  className="w-20 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
                 />
                 <span className="text-xs text-gray-500">% sobre ganho bruto</span>
                 {grossGain > 0 && (
@@ -397,7 +397,7 @@ export function ViabilidadeForm(props: Props) {
           name="notes" value={notes} onChange={(e) => setNotes(e.target.value)}
           rows={3}
           placeholder="Negociação, condições especiais, referências de preço..."
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 resize-none"
+          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400 resize-none"
         />
       </div>
 

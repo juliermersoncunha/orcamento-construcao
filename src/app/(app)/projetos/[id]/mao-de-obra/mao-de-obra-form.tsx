@@ -103,8 +103,8 @@ export function MaoDeObraForm({ projectId, phaseTotals, totalFloorArea, laborCon
               onClick={() => setModel(opt.value)}
               className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
                 model === opt.value
-                  ? "bg-amber-600 text-white border-amber-600"
-                  : "bg-white text-gray-700 border-gray-200 hover:border-amber-400"
+                  ? "bg-brand-600 text-white border-brand-600"
+                  : "bg-white text-gray-700 border-gray-200 hover:border-brand-400"
               }`}
             >
               {opt.label}
@@ -149,7 +149,7 @@ export function MaoDeObraForm({ projectId, phaseTotals, totalFloorArea, laborCon
                       onChange={(e) =>
                         setValues((prev) => ({ ...prev, [phase]: parseFloat(e.target.value) || 0 }))
                       }
-                      className="w-full text-right rounded border border-gray-200 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                      className="w-full text-right rounded border border-gray-200 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
                       placeholder="0"
                     />
                   </td>

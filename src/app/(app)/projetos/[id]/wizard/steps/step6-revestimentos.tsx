@@ -47,7 +47,7 @@ function RoomWallTile({ room, rf, suggested }: { room: any; rf: any; suggested: 
             name={`wallTileMode_${room.id}`}
             value={mode}
             onChange={(e) => setMode(e.target.value)}
-            className="w-full rounded border border-gray-300 bg-white px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+            className="w-full rounded border border-gray-300 bg-white px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
           >
             <option value="NAO">Não tem</option>
             <option value="TODAS">Todas as paredes</option>
@@ -103,7 +103,7 @@ function RoomWallTile({ room, rf, suggested }: { room: any; rf: any; suggested: 
                       name={`wall_${room.id}_${side}`}
                       value="true"
                       defaultChecked={!!w}
-                      className="w-4 h-4 rounded accent-amber-600"
+                      className="w-4 h-4 rounded accent-brand-600"
                     />
                     <span className="text-sm text-gray-700">
                       {CARDINAL_WALL_LABELS[side as CardinalWallSide]}
@@ -223,7 +223,7 @@ export function Step6Revestimentos({ project }: { project: any }) {
             <select
               name="wallFinishType"
               defaultValue={finishes?.wallFinishType ?? "SO_TINTA"}
-              className="w-full rounded border border-gray-300 bg-white px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="w-full rounded border border-gray-300 bg-white px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
             >
               <option value="SO_TINTA">Só reboco + tinta (padrão econômico)</option>
               <option value="MASSA_TINTA">Reboco + massa corrida + tinta</option>
@@ -255,7 +255,7 @@ export function Step6Revestimentos({ project }: { project: any }) {
                           <select
                             name={`floorType_${room.id}`}
                             defaultValue={rf?.floorType ?? "ceramica"}
-                            className="w-full rounded border border-gray-300 bg-white px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                            className="w-full rounded border border-gray-300 bg-white px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                           >
                             {FLOOR_OPTIONS.map((o) => (
                               <option key={o.value} value={o.value}>{o.label}</option>
@@ -267,7 +267,7 @@ export function Step6Revestimentos({ project }: { project: any }) {
                           <select
                             name={`paintWalls_${room.id}`}
                             defaultValue={rf?.paintWalls !== false ? "true" : "false"}
-                            className="w-full rounded border border-gray-300 bg-white px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                            className="w-full rounded border border-gray-300 bg-white px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                           >
                             <option value="true">Sim</option>
                             <option value="false">Não</option>

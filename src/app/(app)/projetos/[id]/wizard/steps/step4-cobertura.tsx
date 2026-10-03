@@ -38,7 +38,7 @@ export function Step4Cobertura({ project }: { project: any }) {
               id="hasRoofCheck"
               checked={hasRoof}
               onChange={(e) => setHasRoof(e.target.checked)}
-              className="w-4 h-4 rounded accent-amber-600"
+              className="w-4 h-4 rounded accent-brand-600"
             />
             <label htmlFor="hasRoofCheck" className="text-sm font-medium text-gray-700">
               A obra possui telhado inclinado

@@ -185,7 +185,7 @@ export function Step5Instalacoes({
                               defaultValue={def}
                               min="0"
                               max="20"
-                              className="w-14 text-center rounded border border-gray-300 px-1 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                              className="w-14 text-center rounded border border-gray-300 px-1 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                             />
                           </td>
                         ))}

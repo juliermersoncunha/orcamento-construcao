@@ -278,7 +278,7 @@ export default async function OrcamentoPage({
 
       {/* Summary cards */}
       <div className="mb-6 grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="col-span-2 sm:col-span-1 p-5 rounded-xl bg-amber-600 text-white">
+        <div className="col-span-2 sm:col-span-1 p-5 rounded-xl bg-brand-600 text-white">
           <p className="text-xs font-medium opacity-80">Total Geral</p>
           <p className="text-2xl font-bold mt-1">{formatCurrency(totalGeral)}</p>
         </div>

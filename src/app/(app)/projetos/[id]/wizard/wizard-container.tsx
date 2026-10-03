@@ -82,7 +82,7 @@ export function WizardContainer({
                     className={cn(
                       "w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-colors",
                       isCompleted && "bg-green-500 text-white",
-                      isCurrent && "bg-amber-600 text-white ring-2 ring-amber-200",
+                      isCurrent && "bg-brand-600 text-white ring-2 ring-brand-200",
                       !isCompleted && !isCurrent && "bg-gray-200 text-gray-500"
                     )}
                   >

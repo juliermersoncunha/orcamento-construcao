@@ -138,7 +138,7 @@ export function Step8MateriaisAvulsos({ projectId, materials, rows }: Props) {
   const grandTotal = rows.reduce((s, r) => s + r.quantity * r.currentPrice, 0);
 
   const inputClass =
-    "rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent";
+    "rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent";
 
   return (
     <Card>

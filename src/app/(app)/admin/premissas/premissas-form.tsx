@@ -88,7 +88,7 @@ export function PremissasForm({ premises }: Props) {
                           [p.id]: parseFloat(e.target.value) || 0,
                         }))
                       }
-                      className="w-28 text-right rounded border border-gray-200 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                      className="w-28 text-right rounded border border-gray-200 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
                     />
                     <span className="w-20 text-xs text-gray-400">{p.unit}</span>
                   </div>

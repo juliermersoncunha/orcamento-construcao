@@ -112,7 +112,7 @@ export function CustosForm({ projectId, costs }: Props) {
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
             >
               {CATEGORIES.map((c) => (
                 <option key={c.value} value={c.value}>{c.label}</option>
@@ -126,7 +126,7 @@ export function CustosForm({ projectId, costs }: Props) {
               value={label}
               onChange={(e) => setLabel(e.target.value)}
               placeholder="Ex: Projeto arquitetônico"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
             />
           </div>
           <div>
@@ -138,7 +138,7 @@ export function CustosForm({ projectId, costs }: Props) {
               value={value}
               onChange={(e) => setValue(e.target.value)}
               placeholder="0,00"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
             />
           </div>
         </div>

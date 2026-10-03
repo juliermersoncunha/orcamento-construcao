@@ -181,7 +181,7 @@ export function Step3Estrutura({ project }: { project: any }) {
                 value="true"
                 checked={hasPlatibanda}
                 onChange={(e) => setHasPlatibanda(e.target.checked)}
-                className="w-4 h-4 rounded accent-amber-600"
+                className="w-4 h-4 rounded accent-brand-600"
               />
               <span className="text-sm text-zinc-700">Possui platibanda (mureta acima do pé-direito)</span>
             </label>
@@ -331,7 +331,7 @@ export function Step3Estrutura({ project }: { project: any }) {
                 value="true"
                 checked={hasLaje}
                 onChange={(e) => setHasLaje(e.target.checked)}
-                className="w-4 h-4 rounded accent-amber-600"
+                className="w-4 h-4 rounded accent-brand-600"
               />
               <span className="text-sm text-zinc-700">Possui laje pré-moldada/treliçada</span>
             </label>
@@ -355,7 +355,7 @@ export function Step3Estrutura({ project }: { project: any }) {
                 name="hasEscada"
                 value="true"
                 defaultChecked={s?.hasEscada ?? false}
-                className="w-4 h-4 rounded accent-amber-600"
+                className="w-4 h-4 rounded accent-brand-600"
               />
               <span className="text-sm text-zinc-700">Possui escada (para edificações com 2+ pavimentos)</span>
             </label>

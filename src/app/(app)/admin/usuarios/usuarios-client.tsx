@@ -91,7 +91,7 @@ function CreateUserForm() {
                 id="role"
                 name="role"
                 defaultValue="MEMBER"
-                className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
               >
                 <option value="MEMBER">Membro</option>
                 <option value="ADMIN">Administrador</option>
@@ -186,7 +186,7 @@ function UserRow({ user, currentUserId }: { user: UserRow; currentUserId: string
               value={user.role}
               onChange={handleRoleChange}
               disabled={isMe || pending}
-              className="text-sm rounded-md border border-gray-300 bg-white px-2 py-1 focus:outline-none focus:ring-2 focus:ring-amber-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="text-sm rounded-md border border-gray-300 bg-white px-2 py-1 focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <option value="MEMBER">Membro</option>
               <option value="ADMIN">Administrador</option>
@@ -199,7 +199,7 @@ function UserRow({ user, currentUserId }: { user: UserRow; currentUserId: string
             <button
               onClick={handleToggleActive}
               disabled={isMe || pending}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 disabled:opacity-40 disabled:cursor-not-allowed ${
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 disabled:opacity-40 disabled:cursor-not-allowed ${
                 user.active ? "bg-green-500" : "bg-gray-300"
               }`}
               title={user.active ? "Desativar usuário" : "Ativar usuário"}

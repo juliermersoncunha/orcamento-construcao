@@ -12,11 +12,11 @@ export default function LoginPage() {
   const [state, formAction, isPending] = useActionState(login, initialState);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-amber-50 to-orange-50 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-brand-50 to-amber-50 p-4">
       <div className="w-full max-w-md">
         <div className="bg-white rounded-2xl shadow-lg p-8">
           <div className="flex flex-col items-center mb-8">
-            <div className="w-14 h-14 rounded-full bg-amber-600 flex items-center justify-center mb-4">
+            <div className="w-14 h-14 rounded-full bg-brand-600 flex items-center justify-center mb-4">
               <HardHat className="w-8 h-8 text-white" />
             </div>
             <h1 className="text-2xl font-bold text-gray-900">JCunha Construtora</h1>

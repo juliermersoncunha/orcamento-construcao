@@ -135,7 +135,7 @@ export function Step2Ambientes({ project }: { project: any }) {
                       onChange={(e) => updateRoom(room.id, "name", e.target.value)}
                       placeholder="Nome do cômodo"
                       required
-                      className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                      className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                     />
                     <input
                       type="number"
@@ -145,7 +145,7 @@ export function Step2Ambientes({ project }: { project: any }) {
                       step="any"
                       min="0"
                       required
-                      className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-amber-500"
+                      className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-brand-500"
                     />
                     <input
                       type="number"
@@ -155,7 +155,7 @@ export function Step2Ambientes({ project }: { project: any }) {
                       step="any"
                       min="0"
                       required
-                      className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-amber-500"
+                      className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-brand-500"
                     />
                     <input
                       type="number"
@@ -165,7 +165,7 @@ export function Step2Ambientes({ project }: { project: any }) {
                       step="any"
                       min="0"
                       required
-                      className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-amber-500"
+                      className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-brand-500"
                     />
                     <div className="flex items-center justify-center">
                       <span className="text-sm font-medium text-amber-700">

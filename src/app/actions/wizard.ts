@@ -574,10 +574,21 @@ export async function calculateAndSaveBudget(projectId: string) {
     // reaproveitado com o preço que já tem. Filtrando por ativo, o resolver não
     // o encontrava e criava uma cópia nova a R$ 0 a cada geração de orçamento.
     // Prefere o ativo quando houver homônimos.
+    //
+    // `calcName` vem antes do nome de propósito: marcar um material como "é
+    // este que o cálculo chama de X" é uma escolha explícita do usuário, e
+    // precisa vencer a linha genérica de mesmo nome que o próprio motor criou
+    // zerada — senão o apelido nunca entraria em jogo.
     let material = await prisma.material.findFirst({
-      where: { name },
+      where: { calcName: name },
       orderBy: { active: "desc" },
     });
+    if (!material) {
+      material = await prisma.material.findFirst({
+        where: { name },
+        orderBy: { active: "desc" },
+      });
+    }
     if (!material) {
       material = await prisma.material.create({
         data: { name, unit, category: category as MaterialCategory, currentPrice: 0 },

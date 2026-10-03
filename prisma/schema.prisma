@@ -192,6 +192,7 @@ model Project {
   viability       ProjectViability?
   manualBudgetItems ManualBudgetItem[]
   scheduleStages    ScheduleStage[]
+  materialUsages    MaterialUsage[]
 }
 
 // Linhas hidrossanitárias informadas manualmente pelo usuário — tubos e conexões
@@ -483,6 +484,11 @@ model Supplier {
 model Material {
   id           String           @id @default(cuid())
   name         String
+  // Nome pelo qual o motor de calculo procura este material. Deixa o catalogo
+  // guardar o nome comercial ("Janela (aluminio) 1x1,2m") e ainda assim
+  // responder pelo nome generico que o calculo gera. Tem precedencia sobre o
+  // nome: marcar o apelido e uma escolha explicita do usuario.
+  calcName     String?       @unique
   unit         String
   category     MaterialCategory
   currentPrice Float
@@ -501,6 +507,7 @@ model Material {
   budgetItems  BudgetItem[]
   manualBudgetItems ManualBudgetItem[]
   scheduleStageMaterials ScheduleStageMaterial[]
+  usages                 MaterialUsage[]
 }
 
 model PriceHistory {
@@ -641,6 +648,7 @@ model ScheduleStage {
   project   Project                 @relation(fields: [projectId], references: [id], onDelete: Cascade)
   materials ScheduleStageMaterial[]
   tasks     ScheduleTask[]
+  usages    MaterialUsage[]
 
   @@index([projectId, order])
 }
@@ -657,6 +665,28 @@ model ScheduleTask {
   stage ScheduleStage @relation(fields: [stageId], references: [id], onDelete: Cascade)
 
   @@index([stageId, order])
+}
+
+// Consumo real de material na obra: o que saiu do estoque, quanto e onde.
+// `stageId` e opcional e serve para, mais adiante, confrontar o consumo com o
+// previsto; `location` guarda o "onde" em texto livre, porque nem todo gasto
+// cai numa etapa do cronograma.
+model MaterialUsage {
+  id         String   @id @default(cuid())
+  projectId  String
+  materialId String
+  stageId    String?
+  quantity   Float
+  location   String?
+  usedAt     DateTime
+  notes      String?
+  createdAt  DateTime @default(now())
+
+  project  Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  material Material       @relation(fields: [materialId], references: [id])
+  stage    ScheduleStage? @relation(fields: [stageId], references: [id], onDelete: SetNull)
+
+  @@index([projectId, usedAt])
 }
 
 model ScheduleStageMaterial {

@@ -77,6 +77,7 @@ export async function updateMaterial(
     price: number;
     priceDate: string | null;
     unit?: string;
+    calcName?: string;
     category?: string;
     quantity?: number | null;
     brand?: string | null;
@@ -109,10 +110,15 @@ export async function updateMaterial(
   // Noon avoids the date shifting a day back when stored/read across timezones.
   const priceDate = input.priceDate ? new Date(`${input.priceDate}T12:00:00`) : null;
 
+  // Apelido em branco volta a NULL — o indice unico nao aceita varias strings
+  // vazias, e "sem apelido" e justamente a ausencia dele.
+  const calcName = input.calcName?.trim() || null;
+
   await prisma.material.update({
     where: { id: materialId },
     data: {
       name,
+      ...(input.calcName !== undefined ? { calcName } : {}),
       ...(unit ? { unit } : {}),
       ...(input.category ? { category: input.category as MaterialCategory } : {}),
       currentPrice: input.price,

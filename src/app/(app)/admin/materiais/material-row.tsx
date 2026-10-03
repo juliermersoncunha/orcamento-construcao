@@ -44,6 +44,7 @@ export function MaterialRow({
 }) {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(material.name);
+  const [calcName, setCalcName] = useState(material.calcName ?? "");
   const [price, setPrice] = useState(String(material.currentPrice));
   const [priceDate, setPriceDate] = useState(toInputDate(material.priceDate));
   const [unit, setUnit] = useState(material.unit);
@@ -56,6 +57,7 @@ export function MaterialRow({
 
   function startEditing() {
     setName(material.name);
+    setCalcName(material.calcName ?? "");
     setPrice(String(material.currentPrice));
     setPriceDate(toInputDate(material.priceDate));
     setUnit(material.unit);
@@ -94,6 +96,7 @@ export function MaterialRow({
     startTransition(async () => {
       const result = await updateMaterial(material.id, {
         name,
+        calcName,
         price: p,
         priceDate: priceDate || null,
         unit,
@@ -155,6 +158,16 @@ export function MaterialRow({
               <option key={c.value} value={c.value}>{c.label}</option>
             ))}
           </select>
+          {/* Nome que o cálculo procura. Preenchido, este material atende pelo
+              nome genérico do motor sem perder o nome comercial na tela. */}
+          <input
+            value={calcName}
+            onChange={(e) => setCalcName(e.target.value)}
+            onKeyDown={onKeyDown}
+            placeholder="nome no cálculo (opcional)"
+            title="Nome pelo qual o cálculo procura este material"
+            className={`mt-1 w-full text-xs ${inputClass}`}
+          />
           {error && <p className="text-xs text-red-600 mt-1">{error}</p>}
         </td>
         <td className="py-2 px-2">
@@ -267,6 +280,11 @@ export function MaterialRow({
           <span>{material.name}</span>
           <Pencil className="w-3 h-3 text-gray-400 group-hover:text-amber-600 shrink-0" />
         </button>
+        {material.calcName && (
+          <p className="text-xs text-brand-600 mt-0.5" title="Nome pelo qual o cálculo procura este material">
+            cálculo: {material.calcName}
+          </p>
+        )}
       </td>
       <td className="py-2 px-2">
         <button onClick={startEditing} className="text-gray-600 hover:text-amber-700">

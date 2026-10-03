@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { logout } from "@/app/actions/auth";
 import {
-  HardHat,
   FolderOpen,
   Package,
   Users,
@@ -35,14 +34,17 @@ export function Sidebar({ userName, userRole }: SidebarProps) {
 
   return (
     <aside className="w-64 shrink-0 bg-brand-900 text-white flex flex-col min-h-screen">
-      <div className="flex items-center gap-3 px-6 py-5 border-b border-brand-800">
-        <div className="w-9 h-9 rounded-lg bg-amber-500 flex items-center justify-center shrink-0">
-          <HardHat className="w-5 h-5 text-white" />
+      <div className="px-5 py-5 border-b border-brand-800">
+        {/* A logo traz a marca; o fundo claro existe porque ela foi desenhada
+            sobre branco e some contra o azul da barra. */}
+        <div className="rounded-lg bg-white px-3 py-2">
+          <img
+            src="/logo-jcunha.webp"
+            alt="JCunha Construtora"
+            className="w-full h-auto"
+          />
         </div>
-        <div>
-          <p className="font-bold text-sm leading-none">JCunha Construtora</p>
-          <p className="text-xs text-gray-400 mt-0.5">Sistema de Orçamento</p>
-        </div>
+        <p className="text-xs text-gray-400 mt-2 text-center">Sistema de Orçamento</p>
       </div>
 
       <nav className="flex-1 px-3 py-4 flex flex-col gap-1">

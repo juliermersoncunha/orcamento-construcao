@@ -4,7 +4,6 @@ import { useActionState } from "react";
 import { login, type LoginState } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { HardHat } from "lucide-react";
 
 const initialState: LoginState = {};
 
@@ -16,11 +15,12 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         <div className="bg-white rounded-2xl shadow-lg p-8">
           <div className="flex flex-col items-center mb-8">
-            <div className="w-14 h-14 rounded-full bg-brand-600 flex items-center justify-center mb-4">
-              <HardHat className="w-8 h-8 text-white" />
-            </div>
-            <h1 className="text-2xl font-bold text-gray-900">JCunha Construtora</h1>
-            <p className="text-sm text-gray-500 mt-1">Sistema de Orçamento</p>
+            <img
+              src="/logo-jcunha.webp"
+              alt="JCunha Construtora"
+              className="w-44 h-auto"
+            />
+            <p className="text-sm text-gray-500 -mt-1">Sistema de Orçamento</p>
           </div>
 
           <form action={formAction} className="flex flex-col gap-4">

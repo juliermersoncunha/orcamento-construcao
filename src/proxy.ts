@@ -27,5 +27,10 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
+  // Arquivos de /public precisam ficar fora do guard: sem a exclusao por
+  // extensao, a logo cairia no redirect de login e voltaria HTML no lugar
+  // da imagem.
+  matcher: [
+    "/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:webp|png|jpg|jpeg|gif|svg|ico|webmanifest)$).*)",
+  ],
 };

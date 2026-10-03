@@ -4,6 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   CalendarDays, Plus, Trash2, ChevronUp, ChevronDown, ChevronRight, Sparkles, Package,
+  ListChecks,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -11,6 +12,8 @@ import { STAGE_STATUS } from "@/lib/schedule-template";
 import {
   applyScheduleTemplate, addScheduleStage, updateScheduleStage,
   deleteScheduleStage, moveScheduleStage, addStageMaterial, updateStageMaterial,
+  addScheduleTask, toggleScheduleTask, renameScheduleTask, deleteScheduleTask,
+  fillTemplateTasks,
 } from "@/app/actions/schedule";
 
 export type CatalogMaterial = {
@@ -22,10 +25,13 @@ export type StageMaterialRow = {
   currentPrice: number; quantity: number;
 };
 
+export type StageTask = { id: string; name: string; done: boolean };
+
 export type Stage = {
   id: string; order: number; name: string;
   deliverable: string | null; dependsOn: string | null;
   days: number; startDate: string | null; status: string; notes: string | null;
+  tasks: StageTask[];
   materials: StageMaterialRow[];
 };
 
@@ -65,6 +71,8 @@ export function CronogramaClient({
   const totalMaterial = stages.reduce(
     (s, x) => s + x.materials.reduce((m, r) => m + r.quantity * r.currentPrice, 0), 0);
   const concluidas = stages.filter((s) => s.status === "CONCLUIDA").length;
+  // So oferece o preenchimento enquanto houver etapa sem nenhum item.
+  const semPassoAPasso = stages.some((s) => s.tasks.length === 0);
 
   return (
     <div className="flex flex-col gap-4">
@@ -108,6 +116,17 @@ export function CronogramaClient({
             <span className="rounded-md bg-amber-50 px-3 py-1.5 text-amber-800">
               Material lançado: <strong>{brl(totalMaterial)}</strong>
             </span>
+          )}
+          {semPassoAPasso && (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={isPending}
+              onClick={() => run(() => fillTemplateTasks(projectId))}
+            >
+              <Sparkles className="w-4 h-4" />
+              Preencher passo a passo sugerido
+            </Button>
           )}
         </div>
       )}
@@ -175,6 +194,26 @@ function StageCard({
 
   const custo = stage.materials.reduce((s, r) => s + r.quantity * r.currentPrice, 0);
 
+  // O servidor leva um instante para repintar a pagina inteira, e numa checklist
+  // marcam-se varios itens seguidos. O estado visual anda na frente e so cede
+  // quando a resposta chega. Fica aqui, e nao na lista, para o contador do
+  // cabecalho nunca discordar dos riscos nos itens.
+  const [otim, setOtim] = useState<Record<string, boolean>>({});
+  const estaFeito = (t: StageTask) => otim[t.id] ?? t.done;
+  const feitas = stage.tasks.filter(estaFeito).length;
+
+  function alternarTask(t: StageTask, done: boolean) {
+    setOtim((o) => ({ ...o, [t.id]: done }));
+    run(async () => {
+      const r = await toggleScheduleTask(t.id, done);
+      setOtim((o) => {
+        const { [t.id]: _removido, ...resto } = o;
+        return resto;
+      });
+      return r;
+    });
+  }
+
   return (
     <Card>
       <CardContent className="py-3">
@@ -226,7 +265,11 @@ function StageCard({
             className="text-xs text-gray-500 hover:text-brand-600 flex items-center gap-1 px-2"
           >
             <ChevronRight className={`w-3.5 h-3.5 transition-transform ${open ? "rotate-90" : ""}`} />
-            {stage.materials.length > 0 ? `${stage.materials.length} material(is)` : "detalhes"}
+            {stage.tasks.length > 0
+              ? `${feitas}/${stage.tasks.length} itens`
+              : stage.materials.length > 0
+              ? `${stage.materials.length} material(is)`
+              : "detalhes"}
           </button>
 
           <button
@@ -283,6 +326,16 @@ function StageCard({
                 className={`w-full bg-white ${inputClass}`}
               />
             </Field>
+
+            <TaskList
+              stageId={stage.id}
+              tasks={stage.tasks}
+              feitas={feitas}
+              estaFeito={estaFeito}
+              alternar={alternarTask}
+              isPending={isPending}
+              run={run}
+            />
 
             <div>
               <div className="flex items-center gap-2 mb-2">
@@ -355,6 +408,98 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
     <div className="flex flex-col gap-1">
       <label className="text-xs font-medium text-gray-600">{label}</label>
       {children}
+    </div>
+  );
+}
+
+// Passo a passo da etapa: cada item e marcado conforme sai na obra. O nome
+// edita no proprio lugar e salva ao sair do campo.
+function TaskList({
+  stageId, tasks, feitas, estaFeito, alternar, isPending, run,
+}: {
+  stageId: string; tasks: StageTask[]; feitas: number;
+  estaFeito: (t: StageTask) => boolean;
+  alternar: (t: StageTask, done: boolean) => void;
+  isPending: boolean;
+  run: (fn: () => Promise<{ error?: string } | void>) => void;
+}) {
+  const [novo, setNovo] = useState("");
+
+  return (
+    <div>
+      <div className="flex items-center gap-2 mb-2">
+        <ListChecks className="w-4 h-4 text-gray-400" />
+        <p className="text-sm font-medium text-gray-700">Passo a passo</p>
+        {tasks.length > 0 && (
+          <span className="text-xs text-gray-500">· {feitas} de {tasks.length}</span>
+        )}
+      </div>
+
+      {tasks.length > 0 && (
+        <ul className="mb-2 divide-y divide-gray-100 border-y border-gray-100">
+          {tasks.map((t) => (
+            <li key={t.id} className="flex items-center gap-2 py-1.5">
+              <input
+                type="checkbox"
+                checked={estaFeito(t)}
+                onChange={(e) => alternar(t, e.target.checked)}
+                className="w-4 h-4 rounded accent-brand-600 shrink-0"
+              />
+              <input
+                defaultValue={t.name}
+                onBlur={(e) => {
+                  if (e.target.value.trim() !== t.name) {
+                    run(() => renameScheduleTask(t.id, e.target.value));
+                  }
+                }}
+                className={`flex-1 bg-transparent rounded px-1 py-0.5 text-sm hover:bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500 ${
+                  estaFeito(t) ? "line-through text-gray-400" : "text-gray-800"
+                }`}
+              />
+              <button
+                type="button"
+                aria-label="Excluir item"
+                disabled={isPending}
+                onClick={() => run(() => deleteScheduleTask(t.id))}
+                className="text-gray-300 hover:text-red-600 shrink-0"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <div className="flex items-center gap-2">
+        <input
+          value={novo}
+          onChange={(e) => setNovo(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && novo.trim().length >= 2) {
+              e.preventDefault();
+              run(async () => {
+                const r = await addScheduleTask(stageId, novo);
+                if (!r?.error) setNovo("");
+                return r;
+              });
+            }
+          }}
+          placeholder="Novo item do passo a passo…"
+          className={`flex-1 bg-white ${inputClass}`}
+        />
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={isPending || novo.trim().length < 2}
+          onClick={() => run(async () => {
+            const r = await addScheduleTask(stageId, novo);
+            if (!r?.error) setNovo("");
+            return r;
+          })}
+        >
+          <Plus className="w-4 h-4" />
+        </Button>
+      </div>
     </div>
   );
 }

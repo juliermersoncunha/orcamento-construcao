@@ -44,18 +44,54 @@ export async function applyScheduleTemplate(projectId: string) {
   const existing = await prisma.scheduleStage.count({ where: { projectId } });
   if (existing > 0) return { error: "O cronograma já tem etapas. Exclua-as antes de aplicar o modelo." };
 
-  await prisma.scheduleStage.createMany({
-    data: SCHEDULE_TEMPLATE.map((s, i) => ({
-      projectId,
-      order: i,
-      name: s.name,
-      deliverable: s.deliverable,
-      dependsOn: s.dependsOn,
-      days: s.days,
-    })),
-  });
+  // Uma etapa por vez porque cada uma precisa do proprio id para as sub-etapas.
+  for (const [i, t] of SCHEDULE_TEMPLATE.entries()) {
+    await prisma.scheduleStage.create({
+      data: {
+        projectId,
+        order: i,
+        name: t.name,
+        deliverable: t.deliverable,
+        dependsOn: t.dependsOn,
+        days: t.days,
+        tasks: { create: t.tasks.map((name, j) => ({ order: j, name })) },
+      },
+    });
+  }
 
   touch(projectId);
+  return {};
+}
+
+// Preenche o passo a passo das etapas que ja existem — util para quem aplicou
+// o modelo antes das sub-etapas existirem. Casa pelo nome e so mexe em etapa
+// que ainda nao tem item nenhum, entao nunca sobrescreve o que o usuario
+// escreveu e pode rodar quantas vezes quiser.
+export async function fillTemplateTasks(projectId: string) {
+  await assertOwnsProject(projectId);
+
+  const stages = await prisma.scheduleStage.findMany({
+    where: { projectId },
+    select: { id: true, name: true, _count: { select: { tasks: true } } },
+  });
+
+  let preenchidas = 0;
+  for (const stage of stages) {
+    if (stage._count.tasks > 0) continue;
+    const t = SCHEDULE_TEMPLATE.find(
+      (x) => x.name.toLowerCase() === stage.name.trim().toLowerCase()
+    );
+    if (!t) continue;
+    await prisma.scheduleTask.createMany({
+      data: t.tasks.map((name, j) => ({ stageId: stage.id, order: j, name })),
+    });
+    preenchidas++;
+  }
+
+  touch(projectId);
+  if (preenchidas === 0) {
+    return { error: "Nenhuma etapa vazia do modelo foi encontrada para preencher." };
+  }
   return {};
 }
 
@@ -213,4 +249,60 @@ export async function updateStageMaterial(rowId: string, quantity: number) {
 
 export async function removeStageMaterial(rowId: string) {
   return updateStageMaterial(rowId, 0);
+}
+
+// ── Sub-etapas (passo a passo) ─────────────────────────────────────────────
+
+async function assertOwnsTask(taskId: string) {
+  const session = await getSession();
+  if (!session) redirect("/login");
+  const task = await prisma.scheduleTask.findFirst({
+    where: { id: taskId, stage: { project: { userId: session.userId } } },
+    select: { id: true, stage: { select: { projectId: true } } },
+  });
+  if (!task) redirect("/projetos");
+  return task;
+}
+
+export async function addScheduleTask(stageId: string, name: string) {
+  const stage = await assertOwnsStage(stageId);
+
+  const trimmed = name.trim();
+  if (trimmed.length < 2) return { error: "Informe o nome do item." };
+
+  const last = await prisma.scheduleTask.findFirst({
+    where: { stageId },
+    orderBy: { order: "desc" },
+    select: { order: true },
+  });
+
+  await prisma.scheduleTask.create({
+    data: { stageId, name: trimmed, order: (last?.order ?? -1) + 1 },
+  });
+
+  touch(stage.projectId);
+  return {};
+}
+
+export async function toggleScheduleTask(taskId: string, done: boolean) {
+  const task = await assertOwnsTask(taskId);
+  await prisma.scheduleTask.update({ where: { id: taskId }, data: { done } });
+  touch(task.stage.projectId);
+  return {};
+}
+
+export async function renameScheduleTask(taskId: string, name: string) {
+  const task = await assertOwnsTask(taskId);
+  const trimmed = name.trim();
+  if (trimmed.length < 2) return { error: "Nome do item obrigatório." };
+  await prisma.scheduleTask.update({ where: { id: taskId }, data: { name: trimmed } });
+  touch(task.stage.projectId);
+  return {};
+}
+
+export async function deleteScheduleTask(taskId: string) {
+  const task = await assertOwnsTask(taskId);
+  await prisma.scheduleTask.delete({ where: { id: taskId } });
+  touch(task.stage.projectId);
+  return {};
 }

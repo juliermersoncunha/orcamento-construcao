@@ -640,8 +640,23 @@ model ScheduleStage {
 
   project   Project                 @relation(fields: [projectId], references: [id], onDelete: Cascade)
   materials ScheduleStageMaterial[]
+  tasks     ScheduleTask[]
 
   @@index([projectId, order])
+}
+
+// Sub-etapa: o passo a passo dentro de uma etapa ("Alvara", "ART/RRT"...).
+// Serve de checklist de execucao — cada item e marcado conforme sai.
+model ScheduleTask {
+  id      String  @id @default(cuid())
+  stageId String
+  order   Int
+  name    String
+  done    Boolean @default(false)
+
+  stage ScheduleStage @relation(fields: [stageId], references: [id], onDelete: Cascade)
+
+  @@index([stageId, order])
 }
 
 model ScheduleStageMaterial {

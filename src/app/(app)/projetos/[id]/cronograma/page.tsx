@@ -25,6 +25,7 @@ export default async function CronogramaPage({
     where: { projectId: id },
     orderBy: { order: "asc" },
     include: {
+      tasks: { orderBy: { order: "asc" } },
       materials: {
         include: { material: { select: { id: true, name: true, unit: true, currentPrice: true } } },
       },
@@ -66,6 +67,7 @@ export default async function CronogramaPage({
           startDate: s.startDate ? s.startDate.toISOString().slice(0, 10) : null,
           status: s.status,
           notes: s.notes,
+          tasks: s.tasks.map((t) => ({ id: t.id, name: t.name, done: t.done })),
           materials: s.materials.map((m) => ({
             rowId: m.id,
             materialId: m.material.id,

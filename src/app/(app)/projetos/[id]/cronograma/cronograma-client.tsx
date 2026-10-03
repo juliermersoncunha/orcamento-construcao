@@ -17,12 +17,12 @@ import {
 } from "@/app/actions/schedule";
 
 export type CatalogMaterial = {
-  id: string; name: string; unit: string; currentPrice: number; category: string;
+  id: string; name: string; unit: string; category: string;
 };
 
 export type StageMaterialRow = {
   rowId: string; materialId: string; name: string; unit: string;
-  currentPrice: number; quantity: number;
+  quantity: number;
 };
 
 export type StageTask = { id: string; name: string; done: boolean };
@@ -34,10 +34,6 @@ export type Stage = {
   tasks: StageTask[];
   materials: StageMaterialRow[];
 };
-
-function brl(n: number) {
-  return n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-}
 
 const inputClass =
   "rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent";
@@ -68,8 +64,6 @@ export function CronogramaClient({
   }
 
   const totalDias = stages.reduce((s, x) => s + x.days, 0);
-  const totalMaterial = stages.reduce(
-    (s, x) => s + x.materials.reduce((m, r) => m + r.quantity * r.currentPrice, 0), 0);
   const concluidas = stages.filter((s) => s.status === "CONCLUIDA").length;
   // So oferece o preenchimento enquanto houver etapa sem nenhum item.
   const semPassoAPasso = stages.some((s) => s.tasks.length === 0);
@@ -112,11 +106,6 @@ export function CronogramaClient({
           <span className="rounded-md bg-gray-100 px-3 py-1.5 text-gray-700">
             <strong>{concluidas}</strong> de {stages.length} concluídas
           </span>
-          {totalMaterial > 0 && (
-            <span className="rounded-md bg-amber-50 px-3 py-1.5 text-amber-800">
-              Material lançado: <strong>{brl(totalMaterial)}</strong>
-            </span>
-          )}
           {semPassoAPasso && (
             <Button
               variant="outline"
@@ -192,7 +181,6 @@ function StageCard({
     run(() => updateScheduleStage(stage.id, input));
   }
 
-  const custo = stage.materials.reduce((s, r) => s + r.quantity * r.currentPrice, 0);
 
   // O servidor leva um instante para repintar a pagina inteira, e numa checklist
   // marcam-se varios itens seguidos. O estado visual anda na frente e so cede
@@ -341,9 +329,6 @@ function StageCard({
               <div className="flex items-center gap-2 mb-2">
                 <Package className="w-4 h-4 text-gray-400" />
                 <p className="text-sm font-medium text-gray-700">Materiais desta etapa</p>
-                {custo > 0 && (
-                  <span className="text-xs text-gray-500">· {brl(custo)}</span>
-                )}
               </div>
 
               {stage.materials.length > 0 && (
@@ -353,7 +338,6 @@ function StageCard({
                       <th className="text-left font-medium py-1">Material</th>
                       <th className="text-center font-medium py-1 w-20">Un</th>
                       <th className="text-center font-medium py-1 w-24">Qtd</th>
-                      <th className="text-right font-medium py-1 w-28">Total</th>
                       <th className="w-8" />
                     </tr>
                   </thead>
@@ -372,11 +356,6 @@ function StageCard({
                             }}
                             className="w-20 text-center rounded border border-gray-300 px-1 py-0.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                           />
-                        </td>
-                        <td className="py-1.5 text-right text-gray-800">
-                          {m.currentPrice > 0
-                            ? brl(m.quantity * m.currentPrice)
-                            : <span className="text-amber-600 text-xs">sem preço</span>}
                         </td>
                         <td className="py-1.5 text-right">
                           <button
@@ -550,12 +529,7 @@ function MaterialPicker({
                   className="w-full text-left px-3 py-2 text-sm hover:bg-brand-50 flex items-center justify-between gap-3"
                 >
                   <span className="text-gray-800">{m.name}</span>
-                  <span className="text-xs text-gray-500 shrink-0">
-                    {m.unit} ·{" "}
-                    {m.currentPrice > 0
-                      ? brl(m.currentPrice)
-                      : <span className="text-amber-600">sem preço</span>}
-                  </span>
+                  <span className="text-xs text-gray-500 shrink-0">{m.unit}</span>
                 </button>
               ))}
             </div>

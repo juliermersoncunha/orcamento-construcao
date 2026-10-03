@@ -27,17 +27,18 @@ export default async function CronogramaPage({
     include: {
       tasks: { orderBy: { order: "asc" } },
       materials: {
-        include: { material: { select: { id: true, name: true, unit: true, currentPrice: true } } },
+        include: { material: { select: { id: true, name: true, unit: true } } },
       },
     },
   });
 
-  // O seletor de material da etapa usa o catálogo ativo inteiro; a categoria
-  // vai junto para a lista abrir já filtrada pelo que combina com a etapa.
+  // O seletor de material da etapa usa o catálogo ativo inteiro. Preço fica de
+  // fora: aqui a conversa é sobre o que vai ser usado, não sobre custo — isso
+  // é assunto do orçamento.
   const materials = await prisma.material.findMany({
     where: { active: true },
     orderBy: { name: "asc" },
-    select: { id: true, name: true, unit: true, currentPrice: true, category: true },
+    select: { id: true, name: true, unit: true, category: true },
   });
 
   return (
@@ -73,7 +74,6 @@ export default async function CronogramaPage({
             materialId: m.material.id,
             name: m.material.name,
             unit: m.material.unit,
-            currentPrice: m.material.currentPrice,
             quantity: m.quantity,
           })),
         }))}

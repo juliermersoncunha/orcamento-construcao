@@ -63,6 +63,7 @@ export default async function MateriaisPage() {
             .map(([c, list]) => [c, list.map((m) => ({
               id: m.id,
               name: m.name,
+              calcName: m.calcName,
               unit: m.unit,
               category: m.category,
               currentPrice: m.currentPrice,

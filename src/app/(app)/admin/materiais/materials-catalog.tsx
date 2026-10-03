@@ -10,6 +10,7 @@ import { MaterialRow } from "./material-row";
 type Material = {
   id: string;
   name: string;
+  calcName: string | null;
   unit: string;
   category: MaterialCategory;
   currentPrice: number;

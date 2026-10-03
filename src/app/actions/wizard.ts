@@ -8,7 +8,7 @@ import { calculateMaterials } from "@/lib/calculations";
 import type { CalculationInput, RoomInput } from "@/lib/calculations";
 import { resolveRoomFixtures } from "@/lib/calculations/fixture-engine";
 import type { RoomEngineInput } from "@/lib/calculations/fixture-engine";
-import { MaterialCategory, PhaseType } from "@prisma/client";
+import { MaterialCategory, PhaseType, ProjectType } from "@prisma/client";
 import { CARDINAL_WALL_SIDES } from "@/lib/wall-sides";
 
 async function getProject(projectId: string) {
@@ -81,6 +81,50 @@ export async function saveStep2Rooms(projectId: string, formData: FormData) {
 
   revalidatePath(`/projetos/${projectId}/wizard`);
   redirect(`/projetos/${projectId}/wizard?etapa=3`);
+}
+
+// Etapa 1 — identificacao. Ate aqui o wizard so exibia esses dados, entao um
+// nome de cliente errado na criacao nao tinha mais como ser corrigido. Cobre o
+// mesmo conjunto de campos do formulario de criacao, incluindo telefone, e-mail
+// e endereco, que nao aparecem em nenhuma outra tela.
+export async function saveStep1Identification(projectId: string, formData: FormData) {
+  const { project } = await getProject(projectId);
+
+  const txt = (k: string) => ((formData.get(k) as string) ?? "").trim();
+  const opt = (k: string) => txt(k) || null;
+
+  const name = txt("name");
+  const clientName = txt("clientName");
+  if (name.length < 2 || clientName.length < 2) {
+    // O formulario ja exige os dois; se vier vazio, mantem o que esta gravado.
+    return;
+  }
+
+  const type = txt("type");
+  const allowed = ["NOVA_CONSTRUCAO", "REFORMA", "AMPLIACAO"];
+
+  await prisma.project.update({
+    where: { id: projectId },
+    data: {
+      name,
+      clientName,
+      clientPhone: opt("clientPhone"),
+      clientEmail: opt("clientEmail"),
+      address: opt("address"),
+      city: opt("city"),
+      state: opt("state"),
+      notes: opt("notes"),
+      ...(allowed.includes(type) ? { type: type as ProjectType } : {}),
+    },
+  });
+
+  await prisma.project.update({
+    where: { id: projectId },
+    data: { wizardStep: Math.max(project.wizardStep, 2) },
+  });
+
+  revalidatePath(`/projetos/${projectId}/wizard`);
+  redirect(`/projetos/${projectId}/wizard?etapa=2`);
 }
 
 export async function saveStep3Structure(projectId: string, formData: FormData) {

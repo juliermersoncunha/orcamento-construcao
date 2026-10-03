@@ -770,7 +770,7 @@ export default async function MemorialPage({
         {/* Footer */}
         <div className="mt-8 pt-4 border-t border-gray-300 text-xs text-gray-500 text-center">
           <p>
-            Documento gerado em {today} — ObraFácil Orçamento de Construção
+            Documento gerado em {today} — JCunha Construtora · Sistema de Orçamento
           </p>
           <p className="mt-1">
             Os valores e quantitativos são estimativas baseadas nas premissas cadastradas no sistema.

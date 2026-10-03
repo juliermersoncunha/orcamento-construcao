@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "ObraFácil — Orçamento de Construção",
+  title: "JCunha Construtora — Sistema de Orçamento",
   description: "Sistema de orçamento e levantamento de materiais para obras",
 };
 

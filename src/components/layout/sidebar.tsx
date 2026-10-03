@@ -40,8 +40,8 @@ export function Sidebar({ userName, userRole }: SidebarProps) {
           <HardHat className="w-5 h-5 text-white" />
         </div>
         <div>
-          <p className="font-bold text-sm leading-none">ObraFácil</p>
-          <p className="text-xs text-gray-400 mt-0.5">Orçamento de Obras</p>
+          <p className="font-bold text-sm leading-none">JCunha Construtora</p>
+          <p className="text-xs text-gray-400 mt-0.5">Sistema de Orçamento</p>
         </div>
       </div>
 

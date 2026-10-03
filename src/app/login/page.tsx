@@ -19,8 +19,8 @@ export default function LoginPage() {
             <div className="w-14 h-14 rounded-full bg-amber-600 flex items-center justify-center mb-4">
               <HardHat className="w-8 h-8 text-white" />
             </div>
-            <h1 className="text-2xl font-bold text-gray-900">ObraFácil</h1>
-            <p className="text-sm text-gray-500 mt-1">Sistema de Orçamento de Construção</p>
+            <h1 className="text-2xl font-bold text-gray-900">JCunha Construtora</h1>
+            <p className="text-sm text-gray-500 mt-1">Sistema de Orçamento</p>
           </div>
 
           <form action={formAction} className="flex flex-col gap-4">

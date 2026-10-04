@@ -95,6 +95,8 @@ export function CronogramaClient({
   const totalDias = stages.reduce((s, x) => s + x.days, 0);
   const concluidas = stages.filter((s) => s.status === "CONCLUIDA").length;
 
+  const totalItensMaterial = stages.reduce((n, st) => n + st.materials.length, 0);
+
   // Mesmo material escolhido em etapas diferentes vira uma linha so na lista:
   // na loja o que importa e o total a comprar, nao de qual etapa veio.
   const listaCompras = useMemo(() => {
@@ -167,6 +169,18 @@ export function CronogramaClient({
       )}
 
       {/* Lista de compras — aparece quando ha item selecionado */}
+      {/* Sem nada marcado a funcao ficava invisivel: nao havia botao algum na
+          tela, e o usuario nao tinha como descobrir que ela existe. */}
+      {selecionados.size === 0 && totalItensMaterial > 0 && (
+        <div className="flex items-center gap-2 rounded-md border border-dashed border-gray-300 bg-gray-50 px-3 py-2 text-xs text-gray-500">
+          <ShoppingCart className="w-3.5 h-3.5 shrink-0" />
+          <span>
+            Abra uma etapa e marque os materiais na coluna do carrinho para montar
+            uma lista de compras.
+          </span>
+        </div>
+      )}
+
       {selecionados.size > 0 && (
         <Card className="border-brand-300 bg-brand-50 sticky top-4 z-20 shadow-md">
           <CardContent className="py-3">
@@ -456,6 +470,11 @@ function StageCard({
               <div className="flex items-center gap-2 mb-2">
                 <Package className="w-4 h-4 text-gray-400" />
                 <p className="text-sm font-medium text-gray-700">Materiais desta etapa</p>
+                {stage.materials.length > 0 && (
+                  <span className="text-xs text-gray-400">
+                    · ✓ comprado · <ShoppingCart className="w-3 h-3 inline" /> lista de compras
+                  </span>
+                )}
               </div>
 
               {stage.materials.length > 0 && (

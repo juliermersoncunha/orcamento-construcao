@@ -4,7 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   CalendarDays, Plus, Trash2, ChevronUp, ChevronDown, ChevronRight, Sparkles, Package,
-  ListChecks,
+  ListChecks, ShoppingCart, Copy, Check, X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -13,7 +13,7 @@ import {
   applyScheduleTemplate, addScheduleStage, updateScheduleStage,
   deleteScheduleStage, moveScheduleStage, addStageMaterial, updateStageMaterial,
   addScheduleTask, toggleScheduleTask, renameScheduleTask, deleteScheduleTask,
-  fillTemplateTasks,
+  fillTemplateTasks, toggleStageMaterialPurchased,
 } from "@/app/actions/schedule";
 
 export type CatalogMaterial = {
@@ -22,7 +22,7 @@ export type CatalogMaterial = {
 
 export type StageMaterialRow = {
   rowId: string; materialId: string; name: string; unit: string;
-  quantity: number;
+  quantity: number; purchased: boolean;
 };
 
 export type StageTask = { id: string; name: string; done: boolean };
@@ -53,6 +53,35 @@ export function CronogramaClient({
   const [isPending, startTransition] = useTransition();
   const [newStage, setNewStage] = useState("");
   const [error, setError] = useState<string | null>(null);
+  // A selecao para a lista de compras vive aqui, e nao na etapa: numa ida a
+  // loja se compra material de varias etapas de uma vez.
+  const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
+  const [listaAberta, setListaAberta] = useState(false);
+
+  const [copiado, setCopiado] = useState(false);
+
+  // Texto puro: a lista costuma ser mandada por WhatsApp para quem vai comprar.
+  async function copiarLista() {
+    const txt = listaCompras
+      .map((m) => `${m.nome} — ${m.total.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} ${m.unit}`)
+      .join(String.fromCharCode(10));
+    try {
+      await navigator.clipboard.writeText(txt);
+      setCopiado(true);
+      setTimeout(() => setCopiado(false), 2000);
+    } catch {
+      setError("Não consegui copiar. Selecione o texto da lista manualmente.");
+    }
+  }
+
+  function alternarSelecao(rowId: string) {
+    setSelecionados((prev) => {
+      const next = new Set(prev);
+      if (next.has(rowId)) next.delete(rowId);
+      else next.add(rowId);
+      return next;
+    });
+  }
 
   function run(fn: () => Promise<{ error?: string } | void>) {
     setError(null);
@@ -65,6 +94,23 @@ export function CronogramaClient({
 
   const totalDias = stages.reduce((s, x) => s + x.days, 0);
   const concluidas = stages.filter((s) => s.status === "CONCLUIDA").length;
+
+  // Mesmo material escolhido em etapas diferentes vira uma linha so na lista:
+  // na loja o que importa e o total a comprar, nao de qual etapa veio.
+  const listaCompras = useMemo(() => {
+    const acc = new Map<string, { nome: string; unit: string; total: number; etapas: string[] }>();
+    for (const st of stages) {
+      for (const m of st.materials) {
+        if (!selecionados.has(m.rowId)) continue;
+        const k = `${m.name}|${m.unit}`;
+        const a = acc.get(k) ?? { nome: m.name, unit: m.unit, total: 0, etapas: [] };
+        a.total += m.quantity;
+        if (!a.etapas.includes(st.name)) a.etapas.push(st.name);
+        acc.set(k, a);
+      }
+    }
+    return [...acc.values()].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
+  }, [stages, selecionados]);
   // So oferece o preenchimento enquanto houver etapa sem nenhum item.
   const semPassoAPasso = stages.some((s) => s.tasks.length === 0);
 
@@ -120,6 +166,65 @@ export function CronogramaClient({
         </div>
       )}
 
+      {/* Lista de compras — aparece quando ha item selecionado */}
+      {selecionados.size > 0 && (
+        <Card className="border-brand-300 bg-brand-50 sticky top-4 z-20 shadow-md">
+          <CardContent className="py-3">
+            <div className="flex items-center gap-3 flex-wrap">
+              <ShoppingCart className="w-4 h-4 text-brand-600 shrink-0" />
+              <span className="text-sm text-gray-800">
+                <strong>{selecionados.size}</strong>{" "}
+                {selecionados.size === 1 ? "item selecionado" : "itens selecionados"}
+                {listaCompras.length !== selecionados.size && (
+                  <span className="text-gray-500"> · {listaCompras.length} material(is) distintos</span>
+                )}
+              </span>
+              <div className="flex-1" />
+              <Button variant="outline" size="sm" onClick={() => setListaAberta((v) => !v)}>
+                {listaAberta ? "Ocultar lista" : "Ver lista de compras"}
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => { setSelecionados(new Set()); setListaAberta(false); }}>
+                <X className="w-4 h-4" />
+                Limpar
+              </Button>
+            </div>
+
+            {listaAberta && (
+              <div className="mt-3">
+                <table className="w-full text-sm bg-white rounded-md">
+                  <thead>
+                    <tr className="border-b border-gray-200 text-xs text-gray-500">
+                      <th className="text-left font-medium py-1.5 px-2">Material</th>
+                      <th className="text-center font-medium py-1.5 w-24">Qtd</th>
+                      <th className="text-center font-medium py-1.5 w-16">Un</th>
+                      <th className="text-left font-medium py-1.5 px-2">Etapas</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {listaCompras.map((m) => (
+                      <tr key={m.nome + m.unit} className="border-b border-gray-100">
+                        <td className="py-1.5 px-2 text-gray-800">{m.nome}</td>
+                        <td className="py-1.5 text-center font-medium text-gray-900">
+                          {m.total.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}
+                        </td>
+                        <td className="py-1.5 text-center text-gray-500">{m.unit}</td>
+                        <td className="py-1.5 px-2 text-xs text-gray-500">{m.etapas.join(", ")}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <div className="flex justify-end mt-2">
+                  <Button variant="outline" size="sm" onClick={copiarLista}>
+                    {copiado ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                    {copiado ? "Copiado" : "Copiar lista"}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {stages.map((stage, i) => (
         <StageCard
           key={stage.id}
@@ -130,6 +235,8 @@ export function CronogramaClient({
           materials={materials}
           isPending={isPending}
           run={run}
+          selecionados={selecionados}
+          alternarSelecao={alternarSelecao}
         />
       ))}
 
@@ -168,10 +275,13 @@ export function CronogramaClient({
 
 function StageCard({
   stage, index, isFirst, isLast, materials, isPending, run,
+  selecionados, alternarSelecao,
 }: {
   stage: Stage; index: number; isFirst: boolean; isLast: boolean;
   materials: CatalogMaterial[]; isPending: boolean;
   run: (fn: () => Promise<{ error?: string } | void>) => void;
+  selecionados: Set<string>;
+  alternarSelecao: (rowId: string) => void;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -189,6 +299,23 @@ function StageCard({
   const [otim, setOtim] = useState<Record<string, boolean>>({});
   const estaFeito = (t: StageTask) => otim[t.id] ?? t.done;
   const feitas = stage.tasks.filter(estaFeito).length;
+
+  // Mesma razao do passo a passo: marcar varios itens comprados em sequencia
+  // nao pode esperar a pagina inteira repintar a cada clique.
+  const [otimComprado, setOtimComprado] = useState<Record<string, boolean>>({});
+  const estaComprado = (m: StageMaterialRow) => otimComprado[m.rowId] ?? m.purchased;
+
+  function alternarComprado(m: StageMaterialRow, comprado: boolean) {
+    setOtimComprado((o) => ({ ...o, [m.rowId]: comprado }));
+    run(async () => {
+      const r = await toggleStageMaterialPurchased(m.rowId, comprado);
+      setOtimComprado((o) => {
+        const { [m.rowId]: _removido, ...resto } = o;
+        return resto;
+      });
+      return r;
+    });
+  }
 
   function alternarTask(t: StageTask, done: boolean) {
     setOtim((o) => ({ ...o, [t.id]: done }));
@@ -335,6 +462,10 @@ function StageCard({
                 <table className="w-full text-sm mb-3">
                   <thead>
                     <tr className="border-b border-gray-200 text-xs text-gray-500">
+                      <th className="text-center font-medium py-1 w-10" title="Já comprado">✓</th>
+                      <th className="text-center font-medium py-1 w-10" title="Incluir na lista de compras">
+                        <ShoppingCart className="w-3.5 h-3.5 inline text-gray-400" />
+                      </th>
                       <th className="text-left font-medium py-1">Material</th>
                       <th className="text-center font-medium py-1 w-20">Un</th>
                       <th className="text-center font-medium py-1 w-24">Qtd</th>
@@ -344,7 +475,27 @@ function StageCard({
                   <tbody>
                     {stage.materials.map((m) => (
                       <tr key={m.rowId} className="border-b border-gray-100">
-                        <td className="py-1.5 text-gray-800">{m.name}</td>
+                        <td className="py-1.5 text-center">
+                          <input
+                            type="checkbox"
+                            checked={estaComprado(m)}
+                            onChange={(e) => alternarComprado(m, e.target.checked)}
+                            title="Já comprado"
+                            className="w-4 h-4 rounded accent-green-600"
+                          />
+                        </td>
+                        <td className="py-1.5 text-center">
+                          <input
+                            type="checkbox"
+                            checked={selecionados.has(m.rowId)}
+                            onChange={() => alternarSelecao(m.rowId)}
+                            title="Incluir na lista de compras"
+                            className="w-4 h-4 rounded accent-brand-600"
+                          />
+                        </td>
+                        <td className={`py-1.5 ${estaComprado(m) ? "text-gray-400 line-through" : "text-gray-800"}`}>
+                          {m.name}
+                        </td>
                         <td className="py-1.5 text-center text-gray-500">{m.unit}</td>
                         <td className="py-1.5 text-center">
                           <input

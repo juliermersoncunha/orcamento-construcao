@@ -247,6 +247,21 @@ export async function updateStageMaterial(rowId: string, quantity: number) {
   return {};
 }
 
+export async function toggleStageMaterialPurchased(rowId: string, purchased: boolean) {
+  const session = await getSession();
+  if (!session) redirect("/login");
+
+  const row = await prisma.scheduleStageMaterial.findFirst({
+    where: { id: rowId, stage: { project: { userId: session.userId } } },
+    select: { id: true, stage: { select: { projectId: true } } },
+  });
+  if (!row) redirect("/projetos");
+
+  await prisma.scheduleStageMaterial.update({ where: { id: rowId }, data: { purchased } });
+  touch(row.stage.projectId);
+  return {};
+}
+
 export async function removeStageMaterial(rowId: string) {
   return updateStageMaterial(rowId, 0);
 }

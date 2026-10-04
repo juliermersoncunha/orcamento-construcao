@@ -75,6 +75,7 @@ export default async function CronogramaPage({
             name: m.material.name,
             unit: m.material.unit,
             quantity: m.quantity,
+            purchased: m.purchased,
           })),
         }))}
         materials={materials}

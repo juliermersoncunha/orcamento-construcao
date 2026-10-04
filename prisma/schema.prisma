@@ -694,6 +694,10 @@ model ScheduleStageMaterial {
   stageId    String
   materialId String
   quantity   Float  @default(0)
+  // Marcado quando o material ja foi comprado. Fica na linha da etapa porque e
+  // por etapa que se compra — o mesmo cimento pode estar comprado para a
+  // fundacao e ainda faltar para a alvenaria.
+  purchased  Boolean @default(false)
 
   stage    ScheduleStage @relation(fields: [stageId], references: [id], onDelete: Cascade)
   material Material      @relation(fields: [materialId], references: [id])

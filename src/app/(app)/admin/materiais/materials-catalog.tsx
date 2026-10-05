@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { FileSpreadsheet, Download, Search, X } from "lucide-react";
 import { MaterialRow } from "./material-row";
+import { MATERIAL_CATEGORIES } from "@/lib/material-categories";
 
 type Material = {
   id: string;
@@ -51,6 +52,14 @@ export function MaterialsCatalog({ materialsByCategory, categoryLabels, supplier
       .sort((a, b) => a.name.localeCompare(b.name, "pt-BR")),
     [materialsByCategory]
   );
+
+  // Opcoes de uso: as areas que o sistema ja conhece, mais qualquer uso ja
+  // gravado — assim a lista cresce com o catalogo sem precisar de cadastro.
+  const usoOptions = useMemo(() => {
+    const base = MATERIAL_CATEGORIES.map((c) => c.label);
+    const salvos = todos.flatMap((m) => m.usos ?? []);
+    return [...new Set([...base, ...salvos])].sort((a, b) => a.localeCompare(b, "pt-BR"));
+  }, [todos]);
 
   const norm = (t: string) =>
     t.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
@@ -287,6 +296,7 @@ export function MaterialsCatalog({ materialsByCategory, categoryLabels, supplier
                     key={material.id}
                     material={material}
                     suppliers={suppliers}
+                    usoOptions={usoOptions}
                     selected={selected.has(material.id)}
                     onToggleSelect={() => toggle(material.id)}
                   />

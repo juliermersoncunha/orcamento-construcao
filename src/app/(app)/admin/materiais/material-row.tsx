@@ -34,18 +34,20 @@ function formatQty(q: number | null | undefined) {
 export function MaterialRow({
   material,
   suppliers = [],
+  usoOptions = [],
   selected,
   onToggleSelect,
 }: {
   material: any;
   suppliers?: SupplierOption[];
+  usoOptions?: string[];
   selected?: boolean;
   onToggleSelect?: () => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(material.name);
   const [calcName, setCalcName] = useState(material.calcName ?? "");
-  const [usos, setUsos] = useState((material.usos ?? []).join(", "));
+  const [usos, setUsos] = useState<string[]>(material.usos ?? []);
   const [price, setPrice] = useState(String(material.currentPrice));
   const [priceDate, setPriceDate] = useState(toInputDate(material.priceDate));
   const [unit, setUnit] = useState(material.unit);
@@ -59,7 +61,7 @@ export function MaterialRow({
   function startEditing() {
     setName(material.name);
     setCalcName(material.calcName ?? "");
-    setUsos((material.usos ?? []).join(", "));
+    setUsos(material.usos ?? []);
     setPrice(String(material.currentPrice));
     setPriceDate(toInputDate(material.priceDate));
     setUnit(material.unit);
@@ -99,7 +101,7 @@ export function MaterialRow({
       const result = await updateMaterial(material.id, {
         name,
         calcName,
-        usos: usos.split(",").map((u: string) => u.trim()).filter(Boolean),
+        usos,
         price: p,
         priceDate: priceDate || null,
         unit,
@@ -171,15 +173,43 @@ export function MaterialRow({
             title="Nome pelo qual o cálculo procura este material"
             className={`mt-1 w-full text-xs ${inputClass}`}
           />
-          {/* Onde o material é usado. Vários, separados por vírgula. */}
-          <input
-            value={usos}
-            onChange={(e) => setUsos(e.target.value)}
-            onKeyDown={onKeyDown}
-            placeholder="usado em: fundação, alvenaria, reboco"
-            title="Onde este material é utilizado — separe por vírgula"
-            className={`mt-1 w-full text-xs ${inputClass}`}
-          />
+          {/* Onde o material é usado: escolhido numa lista e acumulado em
+              etiquetas. Digitar livre geraria "reboco", "Reboco" e "rebôco"
+              como coisas distintas, e a busca por uso deixaria de funcionar. */}
+          <div className="mt-1 flex flex-wrap items-center gap-1">
+            {usos.map((u) => (
+              <span
+                key={u}
+                className="inline-flex items-center gap-1 text-[11px] rounded bg-brand-100 text-brand-800 pl-1.5 pr-1 py-0.5"
+              >
+                {u}
+                <button
+                  type="button"
+                  onClick={() => setUsos((prev) => prev.filter((x) => x !== u))}
+                  aria-label={`Remover uso ${u}`}
+                  className="text-brand-500 hover:text-red-600"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            ))}
+            <select
+              value=""
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v) setUsos((prev) => (prev.includes(v) ? prev : [...prev, v]));
+              }}
+              title="Onde este material é utilizado"
+              className={`text-xs bg-white ${inputClass}`}
+            >
+              <option value="">+ usado em…</option>
+              {usoOptions
+                .filter((o) => !usos.includes(o))
+                .map((o) => (
+                  <option key={o} value={o}>{o}</option>
+                ))}
+            </select>
+          </div>
           {error && <p className="text-xs text-red-600 mt-1">{error}</p>}
         </td>
         <td className="py-2 px-2">

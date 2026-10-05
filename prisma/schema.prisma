@@ -489,6 +489,10 @@ model Material {
   // responder pelo nome generico que o calculo gera. Tem precedencia sobre o
   // nome: marcar o apelido e uma escolha explicita do usuario.
   calcName     String?       @unique
+  // Onde o material e utilizado na obra. Varios valores porque cimento serve a
+  // fundacao, alvenaria, reboco e contrapiso ao mesmo tempo — `category`, que e
+  // uma so, nunca deu conta disso e continua existindo apenas para o motor.
+  usos         String[]      @default([])
   unit         String
   category     MaterialCategory
   currentPrice Float

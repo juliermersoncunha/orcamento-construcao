@@ -4,13 +4,14 @@ import { useMemo, useState } from "react";
 import { MaterialCategory } from "@prisma/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FileSpreadsheet, Download } from "lucide-react";
+import { FileSpreadsheet, Download, Search, X } from "lucide-react";
 import { MaterialRow } from "./material-row";
 
 type Material = {
   id: string;
   name: string;
   calcName: string | null;
+  usos: string[];
   unit: string;
   category: MaterialCategory;
   currentPrice: number;
@@ -38,8 +39,34 @@ function formatDateBR(d: Date | string | null): string {
 }
 
 export function MaterialsCatalog({ materialsByCategory, categoryLabels, suppliers }: Props) {
+  const [busca, setBusca] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [supplierPick, setSupplierPick] = useState("");
+
+  // Lista unica: separar por categoria obrigava o material a ter uma so, e
+  // cimento serve a varias fases. O lugar dessa informacao agora e o campo de
+  // usos, que aceita mais de um valor.
+  const todos = useMemo(
+    () => materialsByCategory.flatMap(([, list]) => list)
+      .sort((a, b) => a.name.localeCompare(b.name, "pt-BR")),
+    [materialsByCategory]
+  );
+
+  const norm = (t: string) =>
+    t.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+
+  // Busca por nome, usos, marca e fornecedor — com 185 itens numa lista so,
+  // procurar pelo nome exato nem sempre e o caminho mais curto.
+  const visiveis = useMemo(() => {
+    const q = norm(busca.trim());
+    if (!q) return todos;
+    return todos.filter((m) =>
+      norm(m.name).includes(q) ||
+      (m.usos ?? []).some((u) => norm(u).includes(q)) ||
+      norm(m.brand ?? "").includes(q) ||
+      norm(m.supplier?.name ?? "").includes(q)
+    );
+  }, [todos, busca]);
 
   const total = useMemo(
     () => materialsByCategory.reduce((s, [, list]) => s + list.length, 0),
@@ -92,13 +119,13 @@ export function MaterialsCatalog({ materialsByCategory, categoryLabels, supplier
     });
   }
 
-  function toggleAll(allSelected: boolean) {
-    if (allSelected) {
+  // Com busca ativa, marca so o que esta na tela: marcar os 185 quando o
+  // usuario filtrou para 3 seria o oposto do que ele pediu.
+  function toggleAll(todosMarcados: boolean) {
+    if (todosMarcados) {
       setSelected(new Set());
     } else {
-      const next = new Set<string>();
-      for (const [, list] of materialsByCategory) for (const m of list) next.add(m.id);
-      setSelected(next);
+      setSelected(new Set(visiveis.map((m) => m.id)));
     }
   }
 
@@ -151,7 +178,8 @@ export function MaterialsCatalog({ materialsByCategory, categoryLabels, supplier
     XLSX.writeFile(wb, `materiais-selecionados-${stamp}.xlsx`);
   }
 
-  const allSelected = selected.size > 0 && selected.size === total;
+  const allSelected =
+    visiveis.length > 0 && visiveis.every((m) => selected.has(m.id));
   const anySelected = selected.size > 0;
 
   return (
@@ -169,6 +197,8 @@ export function MaterialsCatalog({ materialsByCategory, categoryLabels, supplier
             />
             {anySelected
               ? `${selected.size} de ${total} selecionado${selected.size > 1 ? "s" : ""}`
+              : busca
+              ? `Selecionar os ${visiveis.length} encontrados`
               : `Selecionar todos os ${total}`}
           </label>
           {anySelected && (
@@ -180,6 +210,27 @@ export function MaterialsCatalog({ materialsByCategory, categoryLabels, supplier
               Limpar seleção
             </button>
           )}
+
+          <div className="relative">
+            <Search className="w-4 h-4 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+              placeholder="Pesquisar material, uso, marca…"
+              className="w-72 rounded-md border border-gray-300 bg-white pl-8 pr-8 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+              aria-label="Pesquisar material"
+            />
+            {busca && (
+              <button
+                type="button"
+                onClick={() => setBusca("")}
+                aria-label="Limpar busca"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
 
           {suppliers.length > 0 && (
             <select
@@ -212,63 +263,44 @@ export function MaterialsCatalog({ materialsByCategory, categoryLabels, supplier
         </Button>
       </div>
 
-      <div className="flex flex-col gap-6">
-        {materialsByCategory.map(([category, items]) => {
-          const catSelected = items.every((m) => selected.has(m.id));
-          const catAny = items.some((m) => selected.has(m.id));
-          return (
-            <Card key={category}>
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between gap-3">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={catSelected}
-                      ref={(el) => { if (el) el.indeterminate = catAny && !catSelected; }}
-                      onChange={() => toggleCategory(items, catSelected)}
-                      className="rounded border-gray-300 text-brand-600 focus:ring-brand-500"
-                      aria-label={`Selecionar todos de ${categoryLabels[category]}`}
-                    />
-                    <span>{categoryLabels[category]}</span>
-                    <span className="text-xs font-normal text-gray-400">{items.length}</span>
-                  </CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-gray-100">
-                        <th className="py-2 w-8"></th>
-                        <th className="text-left font-medium text-gray-500 py-2">Material</th>
-                        <th className="text-left font-medium text-gray-500 py-2 px-2">Marca</th>
-                        <th className="text-left font-medium text-gray-500 py-2 px-2">Fornecedor</th>
-                        <th className="text-center font-medium text-gray-500 py-2">Unidade</th>
-                        <th className="text-center font-medium text-gray-500 py-2">Qtd</th>
-                        <th className="text-right font-medium text-gray-500 py-2">Preço (R$)</th>
-                        <th className="text-center font-medium text-gray-500 py-2">Data do preço</th>
-                        <th className="text-center font-medium text-gray-500 py-2">Status</th>
-                        <th className="py-2"></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {items.map((material) => (
-                        <MaterialRow
-                          key={material.id}
-                          material={material}
-                          suppliers={suppliers}
-                          selected={selected.has(material.id)}
-                          onToggleSelect={() => toggle(material.id)}
-                        />
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
+      <Card>
+        <CardContent className="pt-5">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-100">
+                  <th className="py-2 w-8"></th>
+                  <th className="text-left font-medium text-gray-500 py-2">Material</th>
+                  <th className="text-left font-medium text-gray-500 py-2 px-2">Marca</th>
+                  <th className="text-left font-medium text-gray-500 py-2 px-2">Fornecedor</th>
+                  <th className="text-center font-medium text-gray-500 py-2">Unidade</th>
+                  <th className="text-center font-medium text-gray-500 py-2">Qtd</th>
+                  <th className="text-right font-medium text-gray-500 py-2">Preço (R$)</th>
+                  <th className="text-center font-medium text-gray-500 py-2">Data do preço</th>
+                  <th className="text-center font-medium text-gray-500 py-2">Status</th>
+                  <th className="py-2"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {visiveis.map((material) => (
+                  <MaterialRow
+                    key={material.id}
+                    material={material}
+                    suppliers={suppliers}
+                    selected={selected.has(material.id)}
+                    onToggleSelect={() => toggle(material.id)}
+                  />
+                ))}
+              </tbody>
+            </table>
+            {visiveis.length === 0 && (
+              <p className="py-8 text-center text-sm text-gray-500">
+                Nenhum material encontrado para “{busca}”.
+              </p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
     </>
   );
 }

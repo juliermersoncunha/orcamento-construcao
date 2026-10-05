@@ -64,6 +64,7 @@ export default async function MateriaisPage() {
               id: m.id,
               name: m.name,
               calcName: m.calcName,
+              usos: m.usos,
               unit: m.unit,
               category: m.category,
               currentPrice: m.currentPrice,

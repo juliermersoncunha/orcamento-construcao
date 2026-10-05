@@ -78,6 +78,7 @@ export async function updateMaterial(
     priceDate: string | null;
     unit?: string;
     calcName?: string;
+    usos?: string[];
     category?: string;
     quantity?: number | null;
     brand?: string | null;
@@ -119,6 +120,11 @@ export async function updateMaterial(
     data: {
       name,
       ...(input.calcName !== undefined ? { calcName } : {}),
+      // Lista de usos chega da tela separada por virgula; aqui vira array sem
+      // duplicatas nem entradas vazias.
+      ...(input.usos !== undefined
+        ? { usos: [...new Set(input.usos.map((u) => u.trim()).filter(Boolean))] }
+        : {}),
       ...(unit ? { unit } : {}),
       ...(input.category ? { category: input.category as MaterialCategory } : {}),
       currentPrice: input.price,

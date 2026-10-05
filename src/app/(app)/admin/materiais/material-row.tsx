@@ -45,6 +45,7 @@ export function MaterialRow({
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(material.name);
   const [calcName, setCalcName] = useState(material.calcName ?? "");
+  const [usos, setUsos] = useState((material.usos ?? []).join(", "));
   const [price, setPrice] = useState(String(material.currentPrice));
   const [priceDate, setPriceDate] = useState(toInputDate(material.priceDate));
   const [unit, setUnit] = useState(material.unit);
@@ -58,6 +59,7 @@ export function MaterialRow({
   function startEditing() {
     setName(material.name);
     setCalcName(material.calcName ?? "");
+    setUsos((material.usos ?? []).join(", "));
     setPrice(String(material.currentPrice));
     setPriceDate(toInputDate(material.priceDate));
     setUnit(material.unit);
@@ -97,6 +99,7 @@ export function MaterialRow({
       const result = await updateMaterial(material.id, {
         name,
         calcName,
+        usos: usos.split(",").map((u: string) => u.trim()).filter(Boolean),
         price: p,
         priceDate: priceDate || null,
         unit,
@@ -166,6 +169,15 @@ export function MaterialRow({
             onKeyDown={onKeyDown}
             placeholder="nome no cálculo (opcional)"
             title="Nome pelo qual o cálculo procura este material"
+            className={`mt-1 w-full text-xs ${inputClass}`}
+          />
+          {/* Onde o material é usado. Vários, separados por vírgula. */}
+          <input
+            value={usos}
+            onChange={(e) => setUsos(e.target.value)}
+            onKeyDown={onKeyDown}
+            placeholder="usado em: fundação, alvenaria, reboco"
+            title="Onde este material é utilizado — separe por vírgula"
             className={`mt-1 w-full text-xs ${inputClass}`}
           />
           {error && <p className="text-xs text-red-600 mt-1">{error}</p>}
@@ -284,6 +296,15 @@ export function MaterialRow({
           <p className="text-xs text-brand-600 mt-0.5" title="Nome pelo qual o cálculo procura este material">
             cálculo: {material.calcName}
           </p>
+        )}
+        {material.usos?.length > 0 && (
+          <div className="flex flex-wrap gap-1 mt-1">
+            {material.usos.map((u: string) => (
+              <span key={u} className="text-[11px] rounded bg-gray-100 text-gray-600 px-1.5 py-0.5">
+                {u}
+              </span>
+            ))}
+          </div>
         )}
       </td>
       <td className="py-2 px-2">

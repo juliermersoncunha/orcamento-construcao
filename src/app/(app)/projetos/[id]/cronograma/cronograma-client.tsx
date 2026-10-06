@@ -4,7 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   CalendarDays, Plus, Trash2, ChevronUp, ChevronDown, ChevronRight, Sparkles, Package,
-  ListChecks, ShoppingCart, Copy, Check, X,
+  ListChecks, ShoppingCart, Copy, Check, X, CalendarRange, List,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -13,8 +13,9 @@ import {
   applyScheduleTemplate, addScheduleStage, updateScheduleStage,
   deleteScheduleStage, moveScheduleStage, addStageMaterial, updateStageMaterial,
   addScheduleTask, toggleScheduleTask, renameScheduleTask, deleteScheduleTask,
-  fillTemplateTasks, toggleStageMaterialPurchased,
+  fillTemplateTasks, toggleStageMaterialPurchased, setScheduleStart,
 } from "@/app/actions/schedule";
+import { montarSemanas, dataBR } from "@/lib/schedule-weeks";
 
 export type CatalogMaterial = {
   id: string; name: string; unit: string; category: string;
@@ -45,9 +46,10 @@ const STATUS_STYLE: Record<string, string> = {
 };
 
 export function CronogramaClient({
-  projectId, stages, materials,
+  projectId, scheduleStart, stages, materials,
 }: {
-  projectId: string; stages: Stage[]; materials: CatalogMaterial[];
+  projectId: string; scheduleStart: string | null;
+  stages: Stage[]; materials: CatalogMaterial[];
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -57,6 +59,19 @@ export function CronogramaClient({
   // loja se compra material de varias etapas de uma vez.
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
   const [listaAberta, setListaAberta] = useState(false);
+  const [vista, setVista] = useState<"lista" | "semanas">("lista");
+
+  const semanas = useMemo(
+    () => montarSemanas(
+      stages.map((s) => ({
+        id: s.id, name: s.name, status: s.status, days: s.days,
+        startDate: s.startDate,
+        materials: s.materials.map((m) => ({ name: m.name, unit: m.unit, quantity: m.quantity })),
+      })),
+      scheduleStart
+    ),
+    [stages, scheduleStart]
+  );
 
   const [copiado, setCopiado] = useState(false);
 
@@ -168,6 +183,49 @@ export function CronogramaClient({
         </div>
       )}
 
+      {stages.length > 0 && (
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="inline-flex rounded-md border border-gray-300 overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setVista("lista")}
+              className={`px-3 py-1.5 text-sm flex items-center gap-1.5 ${
+                vista === "lista" ? "bg-brand-600 text-white" : "bg-white text-gray-700 hover:bg-gray-50"
+              }`}
+            >
+              <List className="w-4 h-4" />
+              Etapas
+            </button>
+            <button
+              type="button"
+              onClick={() => setVista("semanas")}
+              className={`px-3 py-1.5 text-sm flex items-center gap-1.5 border-l border-gray-300 ${
+                vista === "semanas" ? "bg-brand-600 text-white" : "bg-white text-gray-700 hover:bg-gray-50"
+              }`}
+            >
+              <CalendarRange className="w-4 h-4" />
+              Semanas
+            </button>
+          </div>
+
+          <label className="flex items-center gap-2 text-sm text-gray-600">
+            Início da obra
+            <input
+              type="date"
+              defaultValue={scheduleStart ?? ""}
+              onChange={(e) => run(() => setScheduleStart(projectId, e.target.value || null))}
+              className="rounded-md border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+            />
+          </label>
+
+          {vista === "semanas" && semanas.length > 0 && (
+            <span className="text-sm text-gray-500">
+              {semanas.length} semanas até {dataBR(semanas[semanas.length - 1].fim)}
+            </span>
+          )}
+        </div>
+      )}
+
       {/* Lista de compras — aparece quando ha item selecionado */}
       {/* Sem nada marcado a funcao ficava invisivel: nao havia botao algum na
           tela, e o usuario nao tinha como descobrir que ela existe. */}
@@ -239,7 +297,83 @@ export function CronogramaClient({
         </Card>
       )}
 
-      {stages.map((stage, i) => (
+      {vista === "semanas" && (
+        scheduleStart ? (
+          semanas.map((sem) => (
+            <Card key={sem.inicio}>
+              <CardContent className="py-4">
+                <div className="flex items-baseline gap-3 mb-3">
+                  <span className="rounded-md bg-brand-600 px-2 py-1 text-xs font-bold text-white">
+                    Semana {sem.numero}
+                  </span>
+                  <span className="text-sm text-gray-600">
+                    {dataBR(sem.inicio)} a {dataBR(sem.fim)}
+                  </span>
+                </div>
+
+                <div className="flex flex-col gap-1.5 mb-4">
+                  {sem.etapas.map((e) => (
+                    <div key={e.id} className="flex items-center gap-2 text-sm">
+                      <span
+                        className={`w-2 h-2 rounded-full shrink-0 ${
+                          e.status === "CONCLUIDA" ? "bg-green-500"
+                            : e.status === "EM_ANDAMENTO" ? "bg-brand-500" : "bg-gray-300"
+                        }`}
+                      />
+                      <span className="text-gray-800">{e.name}</span>
+                      <span className="text-xs text-gray-400">
+                        {e.marco
+                          ? `marco · ${dataBR(e.inicio)}`
+                          : `${e.diasNaSemana === 1 ? "1 dia" : `${e.diasNaSemana} dias`} nesta semana · ${dataBR(e.inicio)} a ${dataBR(e.fim)}`}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                {sem.materiais.length > 0 ? (
+                  <div>
+                    <p className="text-xs font-medium text-gray-600 mb-1">
+                      Material que precisa estar na obra
+                    </p>
+                    <table className="w-full text-sm">
+                      <tbody>
+                        {sem.materiais.map((m) => (
+                          <tr key={m.name + m.unit} className="border-b border-gray-100 last:border-0">
+                            <td className="py-1 text-gray-800">{m.name}</td>
+                            <td className="py-1 text-right w-24 font-medium text-gray-900">
+                              {m.quantity.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}
+                            </td>
+                            <td className="py-1 text-center w-14 text-gray-500">{m.unit}</td>
+                            <td className="py-1 pl-3 text-xs text-gray-400">{m.etapas.join(", ")}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-400">
+                    Nenhum material lançado nas etapas desta semana.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          ))
+        ) : (
+          <Card>
+            <CardContent className="py-8 text-center">
+              <CalendarRange className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+              <p className="text-sm text-gray-600">
+                Informe a <strong>data de início da obra</strong> acima para montar as semanas.
+              </p>
+              <p className="text-xs text-gray-400 mt-1">
+                As etapas correm em sequência a partir dela, contando só dias úteis.
+              </p>
+            </CardContent>
+          </Card>
+        )
+      )}
+
+      {vista === "lista" && stages.map((stage, i) => (
         <StageCard
           key={stage.id}
           stage={stage}
@@ -254,7 +388,8 @@ export function CronogramaClient({
         />
       ))}
 
-      {/* Nova etapa */}
+      {/* Nova etapa — só na lista; na visão por semana seria ruído */}
+      {vista === "lista" && (
       <Card>
         <CardContent className="py-4 flex items-end gap-3">
           <div className="flex flex-col gap-1 flex-1">
@@ -283,6 +418,7 @@ export function CronogramaClient({
           </Button>
         </CardContent>
       </Card>
+      )}
     </div>
   );
 }

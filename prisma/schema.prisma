@@ -191,6 +191,9 @@ model Project {
   indirectCosts   IndirectCost[]
   viability       ProjectViability?
   manualBudgetItems ManualBudgetItem[]
+  // Data em que a obra comeca. Ancora a visao por semana: as etapas correm em
+  // sequencia a partir dela, cada uma consumindo os seus dias uteis.
+  scheduleStart     DateTime?
   scheduleStages    ScheduleStage[]
   materialUsages    MaterialUsage[]
 }

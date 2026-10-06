@@ -34,6 +34,18 @@ function touch(projectId: string) {
   revalidatePath(`/projetos/${projectId}/cronograma`);
 }
 
+// Data de inicio da obra — ancora a visao por semana.
+export async function setScheduleStart(projectId: string, date: string | null) {
+  await assertOwnsProject(projectId);
+  await prisma.project.update({
+    where: { id: projectId },
+    // Meio-dia evita a data voltar um dia ao cruzar fuso.
+    data: { scheduleStart: date ? new Date(`${date}T12:00:00`) : null },
+  });
+  touch(projectId);
+  return {};
+}
+
 // ── Etapas ─────────────────────────────────────────────────────────────────
 
 // Carrega o modelo sugerido. Só funciona com o cronograma vazio — nunca

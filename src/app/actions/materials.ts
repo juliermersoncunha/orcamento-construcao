@@ -4,6 +4,7 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { isEngineMaterial } from "@/lib/engine-materials";
 import { getSession } from "@/lib/session";
 import { MaterialCategory } from "@prisma/client";
 import { MATERIAL_CATEGORY_VALUES } from "@/lib/material-categories";
@@ -113,13 +114,28 @@ export async function updateMaterial(
 
   // Apelido em branco volta a NULL — o indice unico nao aceita varias strings
   // vazias, e "sem apelido" e justamente a ausencia dele.
-  const calcName = input.calcName?.trim() || null;
+  let calcName = input.calcName?.trim() || null;
+
+  // Renomear um material que o calculo procura pelo nome quebrava o orcamento
+  // em silencio: na geracao seguinte o motor nao achava mais o item, criava uma
+  // copia a R$ 0 e deixava o material de verdade — com preco — sem uso. Guarda
+  // o nome antigo como apelido para o vinculo sobreviver ao nome novo. So vale
+  // quando o usuario nao definiu apelido proprio, e o selo "cálculo: X" na tela
+  // mostra o que ficou gravado.
+  const renomeou = name !== current.name;
+  if (renomeou && !calcName && isEngineMaterial(current.name, current.calcName)) {
+    const jaUsado = await prisma.material.findFirst({
+      where: { calcName: current.name, NOT: { id: materialId } },
+      select: { id: true },
+    });
+    if (!jaUsado) calcName = current.name;
+  }
 
   await prisma.material.update({
     where: { id: materialId },
     data: {
       name,
-      ...(input.calcName !== undefined ? { calcName } : {}),
+      ...(input.calcName !== undefined || calcName ? { calcName } : {}),
       // Lista de usos chega da tela separada por virgula; aqui vira array sem
       // duplicatas nem entradas vazias.
       ...(input.usos !== undefined

@@ -618,11 +618,19 @@ export async function calculateAndSaveBudget(projectId: string) {
 
   // Fixture-generated items (carry room + source equipment + memory-of-calc)
   // Equipamentos por ambiente saíram do orçamento automático por decisão do
-  // usuário: louças, metais, bancadas, box e o circuito do chuveiro passam a ser
-  // lançados à mão. Os cards da Etapa 5 continuam guardando a escolha — o que
-  // deixou de existir é a emissão de material a partir dela.
-  const EMITIR_EQUIPAMENTOS_POR_AMBIENTE = false;
-  for (const it of EMITIR_EQUIPAMENTOS_POR_AMBIENTE ? fixtureItems : []) {
+  // usuário: louças, metais, bancadas, box, acessórios e o circuito do chuveiro
+  // passam a ser lançados à mão. Os cards da Etapa 5 continuam guardando a
+  // escolha — o que deixou de existir é a emissão de material a partir dela.
+  //
+  // Revestimento NÃO sai junto. O azulejo parede a parede e a
+  // impermeabilização das áreas molhadas também vêm daqui, e são revestimento,
+  // que segue automático. Pior: o cálculo genérico PULA os ambientes com
+  // azulejo configurado parede a parede (skipWallTile), confiando que estes
+  // itens o cobrem — cortá-los deixava esses ambientes sem azulejo nenhum.
+  //
+  // Portas detalhadas (JOINERY) ficam de fora porque portas já eram manuais.
+  const ORIGENS_MANUAIS = new Set(["FIXTURE", "ACCESSORY", "JOINERY"]);
+  for (const it of fixtureItems.filter((f) => !ORIGENS_MANUAIS.has(f.sourceKind))) {
     if (it.quantity <= 0) continue;
     const m = await resolveMaterial(it.materialName, it.unit, it.category);
     await prisma.budgetItem.create({

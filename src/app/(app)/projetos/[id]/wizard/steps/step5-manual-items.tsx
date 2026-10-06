@@ -21,6 +21,8 @@ type Props = {
   iconClassName: string;      // cor do quadrado do ícone
   focusRingClassName: string; // cor do foco dos inputs
   groups: ManualGroup[];
+  catalogo: ManualMaterial[];
+  block: string;
   initialQuantities: Record<string, number>; // materialId → quantity
 };
 
@@ -33,11 +35,29 @@ export function Step5ManualItems({
   iconClassName,
   focusRingClassName,
   groups,
+  catalogo,
+  block,
   initialQuantities,
 }: Props) {
   // Só as quantidades dos materiais deste bloco — assim salvar a elétrica não
   // apaga o que foi informado nos tubos (e vice-versa).
-  const ownIds = new Set(groups.flatMap((g) => g.items.map((m) => m.id)));
+  // Itens escolhidos agora, ainda nao salvos. Entram na lista na hora para o
+  // usuario digitar a quantidade; ao salvar, viram linha marcada com o bloco.
+  const [adicionados, setAdicionados] = useState<ManualMaterial[]>([]);
+
+  const gruposComAdicionados: ManualGroup[] = adicionados.length
+    ? [...groups.filter((g) => g.key !== "avulsos"),
+       {
+         key: "avulsos",
+         label: "Adicionados manualmente",
+         items: [
+           ...(groups.find((g) => g.key === "avulsos")?.items ?? []),
+           ...adicionados,
+         ],
+       }]
+    : groups;
+
+  const ownIds = new Set(gruposComAdicionados.flatMap((g) => g.items.map((m) => m.id)));
 
   const [qty, setQty] = useState<Record<string, string>>(() => {
     const out: Record<string, string> = {};
@@ -61,8 +81,10 @@ export function Step5ManualItems({
     for (const id of ownIds) {
       if (!(id in payload)) payload[id] = 0;
     }
+    const novos = adicionados.map((m) => m.id);
     startTransition(async () => {
-      await saveManualPipes(projectId, payload);
+      await saveManualPipes(projectId, payload, block, novos);
+      setAdicionados([]);
       setSavedAt(new Date());
     });
   }
@@ -80,7 +102,7 @@ export function Step5ManualItems({
       </CardHeader>
       <CardContent>
         <div className="flex flex-col gap-6">
-          {groups.map((group) => (
+          {gruposComAdicionados.map((group) => (
             <section key={group.key}>
               <h3 className="text-sm font-semibold text-gray-800 mb-2">{group.label}</h3>
               <div className="rounded-lg border border-gray-200 overflow-x-auto">
@@ -123,6 +145,16 @@ export function Step5ManualItems({
             </section>
           ))}
 
+          {/* Item que não está na lista por categoria. Escolhe-se do catálogo
+              inteiro; a linha entra no grupo "Adicionados manualmente" e só
+              passa a existir no banco quando o bloco for salvo. */}
+          <AdicionarItem
+            catalogo={catalogo}
+            jaNaLista={ownIds}
+            focusRingClassName={focusRingClassName}
+            onAdicionar={(m) => setAdicionados((prev) => [...prev, m])}
+          />
+
           <div className="flex items-center justify-between pt-2 border-t border-gray-200">
             <p className="text-xs text-gray-500">
               {savedAt
@@ -137,5 +169,62 @@ export function Step5ManualItems({
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+// Seletor de material avulso: a lista abre preenchida com o catálogo ativo, do
+// mesmo jeito que no cronograma e no consumo, em vez de exigir o nome exato.
+function AdicionarItem({
+  catalogo, jaNaLista, focusRingClassName, onAdicionar,
+}: {
+  catalogo: ManualMaterial[];
+  jaNaLista: Set<string>;
+  focusRingClassName: string;
+  onAdicionar: (m: ManualMaterial) => void;
+}) {
+  const [busca, setBusca] = useState("");
+  const [aberto, setAberto] = useState(false);
+
+  const disponiveis = catalogo.filter((m) => !jaNaLista.has(m.id));
+  const q = busca.trim().toLowerCase();
+  const achados = (q ? disponiveis.filter((m) => m.name.toLowerCase().includes(q)) : disponiveis).slice(0, 30);
+
+  return (
+    <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-3">
+      <label className="text-xs font-medium text-gray-600">
+        Incluir item que não está na lista
+      </label>
+      <div className="relative mt-1">
+        <input
+          value={busca}
+          onChange={(e) => { setBusca(e.target.value); setAberto(true); }}
+          onFocus={() => setAberto(true)}
+          onBlur={() => setTimeout(() => setAberto(false), 150)}
+          placeholder="Clique para ver os materiais cadastrados…"
+          autoComplete="off"
+          className={`w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 ${focusRingClassName}`}
+        />
+        {aberto && achados.length > 0 && (
+          <div className="absolute top-full left-0 right-0 z-20 mt-1 max-h-56 overflow-y-auto rounded-md border border-gray-200 bg-white shadow-lg divide-y divide-gray-100">
+            {achados.map((m) => (
+              <button
+                key={m.id}
+                type="button"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => { onAdicionar(m); setBusca(""); setAberto(false); }}
+                className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm hover:bg-gray-50"
+              >
+                <span className="text-gray-800">{m.name}</span>
+                <span className="shrink-0 text-xs text-gray-500">{m.unit}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+      <p className="mt-1 text-xs text-gray-500">
+        O item entra na lista acima para você informar a quantidade. Ele só é
+        gravado quando salvar o bloco.
+      </p>
+    </div>
   );
 }

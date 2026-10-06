@@ -206,6 +206,12 @@ model ManualBudgetItem {
   // Fase escolhida pelo usuário na Etapa 8. Quando nula, a fase é deduzida
   // da lista a que o material pertence (tubos → hidro, cabos → elétrica).
   phase      PhaseType?
+  // Bloco da Etapa 5 ao qual este item foi adicionado a mao ("hidraulica" ou
+  // "eletrica"). Nulo nas linhas que vem da lista por categoria, onde o bloco
+  // ja se deduz da categoria do material. Sem isso, salvar a eletrica apagaria
+  // o item avulso lancado na hidraulica, porque cada bloco zera o que nao
+  // reconhece como seu.
+  block      String?
 
   project  Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   material Material @relation(fields: [materialId], references: [id], onDelete: Cascade)

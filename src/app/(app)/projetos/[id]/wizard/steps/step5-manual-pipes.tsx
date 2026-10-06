@@ -1,7 +1,7 @@
 "use client";
 
 import { Wrench, Zap } from "lucide-react";
-import type { ManualGroup } from "@/lib/manual-catalog";
+import type { ManualGroup, ManualCatalogMaterial } from "@/lib/manual-catalog";
 import { Step5ManualItems, type ManualMaterial } from "./step5-manual-items";
 
 export type PipeMaterial = ManualMaterial;
@@ -9,10 +9,11 @@ export type PipeMaterial = ManualMaterial;
 type Props = {
   projectId: string;
   groups: ManualGroup[];
+  catalogo: ManualCatalogMaterial[];
   initialQuantities: Record<string, number>; // materialId → quantity
 };
 
-export function Step5ManualPipes({ projectId, groups, initialQuantities }: Props) {
+export function Step5ManualPipes({ projectId, groups, catalogo, initialQuantities }: Props) {
   return (
     <Step5ManualItems
       projectId={projectId}
@@ -23,12 +24,14 @@ export function Step5ManualPipes({ projectId, groups, initialQuantities }: Props
       iconClassName="bg-cyan-100"
       focusRingClassName="focus:ring-cyan-500"
       groups={groups}
+      catalogo={catalogo}
+      block="hidraulica"
       initialQuantities={initialQuantities}
     />
   );
 }
 
-export function Step5ManualElectrical({ projectId, groups, initialQuantities }: Props) {
+export function Step5ManualElectrical({ projectId, groups, catalogo, initialQuantities }: Props) {
   return (
     <Step5ManualItems
       projectId={projectId}
@@ -39,6 +42,8 @@ export function Step5ManualElectrical({ projectId, groups, initialQuantities }: 
       iconClassName="bg-yellow-100"
       focusRingClassName="focus:ring-yellow-500"
       groups={groups}
+      catalogo={catalogo}
+      block="eletrica"
       initialQuantities={initialQuantities}
     />
   );

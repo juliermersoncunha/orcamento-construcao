@@ -52,13 +52,30 @@ export default async function WizardPage({
     where: { category: { in: manualCats }, active: true },
     select: { id: true, name: true, unit: true, currentPrice: true, category: true },
   });
-  const hydraulicGroups = buildManualGroups("hidraulica", manualMaterials);
-  const electricalGroups = buildManualGroups("eletrica", manualMaterials);
+  // Catálogo inteiro para o seletor de item avulso dos blocos manuais: o que se
+  // precisa lançar à mão nem sempre está nas categorias do bloco.
+  const catalogoCompleto = await prisma.material.findMany({
+    where: { active: true },
+    orderBy: { name: "asc" },
+    select: { id: true, name: true, unit: true, currentPrice: true, category: true },
+  });
 
   const manualRows = await prisma.manualBudgetItem.findMany({
     where: { projectId: id },
     include: { material: { select: { name: true, unit: true, currentPrice: true } } },
   });
+
+  // Itens que o usuário adicionou a mão a cada bloco — vêm marcados com `block`
+  // porque a categoria do material não diz mais a que bloco pertencem.
+  const porId = new Map(catalogoCompleto.map((m) => [m.id, m]));
+  const extrasDe = (bloco: string) =>
+    manualRows
+      .filter((r) => r.block === bloco)
+      .map((r) => porId.get(r.materialId))
+      .filter((m): m is NonNullable<typeof m> => Boolean(m));
+
+  const hydraulicGroups = buildManualGroups("hidraulica", manualMaterials, extrasDe("hidraulica"));
+  const electricalGroups = buildManualGroups("eletrica", manualMaterials, extrasDe("eletrica"));
   const manualPipeQuantities: Record<string, number> = {};
   for (const r of manualRows) manualPipeQuantities[r.materialId] = r.quantity;
 
@@ -88,6 +105,7 @@ export default async function WizardPage({
       currentStep={currentStep}
       hydraulicGroups={hydraulicGroups}
       electricalGroups={electricalGroups}
+      catalogoCompleto={catalogoCompleto}
       manualPipeQuantities={manualPipeQuantities}
       catalogMaterials={catalogMaterials}
       manualPhaseRows={manualPhaseRows}

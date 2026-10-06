@@ -9,7 +9,7 @@ import { Zap, ChevronRight, Bath, ChefHat } from "lucide-react";
 import { BathroomCard } from "./step5-bathroom-card";
 import { KitchenCard } from "./step5-kitchen-card";
 import { Step5ManualPipes, Step5ManualElectrical } from "./step5-manual-pipes";
-import type { ManualGroup } from "@/lib/manual-catalog";
+import type { ManualGroup, ManualCatalogMaterial } from "@/lib/manual-catalog";
 import { BATHROOM_ROOM_TYPE_SET } from "@/lib/fixture-library/bathroom";
 import { KITCHEN_ROOM_TYPE_SET } from "@/lib/fixture-library/kitchen";
 
@@ -17,6 +17,7 @@ type Step5Props = {
   project: any;
   hydraulicGroups: ManualGroup[];
   electricalGroups: ManualGroup[];
+  catalogoCompleto: ManualCatalogMaterial[];
   manualPipeQuantities: Record<string, number>;
 };
 
@@ -24,6 +25,7 @@ export function Step5Instalacoes({
   project,
   hydraulicGroups,
   electricalGroups,
+  catalogoCompleto,
   manualPipeQuantities,
 }: Step5Props) {
   const [isPending, startTransition] = useTransition();
@@ -245,6 +247,7 @@ export function Step5Instalacoes({
         <Step5ManualElectrical
           projectId={project.id}
           groups={electricalGroups}
+          catalogo={catalogoCompleto}
           initialQuantities={manualPipeQuantities}
         />
       </div>
@@ -253,6 +256,7 @@ export function Step5Instalacoes({
         <Step5ManualPipes
           projectId={project.id}
           groups={hydraulicGroups}
+          catalogo={catalogoCompleto}
           initialQuantities={manualPipeQuantities}
         />
       </div>

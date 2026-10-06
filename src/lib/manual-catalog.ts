@@ -61,9 +61,13 @@ function isEsgoto(name: string): boolean {
   return /esgoto|sifonad|gordura|ralo|sanit[áa]rio/i.test(name);
 }
 
+// `extras` sao os materiais que o usuario adicionou a mao a este bloco. Entram
+// num grupo proprio porque, vindo de fora das categorias do bloco, o filtro por
+// categoria nao os traria de volta na proxima abertura da tela.
 export function buildManualGroups(
   block: ManualBlockKey,
-  materials: ManualCatalogMaterial[]
+  materials: ManualCatalogMaterial[],
+  extras: ManualCatalogMaterial[] = []
 ): ManualGroup[] {
   const cats = MANUAL_BLOCK_CATEGORIES[block];
   const excluded = new Set(ENGINE_GENERATED_NAMES);
@@ -71,10 +75,19 @@ export function buildManualGroups(
     .filter((m) => cats.includes(m.category) && !excluded.has(m.name))
     .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
 
+  const jaNoPool = new Set(pool.map((m) => m.id));
+  const avulsos = extras
+    .filter((m) => !jaNoPool.has(m.id))
+    .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+  const grupoAvulsos: ManualGroup[] = avulsos.length
+    ? [{ key: "avulsos", label: "Adicionados manualmente", items: avulsos }]
+    : [];
+
   if (block === "eletrica") {
-    return pool.length > 0
+    const base: ManualGroup[] = pool.length > 0
       ? [{ key: "eletrica", label: "Cabos, eletrodutos, quadro e proteção", items: pool }]
       : [];
+    return [...base, ...grupoAvulsos];
   }
 
   const esgoto = pool.filter((m) => isEsgoto(m.name));
@@ -82,5 +95,5 @@ export function buildManualGroups(
   const groups: ManualGroup[] = [];
   if (agua.length > 0) groups.push({ key: "agua_fria", label: "Água fria", items: agua });
   if (esgoto.length > 0) groups.push({ key: "esgoto", label: "Esgoto", items: esgoto });
-  return groups;
+  return [...groups, ...grupoAvulsos];
 }

@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { updateMaterial, toggleMaterialActive, deleteMaterial } from "@/app/actions/materials";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Check, X, Pencil, Trash2 } from "lucide-react";
+import { Check, X, Pencil, Trash2, Calculator } from "lucide-react";
 import { MATERIAL_CATEGORIES } from "@/lib/material-categories";
 
 export type SupplierOption = { id: string; name: string };
@@ -322,6 +322,15 @@ export function MaterialRow({
           <span>{material.name}</span>
           <Pencil className="w-3 h-3 text-gray-400 group-hover:text-amber-600 shrink-0" />
         </button>
+        {material.noCalculo && (
+          <span
+            title="O cálculo automático emite este material. Mudar o nome faz o orçamento deixar de encontrá-lo."
+            className="ml-1.5 inline-flex items-center gap-1 rounded bg-emerald-100 px-1.5 py-0.5 text-[11px] font-medium text-emerald-800 align-middle"
+          >
+            <Calculator className="w-3 h-3" />
+            no cálculo
+          </span>
+        )}
         {material.calcName && (
           <p className="text-xs text-brand-600 mt-0.5" title="Nome pelo qual o cálculo procura este material">
             cálculo: {material.calcName}

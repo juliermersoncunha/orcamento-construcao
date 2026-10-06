@@ -8,6 +8,7 @@ import { MaterialCategory } from "@prisma/client";
 import { MaterialForm } from "./material-form";
 import { MaterialsCatalog } from "./materials-catalog";
 import { MATERIAL_CATEGORY_LABELS, MATERIAL_CATEGORY_ORDER } from "@/lib/material-categories";
+import { isEngineMaterial } from "@/lib/engine-materials";
 
 const categoryLabels = MATERIAL_CATEGORY_LABELS as Record<MaterialCategory, string>;
 const categoryOrder = MATERIAL_CATEGORY_ORDER as MaterialCategory[];
@@ -65,6 +66,9 @@ export default async function MateriaisPage() {
               name: m.name,
               calcName: m.calcName,
               usos: m.usos,
+              // Marca se o cálculo automático emite este material — derivado do
+              // próprio motor, não de uma lista mantida à mão.
+              noCalculo: isEngineMaterial(m.name, m.calcName),
               unit: m.unit,
               category: m.category,
               currentPrice: m.currentPrice,

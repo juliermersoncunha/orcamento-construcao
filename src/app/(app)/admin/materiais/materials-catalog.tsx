@@ -13,6 +13,7 @@ type Material = {
   name: string;
   calcName: string | null;
   usos: string[];
+  noCalculo: boolean;
   unit: string;
   category: MaterialCategory;
   currentPrice: number;
@@ -69,6 +70,8 @@ export function MaterialsCatalog({ materialsByCategory, categoryLabels, supplier
   const visiveis = useMemo(() => {
     const q = norm(busca.trim());
     if (!q) return todos;
+    // "calculo" como termo de busca filtra os que entram no cálculo automático.
+    if (q === "calculo") return todos.filter((m) => m.noCalculo);
     return todos.filter((m) =>
       norm(m.name).includes(q) ||
       (m.usos ?? []).some((u) => norm(u).includes(q)) ||
@@ -225,7 +228,7 @@ export function MaterialsCatalog({ materialsByCategory, categoryLabels, supplier
             <input
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
-              placeholder="Pesquisar material, uso, marca…"
+              placeholder="Pesquisar material, uso, marca… (ou “cálculo”)"
               className="w-72 rounded-md border border-gray-300 bg-white pl-8 pr-8 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
               aria-label="Pesquisar material"
             />

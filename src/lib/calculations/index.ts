@@ -559,8 +559,10 @@ export function calculateMaterials(input: CalculationInput): MaterialResult[] {
     ...calcLaje(input.rooms, input.structure),
     ...calcEscada(input.structure),
     ...calcCobertura(input.rooms, input.roofing),
-    ...calcEletrica(input.rooms, input.electrical ?? ELECTRICAL_FINISH_DEFAULTS),
-    ...calcHidrossanitaria(input.rooms),
+    // Elétrica e hidrossanitária saíram do cálculo automático por decisão do
+    // usuário: tudo dessas duas fases é lançado à mão nos blocos da Etapa 5.
+    // calcEletrica e calcHidrossanitaria continuam no arquivo, sem uso, para
+    // documentar o que o motor fazia caso se queira voltar atrás.
     ...calcRevestimentos(input.rooms),
     ...calcPintura(input.rooms, input.finishes.wallFinishType),
     ...calcAcabamento(input.finishes),

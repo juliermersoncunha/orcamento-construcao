@@ -17,9 +17,9 @@ export function Step5ManualPipes({ projectId, groups, catalogo, initialQuantitie
   return (
     <Step5ManualItems
       projectId={projectId}
-      title="Tubos e conexões — entrada manual"
-      description="O sistema não estima metragem de tubos nem quantidade de conexões. A lista mostra todo material hidráulico ativo do catálogo — informe as quantidades que o projeto vai consumir e deixe em branco o que não usar. Caixa d'água e fossa não aparecem aqui: vêm das respostas da Etapa 5."
-      saveLabel="Salvar tubos e conexões"
+      title="Hidrossanitário — entrada manual"
+      description="Toda a fase hidrossanitária é lançada aqui: tubos, conexões, louças, metais, acessórios e box. O sistema não estima nada disso. A lista mostra o catálogo ativo dessas categorias — informe o que o projeto vai consumir e deixe em branco o resto."
+      saveLabel="Salvar hidrossanitário"
       icon={<Wrench className="w-4 h-4 text-cyan-700" />}
       iconClassName="bg-cyan-100"
       focusRingClassName="focus:ring-cyan-500"
@@ -35,9 +35,9 @@ export function Step5ManualElectrical({ projectId, groups, catalogo, initialQuan
   return (
     <Step5ManualItems
       projectId={projectId}
-      title="Cabos e infraestrutura elétrica — entrada manual"
-      description="O sistema não estima metragem de cabo, eletroduto nem quantidade de disjuntores. A lista mostra todo material elétrico ativo do catálogo. Tomadas, interruptores e pontos de luz não aparecem aqui: vêm dos pontos declarados por ambiente."
-      saveLabel="Salvar cabos e infraestrutura"
+      title="Elétrica — entrada manual"
+      description="Toda a fase elétrica é lançada aqui: cabos, eletrodutos, quadro, disjuntores, tomadas, interruptores e luminárias. O sistema não estima nada disso. A lista mostra o catálogo elétrico ativo — informe o que o projeto vai consumir e deixe em branco o resto."
+      saveLabel="Salvar elétrica"
       icon={<Zap className="w-4 h-4 text-yellow-700" />}
       iconClassName="bg-yellow-100"
       focusRingClassName="focus:ring-yellow-500"

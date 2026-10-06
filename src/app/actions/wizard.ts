@@ -617,7 +617,12 @@ export async function calculateAndSaveBudget(projectId: string) {
   }
 
   // Fixture-generated items (carry room + source equipment + memory-of-calc)
-  for (const it of fixtureItems) {
+  // Equipamentos por ambiente saíram do orçamento automático por decisão do
+  // usuário: louças, metais, bancadas, box e o circuito do chuveiro passam a ser
+  // lançados à mão. Os cards da Etapa 5 continuam guardando a escolha — o que
+  // deixou de existir é a emissão de material a partir dela.
+  const EMITIR_EQUIPAMENTOS_POR_AMBIENTE = false;
+  for (const it of EMITIR_EQUIPAMENTOS_POR_AMBIENTE ? fixtureItems : []) {
     if (it.quantity <= 0) continue;
     const m = await resolveMaterial(it.materialName, it.unit, it.category);
     await prisma.budgetItem.create({

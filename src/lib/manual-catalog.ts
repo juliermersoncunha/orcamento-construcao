@@ -11,34 +11,24 @@
 export type ManualBlockKey = "hidraulica" | "eletrica";
 
 export const MANUAL_BLOCK_CATEGORIES: Record<ManualBlockKey, string[]> = {
-  hidraulica: ["HIDRAULICA"],
+  // Loucas, metais, acessorios e box entraram quando os equipamentos por
+  // ambiente sairam do calculo automatico: sem isso nao haveria onde lanca-los.
+  hidraulica: [
+    "HIDRAULICA",
+    "LOUCAS_SANITARIAS",
+    "METAIS_SANITARIOS",
+    "ACESSORIOS_HIDRAULICOS",
+    "ACESSORIOS_BANHEIRO",
+    "VIDROS_BOX",
+  ],
   eletrica: ["ELETRICA"],
 };
 
-// Emitidos pelo motor a partir de outras respostas do wizard. Cabos, eletrodutos
-// e disjuntores gerais NÃO entram aqui de propósito: o chuveiro gera o cabo do
-// circuito exclusivo dele, e somar com o cabo da instalação geral é o correto.
-export const ENGINE_GENERATED_NAMES: string[] = [
-  // calcHidrossanitaria — vêm das respostas da Etapa 5
-  "Caixa d'Água 1000L",
-  "Fossa Séptica",
-  // Acabamentos elétricos — vêm dos pontos declarados por ambiente
-  "Tomada 2P+T 10A",
-  "Conjunto 2 tomadas 2P+T 10A",
-  "Conjunto 3 tomadas 2P+T 10A",
-  "Interruptor simples 10A",
-  "Interruptor duplo 10A",
-  "Interruptor triplo 10A",
-  "Plafon LED 18W (integrado)",
-  "Plafon plástico E-27",
-  "Lâmpada LED bulbo 9W",
-  // Equipamentos de banheiro — vêm do card de equipamentos
-  "Chuveiro elétrico",
-  "Exaustor de banheiro",
-  "Grelha externa para exaustor",
-  "Disjuntor monopolar exclusivo",
-  "Box de Banheiro",
-];
+// Vazio de proposito. Eletrica, hidrossanitaria e os equipamentos por ambiente
+// sairam do calculo automatico por decisao do usuario, entao nao ha mais nome
+// nenhum que o motor emita nessas categorias — e excluir qualquer um deles aqui
+// faria o item sumir da unica tela onde agora pode ser lancado.
+export const ENGINE_GENERATED_NAMES: string[] = [];
 
 export type ManualCatalogMaterial = {
   id: string;

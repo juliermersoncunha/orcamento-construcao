@@ -197,7 +197,11 @@ model Project {
   // Prazo de entrega. Nao e calculado: e o compromisso com o cliente. A tela
   // compara com o termino previsto pelo cronograma e mostra a folga ou o atraso.
   scheduleEnd       DateTime?
+  // Quando a linha de base foi congelada pela ultima vez.
+  scheduleBaselineAt DateTime?
   scheduleStages    ScheduleStage[]
+  weekStages        ScheduleWeekStage[]
+  weekMaterials     ScheduleWeekMaterial[]
   materialUsages    MaterialUsage[]
 }
 
@@ -523,6 +527,7 @@ model Material {
   budgetItems  BudgetItem[]
   manualBudgetItems ManualBudgetItem[]
   scheduleStageMaterials ScheduleStageMaterial[]
+  weekMaterials          ScheduleWeekMaterial[]
   usages                 MaterialUsage[]
 }
 
@@ -659,9 +664,18 @@ model ScheduleStage {
   startDate   DateTime?
   status      String    @default("PENDENTE") // PENDENTE | EM_ANDAMENTO | CONCLUIDA
   notes       String?
+  // Realizado, digitado pelo usuario.
+  realStart   DateTime?
+  realEnd     DateTime?
+  // Linha de base: o previsto congelado. So muda quando o usuario congela de
+  // novo — sem isso o previsto andaria junto com cada replanejamento e o Gantt
+  // nunca mostraria atraso.
+  baselineStart DateTime?
+  baselineEnd   DateTime?
   createdAt   DateTime  @default(now())
 
   project   Project                 @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  weeks     ScheduleWeekStage[]
   materials ScheduleStageMaterial[]
   tasks     ScheduleTask[]
   usages    MaterialUsage[]
@@ -719,4 +733,37 @@ model ScheduleStageMaterial {
   material Material      @relation(fields: [materialId], references: [id])
 
   @@unique([stageId, materialId])
+}
+
+// Programacao semanal: em que semana (segunda-feira) cada etapa vai ser
+// trabalhada. Uma etapa pode estar em varias semanas.
+model ScheduleWeekStage {
+  id        String   @id @default(cuid())
+  projectId String
+  stageId   String
+  weekStart DateTime
+
+  project Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  stage   ScheduleStage @relation(fields: [stageId], references: [id], onDelete: Cascade)
+
+  @@unique([stageId, weekStart])
+  @@index([projectId, weekStart])
+}
+
+// Revisao manual do material de uma semana. O material da semana e calculado
+// a partir das etapas dela; uma linha aqui substitui esse valor (0 = retirar)
+// ou acrescenta um material que nenhuma etapa da semana tem. Sem linha, vale o
+// calculado — assim uma mudanca no material da etapa continua chegando nas
+// semanas que o usuario nao revisou.
+model ScheduleWeekMaterial {
+  id         String   @id @default(cuid())
+  projectId  String
+  materialId String
+  weekStart  DateTime
+  quantity   Float
+
+  project  Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  material Material @relation(fields: [materialId], references: [id])
+
+  @@unique([projectId, weekStart, materialId])
 }

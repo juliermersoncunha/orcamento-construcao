@@ -224,6 +224,16 @@ export function montarSemanas(stages: StageIn[], inicio: string | null): Week[] 
     });
 }
 
+/** Segunda-feira da semana de uma data ISO, em ISO. */
+export function segundaISO(isoStr: string): string {
+  return iso(segundaDa(paraData(isoStr)));
+}
+
+/** Soma `n` dias corridos a uma data ISO. */
+export function somarDias(isoStr: string, n: number): string {
+  return iso(new Date(paraData(isoStr).getTime() + n * DIA));
+}
+
 export function dataBR(isoStr: string): string {
   const [a, m, d] = isoStr.split("-");
   return `${d}/${m}`;

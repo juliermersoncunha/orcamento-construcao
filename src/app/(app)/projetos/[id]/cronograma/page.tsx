@@ -17,7 +17,7 @@ export default async function CronogramaPage({
 
   const project = await prisma.project.findFirst({
     where: { id, userId: session.userId },
-    select: { id: true, name: true, clientName: true, scheduleStart: true, scheduleEnd: true },
+    select: { id: true, name: true, clientName: true, scheduleStart: true, scheduleEnd: true, scheduleBaselineAt: true },
   });
   if (!project) redirect("/projetos");
 
@@ -31,6 +31,15 @@ export default async function CronogramaPage({
       },
     },
   });
+
+  const [weekStages, weekMaterials] = await Promise.all([
+    prisma.scheduleWeekStage.findMany({ where: { projectId: id }, select: { stageId: true, weekStart: true } }),
+    prisma.scheduleWeekMaterial.findMany({
+      where: { projectId: id },
+      include: { material: { select: { name: true, unit: true } } },
+    }),
+  ]);
+  const isoOrNull = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : null);
 
   // O seletor de material da etapa usa o catálogo ativo inteiro. Preço fica de
   // fora: aqui a conversa é sobre o que vai ser usado, não sobre custo — isso
@@ -60,6 +69,15 @@ export default async function CronogramaPage({
         projectId={id}
         scheduleStart={project.scheduleStart ? project.scheduleStart.toISOString().slice(0, 10) : null}
         scheduleEnd={project.scheduleEnd ? project.scheduleEnd.toISOString().slice(0, 10) : null}
+        baselineAt={project.scheduleBaselineAt ? project.scheduleBaselineAt.toISOString() : null}
+        weekStages={weekStages.map((w) => ({ stageId: w.stageId, weekStart: w.weekStart.toISOString().slice(0, 10) }))}
+        weekMaterials={weekMaterials.map((w) => ({
+          weekStart: w.weekStart.toISOString().slice(0, 10),
+          materialId: w.materialId,
+          name: w.material.name,
+          unit: w.material.unit,
+          quantity: w.quantity,
+        }))}
         stages={stages.map((s) => ({
           id: s.id,
           order: s.order,
@@ -68,6 +86,10 @@ export default async function CronogramaPage({
           dependsOn: s.dependsOn,
           days: s.days,
           startDate: s.startDate ? s.startDate.toISOString().slice(0, 10) : null,
+          realStart: isoOrNull(s.realStart),
+          realEnd: isoOrNull(s.realEnd),
+          baselineStart: isoOrNull(s.baselineStart),
+          baselineEnd: isoOrNull(s.baselineEnd),
           status: s.status,
           notes: s.notes,
           tasks: s.tasks.map((t) => ({ id: t.id, name: t.name, done: t.done })),

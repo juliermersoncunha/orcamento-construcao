@@ -4,7 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   CalendarDays, Plus, Trash2, ChevronUp, ChevronDown, ChevronRight, Sparkles, Package,
-  ListChecks, ShoppingCart, Copy, Check, X, CalendarRange, List,
+  ListChecks, ShoppingCart, Copy, Check, X, CalendarRange, List, GanttChart,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -15,7 +15,10 @@ import {
   addScheduleTask, toggleScheduleTask, renameScheduleTask, deleteScheduleTask,
   fillTemplateTasks, toggleStageMaterialPurchased, setScheduleStart, setScheduleEnd,
 } from "@/app/actions/schedule";
-import { montarSemanas, dataBR, fimPrevisto, diasUteisEntre } from "@/lib/schedule-weeks";
+import { dataBR, diasUteisEntre } from "@/lib/schedule-weeks";
+import { previstoPorEtapa, semanasPorEtapa } from "@/lib/schedule-plan";
+import { Programacao } from "./programacao";
+import { Gantt } from "./gantt";
 
 export type CatalogMaterial = {
   id: string; name: string; unit: string; category: string;
@@ -32,6 +35,8 @@ export type Stage = {
   id: string; order: number; name: string;
   deliverable: string | null; dependsOn: string | null;
   days: number; startDate: string | null; status: string; notes: string | null;
+  realStart: string | null; realEnd: string | null;
+  baselineStart: string | null; baselineEnd: string | null;
   tasks: StageTask[];
   materials: StageMaterialRow[];
 };
@@ -46,9 +51,12 @@ const STATUS_STYLE: Record<string, string> = {
 };
 
 export function CronogramaClient({
-  projectId, scheduleStart, scheduleEnd, stages, materials,
+  projectId, scheduleStart, scheduleEnd, baselineAt, weekStages, weekMaterials, stages, materials,
 }: {
   projectId: string; scheduleStart: string | null; scheduleEnd: string | null;
+  baselineAt: string | null;
+  weekStages: { stageId: string; weekStart: string }[];
+  weekMaterials: { weekStart: string; materialId: string; name: string; unit: string; quantity: number }[];
   stages: Stage[]; materials: CatalogMaterial[];
 }) {
   const router = useRouter();
@@ -59,29 +67,28 @@ export function CronogramaClient({
   // loja se compra material de varias etapas de uma vez.
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
   const [listaAberta, setListaAberta] = useState(false);
-  const [vista, setVista] = useState<"lista" | "semanas">("lista");
+  const [vista, setVista] = useState<"lista" | "semanas" | "gantt">("lista");
 
-  const semanas = useMemo(
-    () => montarSemanas(
-      stages.map((s) => ({
-        id: s.id, name: s.name, status: s.status, days: s.days,
-        startDate: s.startDate,
-        materials: s.materials.map((m) => ({ name: m.name, unit: m.unit, quantity: m.quantity })),
-      })),
-      scheduleStart
-    ),
-    [stages, scheduleStart]
+  // Etapas no formato das funções de planejamento (programação e Gantt).
+  const planStages = useMemo(
+    () => stages.map((s) => ({
+      id: s.id, name: s.name, status: s.status, days: s.days, startDate: s.startDate,
+      realStart: s.realStart, realEnd: s.realEnd,
+      baselineStart: s.baselineStart, baselineEnd: s.baselineEnd,
+      materials: s.materials.map((m) => ({ materialId: m.materialId, name: m.name, unit: m.unit, quantity: m.quantity })),
+    })),
+    [stages]
   );
 
-  // Termino que o cronograma projeta, comparado ao prazo prometido. Folga e
-  // atraso em dias UTEIS, a mesma unidade das duracoes.
-  const termino = useMemo(
-    () => fimPrevisto(
-      stages.map((s) => ({ id: s.id, name: s.name, status: s.status, days: s.days, startDate: s.startDate, materials: [] })),
-      scheduleStart
-    ),
-    [stages, scheduleStart]
-  );
+  // Termino projetado. Usa a programação semanal onde ela existe e a sequência
+  // de durações nas etapas ainda não programadas — a mesma regra do Gantt, para
+  // o cabeçalho e o gráfico nunca discordarem.
+  const termino = useMemo(() => {
+    const prev = previstoPorEtapa(planStages, semanasPorEtapa(weekStages), scheduleStart);
+    let max: string | null = null;
+    for (const p of prev.values()) if (!max || p.fim > max) max = p.fim;
+    return max;
+  }, [planStages, weekStages, scheduleStart]);
   const folga = termino && scheduleEnd ? diasUteisEntre(termino, scheduleEnd) : null;
 
   const [copiado, setCopiado] = useState(false);
@@ -215,7 +222,17 @@ export function CronogramaClient({
               }`}
             >
               <CalendarRange className="w-4 h-4" />
-              Semanas
+              Programação
+            </button>
+            <button
+              type="button"
+              onClick={() => setVista("gantt")}
+              className={`px-3 py-1.5 text-sm flex items-center gap-1.5 border-l border-gray-300 ${
+                vista === "gantt" ? "bg-brand-600 text-white" : "bg-white text-gray-700 hover:bg-gray-50"
+              }`}
+            >
+              <GanttChart className="w-4 h-4" />
+              Gantt
             </button>
           </div>
 
@@ -242,7 +259,7 @@ export function CronogramaClient({
           {termino && (
             <span className="text-sm text-gray-600">
               Término previsto <strong>{dataBR(termino)}/{termino.slice(2, 4)}</strong>
-              {vista === "semanas" && semanas.length > 0 && <> · {semanas.length} semanas</>}
+              
             </span>
           )}
 
@@ -266,7 +283,7 @@ export function CronogramaClient({
       {/* Lista de compras — aparece quando ha item selecionado */}
       {/* Sem nada marcado a funcao ficava invisivel: nao havia botao algum na
           tela, e o usuario nao tinha como descobrir que ela existe. */}
-      {selecionados.size === 0 && totalItensMaterial > 0 && (
+      {vista === "lista" && selecionados.size === 0 && totalItensMaterial > 0 && (
         <div className="flex items-center gap-2 rounded-md border border-dashed border-gray-300 bg-gray-50 px-3 py-2 text-xs text-gray-500">
           <ShoppingCart className="w-3.5 h-3.5 shrink-0" />
           <span>
@@ -335,79 +352,30 @@ export function CronogramaClient({
       )}
 
       {vista === "semanas" && (
-        scheduleStart ? (
-          semanas.map((sem) => (
-            <Card key={sem.inicio}>
-              <CardContent className="py-4">
-                <div className="flex items-baseline gap-3 mb-3">
-                  <span className="rounded-md bg-brand-600 px-2 py-1 text-xs font-bold text-white">
-                    Semana {sem.numero}
-                  </span>
-                  <span className="text-sm text-gray-600">
-                    {dataBR(sem.inicio)} a {dataBR(sem.fim)}
-                  </span>
-                </div>
+        <Programacao
+          projectId={projectId}
+          inicio={scheduleStart}
+          fim={scheduleEnd}
+          stages={planStages}
+          weekStages={weekStages}
+          weekMaterials={weekMaterials}
+          catalogo={materials}
+          isPending={isPending}
+          run={run}
+        />
+      )}
 
-                <div className="flex flex-col gap-1.5 mb-4">
-                  {sem.etapas.map((e) => (
-                    <div key={e.id} className="flex items-center gap-2 text-sm">
-                      <span
-                        className={`w-2 h-2 rounded-full shrink-0 ${
-                          e.status === "CONCLUIDA" ? "bg-green-500"
-                            : e.status === "EM_ANDAMENTO" ? "bg-brand-500" : "bg-gray-300"
-                        }`}
-                      />
-                      <span className="text-gray-800">{e.name}</span>
-                      <span className="text-xs text-gray-400">
-                        {e.marco
-                          ? `marco · ${dataBR(e.inicio)}`
-                          : `${e.diasNaSemana === 1 ? "1 dia" : `${e.diasNaSemana} dias`} nesta semana · ${dataBR(e.inicio)} a ${dataBR(e.fim)}`}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-
-                {sem.materiais.length > 0 ? (
-                  <div>
-                    <p className="text-xs font-medium text-gray-600 mb-1">
-                      Material que precisa estar na obra
-                    </p>
-                    <table className="w-full text-sm">
-                      <tbody>
-                        {sem.materiais.map((m) => (
-                          <tr key={m.name + m.unit} className="border-b border-gray-100 last:border-0">
-                            <td className="py-1 text-gray-800">{m.name}</td>
-                            <td className="py-1 text-right w-24 font-medium text-gray-900">
-                              {m.quantity.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}
-                            </td>
-                            <td className="py-1 text-center w-14 text-gray-500">{m.unit}</td>
-                            <td className="py-1 pl-3 text-xs text-gray-400">{m.etapas.join(", ")}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <p className="text-xs text-gray-400">
-                    Nenhum material lançado nas etapas desta semana.
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-          ))
-        ) : (
-          <Card>
-            <CardContent className="py-8 text-center">
-              <CalendarRange className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-              <p className="text-sm text-gray-600">
-                Informe a <strong>data de início da obra</strong> acima para montar as semanas.
-              </p>
-              <p className="text-xs text-gray-400 mt-1">
-                As etapas correm em sequência a partir dela, contando só dias úteis.
-              </p>
-            </CardContent>
-          </Card>
-        )
+      {vista === "gantt" && (
+        <Gantt
+          projectId={projectId}
+          inicio={scheduleStart}
+          fim={scheduleEnd}
+          stages={planStages}
+          weekStages={weekStages}
+          baselineAt={baselineAt}
+          isPending={isPending}
+          run={run}
+        />
       )}
 
       {vista === "lista" && stages.map((stage, i) => (
@@ -615,6 +583,22 @@ function StageCard({
                   type="date"
                   defaultValue={stage.startDate ?? ""}
                   onBlur={(e) => save({ startDate: e.target.value || null })}
+                  className={`w-full bg-white ${inputClass}`}
+                />
+              </Field>
+              <Field label="Início real">
+                <input
+                  type="date"
+                  defaultValue={stage.realStart ?? ""}
+                  onBlur={(e) => { if ((e.target.value || null) !== stage.realStart) save({ realStart: e.target.value || null }); }}
+                  className={`w-full bg-white ${inputClass}`}
+                />
+              </Field>
+              <Field label="Fim real">
+                <input
+                  type="date"
+                  defaultValue={stage.realEnd ?? ""}
+                  onBlur={(e) => { if ((e.target.value || null) !== stage.realEnd) save({ realEnd: e.target.value || null }); }}
                   className={`w-full bg-white ${inputClass}`}
                 />
               </Field>

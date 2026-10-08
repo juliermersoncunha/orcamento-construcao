@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { SCHEDULE_TEMPLATE } from "@/lib/schedule-template";
+import { semanasPorEtapa, previstoPorEtapa, sugestaoDeSemanas, type PlanStage } from "@/lib/schedule-plan";
 
 async function assertOwnsProject(projectId: string) {
   const session = await getSession();
@@ -146,6 +147,8 @@ export async function updateScheduleStage(
     dependsOn?: string | null;
     days?: number;
     startDate?: string | null;
+    realStart?: string | null;
+    realEnd?: string | null;
     status?: string;
     notes?: string | null;
   }
@@ -168,6 +171,11 @@ export async function updateScheduleStage(
   }
   if (input.status !== undefined) data.status = input.status;
   // Meio-dia evita a data voltar um dia ao cruzar fuso.
+  for (const k of ["realStart", "realEnd"] as const) {
+    if (input[k] !== undefined) {
+      data[k] = input[k] ? new Date(`${input[k]}T12:00:00`) : null;
+    }
+  }
   if (input.startDate !== undefined) {
     data.startDate = input.startDate ? new Date(`${input.startDate}T12:00:00`) : null;
   }
@@ -342,5 +350,122 @@ export async function deleteScheduleTask(taskId: string) {
   const task = await assertOwnsTask(taskId);
   await prisma.scheduleTask.delete({ where: { id: taskId } });
   touch(task.stage.projectId);
+  return {};
+}
+
+// ── Programação semanal ────────────────────────────────────────────────────
+
+const iso = (d: Date) => d.toISOString().slice(0, 10);
+const meioDia = (d: string) => new Date(`${d}T12:00:00`);
+
+async function carregarPlano(projectId: string) {
+  const [project, stages, weeks] = await Promise.all([
+    prisma.project.findUnique({ where: { id: projectId }, select: { scheduleStart: true } }),
+    prisma.scheduleStage.findMany({
+      where: { projectId },
+      orderBy: { order: "asc" },
+      select: { id: true, name: true, status: true, days: true, startDate: true },
+    }),
+    prisma.scheduleWeekStage.findMany({ where: { projectId }, select: { stageId: true, weekStart: true } }),
+  ]);
+  const planStages: PlanStage[] = stages.map((s) => ({
+    id: s.id, name: s.name, status: s.status, days: s.days,
+    startDate: s.startDate ? iso(s.startDate) : null, materials: [],
+  }));
+  return {
+    inicio: project?.scheduleStart ? iso(project.scheduleStart) : null,
+    stages: planStages,
+    assign: weeks.map((w) => ({ stageId: w.stageId, weekStart: iso(w.weekStart) })),
+  };
+}
+
+export async function toggleWeekStage(projectId: string, stageId: string, weekStart: string, incluir: boolean) {
+  await assertOwnsProject(projectId);
+  const stage = await prisma.scheduleStage.findFirst({ where: { id: stageId, projectId }, select: { id: true } });
+  if (!stage) return { error: "Etapa não encontrada." };
+
+  const ws = meioDia(weekStart);
+  if (incluir) {
+    await prisma.scheduleWeekStage.upsert({
+      where: { stageId_weekStart: { stageId, weekStart: ws } },
+      create: { projectId, stageId, weekStart: ws },
+      update: {},
+    });
+  } else {
+    await prisma.scheduleWeekStage.deleteMany({ where: { stageId, weekStart: ws } });
+  }
+  touch(projectId);
+  return {};
+}
+
+// quantity null = desfaz a revisão e volta ao valor calculado.
+export async function setWeekMaterial(
+  projectId: string, weekStart: string, materialId: string, quantity: number | null
+) {
+  await assertOwnsProject(projectId);
+  const ws = meioDia(weekStart);
+  if (quantity === null) {
+    await prisma.scheduleWeekMaterial.deleteMany({ where: { projectId, weekStart: ws, materialId } });
+  } else {
+    const q = Number(quantity);
+    if (!Number.isFinite(q) || q < 0) return { error: "Quantidade inválida." };
+    await prisma.scheduleWeekMaterial.upsert({
+      where: { projectId_weekStart_materialId: { projectId, weekStart: ws, materialId } },
+      create: { projectId, weekStart: ws, materialId, quantity: q },
+      update: { quantity: q },
+    });
+  }
+  touch(projectId);
+  return {};
+}
+
+// Preenche a grade a partir da sequência do cronograma. Só roda com a
+// programação vazia, para nunca passar por cima do que o usuário montou.
+export async function suggestWeekPlan(projectId: string) {
+  await assertOwnsProject(projectId);
+  const { inicio, stages, assign } = await carregarPlano(projectId);
+  if (!inicio) return { error: "Informe o início da obra primeiro." };
+  if (assign.length > 0) return { error: "A programação já tem etapas. Limpe-a antes de pedir a sugestão." };
+
+  const sugestao = sugestaoDeSemanas(stages, inicio);
+  await prisma.scheduleWeekStage.createMany({
+    data: sugestao.map((x) => ({ projectId, stageId: x.stageId, weekStart: meioDia(x.weekStart) })),
+    skipDuplicates: true,
+  });
+  touch(projectId);
+  return {};
+}
+
+export async function clearWeekPlan(projectId: string) {
+  await assertOwnsProject(projectId);
+  await prisma.$transaction([
+    prisma.scheduleWeekStage.deleteMany({ where: { projectId } }),
+    prisma.scheduleWeekMaterial.deleteMany({ where: { projectId } }),
+  ]);
+  touch(projectId);
+  return {};
+}
+
+// Grava o previsto atual de cada etapa como linha de base.
+export async function freezeBaseline(projectId: string) {
+  await assertOwnsProject(projectId);
+  const { inicio, stages, assign } = await carregarPlano(projectId);
+  const previsto = previstoPorEtapa(stages, semanasPorEtapa(assign), inicio);
+  if (previsto.size === 0) return { error: "Sem início da obra e sem semanas programadas não há previsto para congelar." };
+
+  await prisma.$transaction([
+    ...stages.map((s) => {
+      const p = previsto.get(s.id);
+      return prisma.scheduleStage.update({
+        where: { id: s.id },
+        data: {
+          baselineStart: p ? meioDia(p.inicio) : null,
+          baselineEnd: p ? meioDia(p.fim) : null,
+        },
+      });
+    }),
+    prisma.project.update({ where: { id: projectId }, data: { scheduleBaselineAt: new Date() } }),
+  ]);
+  touch(projectId);
   return {};
 }

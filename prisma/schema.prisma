@@ -202,6 +202,7 @@ model Project {
   scheduleStages    ScheduleStage[]
   weekStages        ScheduleWeekStage[]
   weekMaterials     ScheduleWeekMaterial[]
+  weekPurchases     ScheduleWeekPurchase[]
   materialUsages    MaterialUsage[]
 }
 
@@ -528,6 +529,7 @@ model Material {
   manualBudgetItems ManualBudgetItem[]
   scheduleStageMaterials ScheduleStageMaterial[]
   weekMaterials          ScheduleWeekMaterial[]
+  weekPurchases          ScheduleWeekPurchase[]
   usages                 MaterialUsage[]
 }
 
@@ -724,9 +726,8 @@ model ScheduleStageMaterial {
   stageId    String
   materialId String
   quantity   Float  @default(0)
-  // Marcado quando o material ja foi comprado. Fica na linha da etapa porque e
-  // por etapa que se compra — o mesmo cimento pode estar comprado para a
-  // fundacao e ainda faltar para a alvenaria.
+  // Em desuso: a marcacao de compra passou para a programacao semanal
+  // (ScheduleWeekPurchase). Mantido para nao perder o historico ja marcado.
   purchased  Boolean @default(false)
 
   stage    ScheduleStage @relation(fields: [stageId], references: [id], onDelete: Cascade)
@@ -761,6 +762,21 @@ model ScheduleWeekMaterial {
   materialId String
   weekStart  DateTime
   quantity   Float
+
+  project  Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  material Material @relation(fields: [materialId], references: [id])
+
+  @@unique([projectId, weekStart, materialId])
+}
+
+// Material da semana ja comprado. A compra e feita para a semana, e a linha
+// da semana soma o material de todas as etapas dela — marcar aqui diz "o que
+// esta linha pede ja foi comprado".
+model ScheduleWeekPurchase {
+  id         String   @id @default(cuid())
+  projectId  String
+  materialId String
+  weekStart  DateTime
 
   project  Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   material Material @relation(fields: [materialId], references: [id])

@@ -278,21 +278,6 @@ export async function updateStageMaterial(rowId: string, quantity: number) {
   return {};
 }
 
-export async function toggleStageMaterialPurchased(rowId: string, purchased: boolean) {
-  const session = await getSession();
-  if (!session) redirect("/login");
-
-  const row = await prisma.scheduleStageMaterial.findFirst({
-    where: { id: rowId, stage: { project: { userId: session.userId } } },
-    select: { id: true, stage: { select: { projectId: true } } },
-  });
-  if (!row) redirect("/projetos");
-
-  await prisma.scheduleStageMaterial.update({ where: { id: rowId }, data: { purchased } });
-  touch(row.stage.projectId);
-  return {};
-}
-
 export async function removeStageMaterial(rowId: string) {
   return updateStageMaterial(rowId, 0);
 }
@@ -468,6 +453,25 @@ export async function freezeBaseline(projectId: string) {
     }),
     prisma.project.update({ where: { id: projectId }, data: { scheduleBaselineAt: new Date() } }),
   ]);
+  touch(projectId);
+  return {};
+}
+
+// Marca/desmarca a linha de material da semana como comprada.
+export async function toggleWeekPurchase(
+  projectId: string, weekStart: string, materialId: string, comprado: boolean
+) {
+  await assertOwnsProject(projectId);
+  const ws = meioDia(weekStart);
+  if (comprado) {
+    await prisma.scheduleWeekPurchase.upsert({
+      where: { projectId_weekStart_materialId: { projectId, weekStart: ws, materialId } },
+      create: { projectId, weekStart: ws, materialId },
+      update: {},
+    });
+  } else {
+    await prisma.scheduleWeekPurchase.deleteMany({ where: { projectId, weekStart: ws, materialId } });
+  }
   touch(projectId);
   return {};
 }

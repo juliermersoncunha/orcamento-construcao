@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { X, RotateCcw, Sparkles, Trash2, CalendarRange } from "lucide-react";
+import { X, RotateCcw, Sparkles, Trash2, CalendarRange, ShoppingCart, Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { dataBR, segundaISO } from "@/lib/schedule-weeks";
@@ -9,7 +9,7 @@ import {
   semanasDoPeriodo, semanasPorEtapa, materiaisDaSemana, type PlanStage, type WeekOverride,
 } from "@/lib/schedule-plan";
 import {
-  toggleWeekStage, setWeekMaterial, suggestWeekPlan, clearWeekPlan,
+  toggleWeekStage, setWeekMaterial, suggestWeekPlan, clearWeekPlan, toggleWeekPurchase,
 } from "@/app/actions/schedule";
 
 type Run = (fn: () => Promise<{ error?: string } | void>) => void;
@@ -24,10 +24,25 @@ function fmt(n: number) {
   return n.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
 }
 
+type LinhaCompra = { name: string; unit: string; quantity: number; semanas: string[] };
+
+// Texto puro: a lista costuma ir por WhatsApp para quem vai comprar.
+async function copiarTexto(linhas: LinhaCompra[]): Promise<boolean> {
+  const txt = linhas.map((l) => `${l.name} — ${fmt(l.quantity)} ${l.unit}`).join(String.fromCharCode(10));
+  try {
+    await navigator.clipboard.writeText(txt);
+    return true;
+  } catch {
+    alert("Não consegui copiar. Selecione o texto da lista manualmente.");
+    return false;
+  }
+}
+
 export function Programacao({
-  projectId, inicio, fim, stages, weekStages, weekMaterials, catalogo, isPending, run,
+  projectId, inicio, fim, stages, weekStages, weekMaterials, weekPurchases, catalogo, isPending, run,
 }: {
   projectId: string;
+  weekPurchases: string[];
   inicio: string | null;
   fim: string | null;
   stages: PlanStage[];
@@ -38,6 +53,37 @@ export function Programacao({
   run: Run;
 }) {
   const [verPassadas, setVerPassadas] = useState(false);
+
+  // Comprado: gravado por linha da semana. O visual anda na frente do
+  // servidor, como no passo a passo — marca-se várias linhas em sequência.
+  const [otimCompra, setOtimCompra] = useState<Record<string, boolean>>({});
+  const compradosSet = useMemo(() => new Set(weekPurchases), [weekPurchases]);
+  const comprado = (chave: string) => otimCompra[chave] ?? compradosSet.has(chave);
+  function alternarCompra(semana: string, materialId: string, valor: boolean) {
+    const chave = `${semana}|${materialId}`;
+    setOtimCompra((o) => ({ ...o, [chave]: valor }));
+    run(async () => {
+      const r = await toggleWeekPurchase(projectId, semana, materialId, valor);
+      setOtimCompra((o) => {
+        const { [chave]: _x, ...resto } = o;
+        return resto;
+      });
+      return r;
+    });
+  }
+
+  // Seleção para a lista de compras. Vale entre semanas: dá para juntar a
+  // compra de duas semanas numa ida só à loja.
+  const [selecao, setSelecao] = useState<Set<string>>(new Set());
+  const [listaAberta, setListaAberta] = useState(false);
+  const [copiado, setCopiado] = useState(false);
+  function alternarSelecao(chave: string) {
+    setSelecao((prev) => {
+      const next = new Set(prev);
+      if (next.has(chave)) next.delete(chave); else next.add(chave);
+      return next;
+    });
+  }
 
   const semanas = useMemo(() => semanasDoPeriodo(inicio, fim), [inicio, fim]);
   const porEtapa = useMemo(() => semanasPorEtapa(weekStages), [weekStages]);
@@ -71,6 +117,23 @@ export function Programacao({
 
   const visiveis = verPassadas ? semanas : semanas.filter((w) => w >= semanaAtual);
   const ocultas = semanas.length - visiveis.length;
+
+  // Lista de compras: o mesmo material vindo de semanas diferentes vira uma
+  // linha só, somada — na loja importa o total.
+  const listaCompras: LinhaCompra[] = (() => {
+    const acc = new Map<string, LinhaCompra>();
+    for (const semana of semanas) {
+      const overrides = weekMaterials.filter((m) => m.weekStart === semana);
+      for (const m of materiaisDaSemana(semana, stages, porEtapa, overrides)) {
+        if (!selecao.has(`${semana}|${m.materialId}`) || m.quantity <= 0) continue;
+        const l = acc.get(m.materialId) ?? { name: m.name, unit: m.unit, quantity: 0, semanas: [] };
+        l.quantity += m.quantity;
+        l.semanas.push(semana);
+        acc.set(m.materialId, l);
+      }
+    }
+    return [...acc.values()].sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+  })();
 
   return (
     <div className="flex flex-col gap-4">
@@ -109,6 +172,66 @@ export function Programacao({
         )}
       </div>
 
+      {selecao.size === 0 ? (
+        <div className="flex items-center gap-2 rounded-md border border-dashed border-gray-300 bg-gray-50 px-3 py-2 text-xs text-gray-500">
+          <ShoppingCart className="w-3.5 h-3.5 shrink-0" />
+          <span>
+            Marque a coluna do carrinho para montar uma lista de compras — pode juntar
+            mais de uma semana. Ou use “Copiar o que falta” no cabeçalho de cada semana.
+          </span>
+        </div>
+      ) : (
+        <Card className="border-brand-300 bg-brand-50 sticky top-4 z-20 shadow-md">
+          <CardContent className="py-3">
+            <div className="flex items-center gap-3 flex-wrap">
+              <ShoppingCart className="w-4 h-4 text-brand-600 shrink-0" />
+              <span className="text-sm text-gray-800">
+                <strong>{selecao.size}</strong> {selecao.size === 1 ? "linha selecionada" : "linhas selecionadas"}
+                {listaCompras.length !== selecao.size && (
+                  <span className="text-gray-500"> · {listaCompras.length} materiais distintos</span>
+                )}
+              </span>
+              <div className="flex-1" />
+              <Button variant="outline" size="sm" onClick={() => setListaAberta((v) => !v)}>
+                {listaAberta ? "Ocultar lista" : "Ver lista de compras"}
+              </Button>
+              <Button
+                variant="outline" size="sm"
+                onClick={async () => {
+                  if (await copiarTexto(listaCompras)) {
+                    setCopiado(true);
+                    setTimeout(() => setCopiado(false), 2000);
+                  }
+                }}
+              >
+                {copiado ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                {copiado ? "Copiado" : "Copiar lista"}
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => { setSelecao(new Set()); setListaAberta(false); }}>
+                <X className="w-4 h-4" />
+                Limpar
+              </Button>
+            </div>
+            {listaAberta && (
+              <table className="w-full text-sm bg-white rounded-md mt-3">
+                <tbody>
+                  {listaCompras.map((l) => (
+                    <tr key={l.name + l.unit} className="border-b border-gray-100">
+                      <td className="py-1.5 px-2 text-gray-800">{l.name}</td>
+                      <td className="py-1.5 text-right w-24 font-medium">{fmt(l.quantity)}</td>
+                      <td className="py-1.5 text-center w-14 text-gray-500">{l.unit}</td>
+                      <td className="py-1.5 px-2 text-xs text-gray-500">
+                        {l.semanas.map((w) => `S${semanas.indexOf(w) + 1}`).join(", ")}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {ocultas > 0 && !verPassadas && (
         <p className="text-xs text-gray-400">{ocultas} semana(s) anterior(es) oculta(s).</p>
       )}
@@ -126,6 +249,10 @@ export function Programacao({
           catalogo={catalogo}
           isPending={isPending}
           run={run}
+          comprado={comprado}
+          alternarCompra={alternarCompra}
+          selecao={selecao}
+          alternarSelecao={alternarSelecao}
         />
       ))}
     </div>
@@ -140,7 +267,12 @@ function nextWeek(seg: string) {
 
 function SemanaCard({
   projectId, numero, semana, rotulo, stages, porEtapa, overrides, catalogo, isPending, run,
+  comprado, alternarCompra, selecao, alternarSelecao,
 }: {
+  comprado: (chave: string) => boolean;
+  alternarCompra: (semana: string, materialId: string, valor: boolean) => void;
+  selecao: Set<string>;
+  alternarSelecao: (chave: string) => void;
   projectId: string;
   numero: number;
   semana: string;
@@ -160,6 +292,9 @@ function SemanaCard({
   fimSemana.setUTCDate(fimSemana.getUTCDate() - 1);
 
   const jaNaLista = new Set(materiais.map((m) => m.materialId));
+  const chave = (materialId: string) => `${semana}|${materialId}`;
+  const faltam = materiais.filter((m) => m.quantity > 0 && !comprado(chave(m.materialId)));
+  const [copiouSemana, setCopiouSemana] = useState(false);
 
   return (
     <Card className={rotulo === "próxima semana" ? "border-brand-300 ring-1 ring-brand-200" : ""}>
@@ -171,6 +306,23 @@ function SemanaCard({
           </span>
           {rotulo && (
             <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[11px] font-medium text-amber-800">{rotulo}</span>
+          )}
+          <div className="flex-1" />
+          {faltam.length > 0 && (
+            <button
+              type="button"
+              onClick={async () => {
+                if (await copiarTexto(faltam.map((m) => ({ name: m.name, unit: m.unit, quantity: m.quantity, semanas: [semana] })))) {
+                  setCopiouSemana(true);
+                  setTimeout(() => setCopiouSemana(false), 2000);
+                }
+              }}
+              className="flex items-center gap-1 text-xs text-brand-700 hover:text-brand-900"
+              title="Copia, em texto, o material desta semana que ainda não foi comprado"
+            >
+              {copiouSemana ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+              {copiouSemana ? "Copiado" : `Copiar o que falta (${faltam.length})`}
+            </button>
           )}
         </div>
 
@@ -219,6 +371,10 @@ function SemanaCard({
           <table className="w-full text-sm mb-2">
             <thead>
               <tr className="border-b border-gray-200 text-xs text-gray-500">
+                <th className="text-center font-medium py-1 w-9" title="Já comprado">✓</th>
+                <th className="text-center font-medium py-1 w-9" title="Incluir na lista de compras">
+                  <ShoppingCart className="w-3.5 h-3.5 inline text-gray-400" />
+                </th>
                 <th className="text-left font-medium py-1">Material</th>
                 <th className="text-right font-medium py-1 w-28">Qtd</th>
                 <th className="text-center font-medium py-1 w-14">Un</th>
@@ -229,7 +385,25 @@ function SemanaCard({
             <tbody>
               {materiais.map((m) => (
                 <tr key={m.materialId} className={`border-b border-gray-100 ${m.quantity === 0 ? "text-gray-400" : ""}`}>
-                  <td className={`py-1 ${m.quantity === 0 ? "line-through" : "text-gray-800"}`}>{m.name}</td>
+                  <td className="py-1 text-center">
+                    <input
+                      type="checkbox"
+                      checked={comprado(chave(m.materialId))}
+                      onChange={(e) => alternarCompra(semana, m.materialId, e.target.checked)}
+                      title="Já comprado"
+                      className="w-4 h-4 rounded accent-green-600"
+                    />
+                  </td>
+                  <td className="py-1 text-center">
+                    <input
+                      type="checkbox"
+                      checked={selecao.has(chave(m.materialId))}
+                      onChange={() => alternarSelecao(chave(m.materialId))}
+                      title="Incluir na lista de compras"
+                      className="w-4 h-4 rounded accent-brand-600"
+                    />
+                  </td>
+                  <td className={`py-1 ${m.quantity === 0 || comprado(chave(m.materialId)) ? "line-through text-gray-400" : "text-gray-800"}`}>{m.name}</td>
                   <td className="py-1 text-right">
                     <input
                       key={`${m.materialId}-${m.quantity}`}

@@ -161,9 +161,9 @@ export function Gantt({
                 );
               })}
 
-              {/* Linhas verticais de hoje e do prazo, sobre o corpo do gráfico */}
+              {/* Linhas verticais de hoje e do fim previsto da obra, sobre o corpo do gráfico */}
               <div className="relative" style={{ marginLeft: 220, width: largura, height: 0 }}>
-                {[{ d: hoje, cor: "bg-amber-500", rot: "hoje" }, ...(fim ? [{ d: fim, cor: "bg-gray-900", rot: "prazo" }] : [])]
+                {[{ d: hoje, cor: "bg-amber-500", rot: "hoje" }, ...(fim ? [{ d: fim, cor: "bg-gray-900", rot: "fim previsto" }] : [])]
                   .filter((m) => m.d >= ini && m.d <= fimJanela)
                   .map((m) => (
                     <div

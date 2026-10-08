@@ -49,7 +49,7 @@ export function Programacao({
         <CardContent className="py-8 text-center">
           <CalendarRange className="w-8 h-8 text-gray-300 mx-auto mb-2" />
           <p className="text-sm text-gray-600">
-            Informe o <strong>início da obra</strong> e o <strong>prazo de entrega</strong> acima.
+            Informe o <strong>início da obra</strong> e o <strong>fim previsto</strong> acima.
           </p>
           <p className="text-xs text-gray-400 mt-1">
             O período vira uma grade de semanas, e em cada semana você inclui as etapas.
@@ -63,7 +63,7 @@ export function Programacao({
     return (
       <Card>
         <CardContent className="py-6 text-center text-sm text-red-700">
-          O prazo de entrega está antes do início da obra.
+          O fim previsto está antes do início da obra.
         </CardContent>
       </Card>
     );

@@ -16,7 +16,7 @@ import {
   fillTemplateTasks, toggleStageMaterialPurchased, setScheduleStart, setScheduleEnd, toggleWeekStage,
 } from "@/app/actions/schedule";
 import { dataBR, diasUteisEntre } from "@/lib/schedule-weeks";
-import { previstoPorEtapa, semanasPorEtapa, semanasDoPeriodo } from "@/lib/schedule-plan";
+import { semanasPorEtapa, semanasDoPeriodo } from "@/lib/schedule-plan";
 import { Programacao } from "./programacao";
 import { Gantt } from "./gantt";
 
@@ -80,22 +80,17 @@ export function CronogramaClient({
     [stages]
   );
 
-  // Grade de semanas do início ao prazo, e em quais semanas cada etapa está.
+  // Grade de semanas do início ao fim previsto, e em quais semanas cada etapa está.
   const gradeSemanas = useMemo(() => semanasDoPeriodo(scheduleStart, scheduleEnd), [scheduleStart, scheduleEnd]);
   const semanasDaEtapa = useMemo(() => semanasPorEtapa(weekStages), [weekStages]);
   const semSemana = stages.filter((s) => (semanasDaEtapa.get(s.id) ?? []).length === 0).length;
   const programou = semSemana < stages.length;
 
-  // Termino projetado. Usa a programação semanal onde ela existe e a sequência
-  // de durações nas etapas ainda não programadas — a mesma regra do Gantt, para
-  // o cabeçalho e o gráfico nunca discordarem.
-  const termino = useMemo(() => {
-    const prev = previstoPorEtapa(planStages, semanasPorEtapa(weekStages), scheduleStart);
-    let max: string | null = null;
-    for (const p of prev.values()) if (!max || p.fim > max) max = p.fim;
-    return max;
-  }, [planStages, weekStages, scheduleStart]);
-  const folga = termino && scheduleEnd ? diasUteisEntre(termino, scheduleEnd) : null;
+  // O fim previsto da obra é o que o usuário digita — não é calculado. Aqui só
+  // se mostra o tamanho do período que ele definiu.
+  const diasDaObra = scheduleStart && scheduleEnd && scheduleEnd >= scheduleStart
+    ? diasUteisEntre(scheduleStart, scheduleEnd) + 1
+    : null;
 
   const [copiado, setCopiado] = useState(false);
 
@@ -264,7 +259,7 @@ export function CronogramaClient({
           </label>
 
           <label className="flex items-center gap-2 text-sm text-gray-600">
-            Prazo de entrega
+            Fim previsto
             <input
               type="date"
               defaultValue={scheduleEnd ?? ""}
@@ -273,25 +268,9 @@ export function CronogramaClient({
             />
           </label>
 
-          {termino && (
-            <span className="text-sm text-gray-600">
-              Término previsto <strong>{dataBR(termino)}/{termino.slice(2, 4)}</strong>
-              
-            </span>
-          )}
-
-          {folga !== null && (
-            <span
-              className={`rounded-md px-2 py-1 text-xs font-semibold ${
-                folga >= 0 ? "bg-green-100 text-green-800" : "bg-red-100 text-red-700"
-              }`}
-              title="Diferença entre o prazo de entrega e o término previsto, em dias úteis"
-            >
-              {folga === 0
-                ? "termina no prazo exato"
-                : folga > 0
-                ? `${folga} dias úteis de folga`
-                : `${-folga} dias úteis de atraso`}
+          {diasDaObra !== null && (
+            <span className="text-sm text-gray-500">
+              {gradeSemanas.length} semanas · {diasDaObra} dias úteis
             </span>
           )}
         </div>
@@ -955,7 +934,7 @@ function SemanasDaEtapa({
       <label className="text-xs font-medium text-gray-600">Semanas da programação</label>
       {grade.length === 0 ? (
         <p className="text-xs text-gray-400">
-          Informe o início da obra e o prazo de entrega, no topo, para escolher as semanas.
+          Informe o início e o fim previsto da obra, no topo, para escolher as semanas.
         </p>
       ) : (
         <>

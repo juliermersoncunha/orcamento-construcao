@@ -449,9 +449,11 @@ export async function clearWeekPlan(projectId: string) {
 // Grava o previsto atual de cada etapa como linha de base.
 export async function freezeBaseline(projectId: string) {
   await assertOwnsProject(projectId);
-  const { inicio, stages, assign } = await carregarPlano(projectId);
-  const previsto = previstoPorEtapa(stages, semanasPorEtapa(assign), inicio);
-  if (previsto.size === 0) return { error: "Sem início da obra e sem semanas programadas não há previsto para congelar." };
+  const { stages, assign } = await carregarPlano(projectId);
+  // Só etapas com semana marcada têm previsto; as demais ficam com a linha de
+  // base vazia, em vez de receber uma data que o usuário não definiu.
+  const previsto = previstoPorEtapa(stages, semanasPorEtapa(assign));
+  if (previsto.size === 0) return { error: "Marque as semanas das etapas antes de congelar a linha de base." };
 
   await prisma.$transaction([
     ...stages.map((s) => {

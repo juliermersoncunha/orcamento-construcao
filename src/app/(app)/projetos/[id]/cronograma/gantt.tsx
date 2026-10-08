@@ -45,8 +45,8 @@ export function Gantt({
   const hoje = hojeISO();
 
   const previsto = useMemo(
-    () => previstoPorEtapa(stages, semanasPorEtapa(weekStages), inicio),
-    [stages, weekStages, inicio]
+    () => previstoPorEtapa(stages, semanasPorEtapa(weekStages)),
+    [stages, weekStages]
   );
 
   // Linha de base congelada manda; sem ela, mostra o previsto atual tracejado,
@@ -99,7 +99,7 @@ export function Gantt({
         <span className="text-gray-500">
           {baselineAt
             ? `Linha de base congelada em ${new Date(baselineAt).toLocaleDateString("pt-BR")}`
-            : "Linha de base ainda não congelada — o cinza mostra o previsto de hoje e muda junto com o plano."}
+            : "Linha de base ainda não congelada — o tracejado mostra as semanas marcadas hoje e muda junto com elas."}
         </span>
         <div className="flex-1" />
         <Legenda />
@@ -132,7 +132,11 @@ export function Gantt({
                       <p className="text-sm text-gray-800 truncate" title={s.name}>{s.name}</p>
                       {desvio !== null && desvio !== 0 && (
                         <p className={`text-[11px] ${desvio > 0 ? "text-red-600" : "text-green-700"}`}>
-                          {desvio > 0 ? `${desvio} dias úteis de atraso` : `${-desvio} dias úteis adiantada`}
+                          {(() => {
+                            const n = Math.abs(desvio);
+                            const dias = n === 1 ? "1 dia útil" : `${n} dias úteis`;
+                            return desvio > 0 ? `${dias} de atraso` : `${dias} adiantada`;
+                          })()}
                         </p>
                       )}
                     </div>
@@ -183,7 +187,8 @@ export function Gantt({
       </Card>
 
       <p className="text-xs text-gray-400">
-        O realizado vem do <strong>início real</strong> e do <strong>fim real</strong> de cada etapa, na aba Etapas.
+        O previsto vem das <strong>semanas marcadas</strong> em cada etapa; etapa sem semana não tem barra cinza.
+        O realizado vem do <strong>início real</strong> e do <strong>fim real</strong>, na aba Etapas.
         Etapa com início real e sem fim aparece em azul até hoje.
       </p>
     </div>

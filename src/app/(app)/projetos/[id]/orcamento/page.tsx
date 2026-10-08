@@ -235,7 +235,7 @@ export default async function OrcamentoPage({
           <Link href={`/projetos/${id}/cronograma`}>
             <Button variant="outline" size="sm">
               <CalendarDays className="w-4 h-4 mr-1" />
-              Cronograma
+              Planejamento
             </Button>
           </Link>
           <Link href={`/projetos/${id}/consumo`}>

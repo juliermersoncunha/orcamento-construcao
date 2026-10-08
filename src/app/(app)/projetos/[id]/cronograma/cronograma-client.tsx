@@ -244,7 +244,7 @@ export function CronogramaClient({
               }`}
             >
               <GanttChart className="w-4 h-4" />
-              Gantt
+              Cronograma
             </button>
           </div>
 

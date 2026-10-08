@@ -60,7 +60,7 @@ export default async function CronogramaPage({
         </Link>
         <div className="flex items-center gap-2">
           <CalendarDays className="w-5 h-5 text-brand-600" />
-          <h1 className="text-xl font-bold text-gray-900">Cronograma da Obra</h1>
+          <h1 className="text-xl font-bold text-gray-900">Planejamento e Controle da Obra</h1>
         </div>
       </div>
       <p className="text-sm text-gray-500 mb-6 ml-12">{project.name}</p>

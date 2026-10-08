@@ -82,6 +82,10 @@ export function Gantt({
   const w = (a: string, b: string) => Math.max(((diasCorridos(a, b) + 1) / 7) * COL, 4);
 
   const temCongelada = linhas.some((l) => l.congelada);
+  // Marcadas depois do último congelamento: têm semana, mas não linha de base.
+  const foraDaBase = temCongelada
+    ? linhas.filter((l) => !l.congelada && previsto.has(l.s.id)).length
+    : 0;
 
   return (
     <div className="flex flex-col gap-3">
@@ -100,6 +104,11 @@ export function Gantt({
           {baselineAt
             ? `Linha de base congelada em ${new Date(baselineAt).toLocaleDateString("pt-BR")}`
             : "Linha de base ainda não congelada — o tracejado mostra as semanas marcadas hoje e muda junto com elas."}
+          {foraDaBase > 0 && (
+            <span className="text-amber-700">
+              {" · "}{foraDaBase} {foraDaBase === 1 ? "etapa marcada" : "etapas marcadas"} depois disso, em tracejado — recongele para incluí-las.
+            </span>
+          )}
         </span>
         <div className="flex-1" />
         <Legenda />
@@ -198,7 +207,8 @@ export function Gantt({
 function Legenda() {
   return (
     <div className="flex items-center gap-3 text-xs text-gray-500">
-      <span className="flex items-center gap-1"><span className="inline-block w-4 h-2 rounded-sm bg-gray-300" /> previsto</span>
+      <span className="flex items-center gap-1"><span className="inline-block w-4 h-2 rounded-sm bg-gray-300" /> previsto congelado</span>
+      <span className="flex items-center gap-1"><span className="inline-block w-4 h-2 rounded-sm border border-dashed border-gray-400" /> previsto não congelado</span>
       <span className="flex items-center gap-1"><span className="inline-block w-4 h-2 rounded-sm bg-green-500" /> no prazo</span>
       <span className="flex items-center gap-1"><span className="inline-block w-4 h-2 rounded-sm bg-red-500" /> atrasada</span>
       <span className="flex items-center gap-1"><span className="inline-block w-4 h-2 rounded-sm bg-brand-500" /> em andamento</span>

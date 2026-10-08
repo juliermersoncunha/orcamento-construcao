@@ -17,7 +17,7 @@ export default async function CronogramaPage({
 
   const project = await prisma.project.findFirst({
     where: { id, userId: session.userId },
-    select: { id: true, name: true, clientName: true, scheduleStart: true },
+    select: { id: true, name: true, clientName: true, scheduleStart: true, scheduleEnd: true },
   });
   if (!project) redirect("/projetos");
 
@@ -59,6 +59,7 @@ export default async function CronogramaPage({
       <CronogramaClient
         projectId={id}
         scheduleStart={project.scheduleStart ? project.scheduleStart.toISOString().slice(0, 10) : null}
+        scheduleEnd={project.scheduleEnd ? project.scheduleEnd.toISOString().slice(0, 10) : null}
         stages={stages.map((s) => ({
           id: s.id,
           order: s.order,

@@ -194,6 +194,9 @@ model Project {
   // Data em que a obra comeca. Ancora a visao por semana: as etapas correm em
   // sequencia a partir dela, cada uma consumindo os seus dias uteis.
   scheduleStart     DateTime?
+  // Prazo de entrega. Nao e calculado: e o compromisso com o cliente. A tela
+  // compara com o termino previsto pelo cronograma e mostra a folga ou o atraso.
+  scheduleEnd       DateTime?
   scheduleStages    ScheduleStage[]
   materialUsages    MaterialUsage[]
 }

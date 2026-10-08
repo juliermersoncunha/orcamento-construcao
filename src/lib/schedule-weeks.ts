@@ -81,13 +81,23 @@ function segundaDa(d: Date): Date {
  * nada no calendário, então a função devolve lista vazia — a tela é que pede a
  * data ao usuário.
  */
-export function montarSemanas(stages: StageIn[], inicio: string | null): Week[] {
+export type StagePlan = {
+  id: string;
+  inicio: string;   // ISO
+  fim: string;      // ISO
+  dias: string[];   // dias úteis trabalhados, ISO
+};
+
+/**
+ * Posiciona cada etapa no calendário: início, fim e os dias úteis que ela
+ * ocupa. É a base comum da visão por semana, da previsão de término e do
+ * Gantt — calcular isso em três lugares deixaria as telas discordando entre si.
+ */
+export function planejarEtapas(stages: StageIn[], inicio: string | null): StagePlan[] {
   if (!inicio || stages.length === 0) return [];
 
   let cursor = proximoDiaUtil(paraData(inicio));
-  // dia ISO → etapas que trabalham nele
-  const diasPorEtapa = new Map<string, Date[]>();
-  const periodo = new Map<string, { inicio: Date; fim: Date }>();
+  const out: StagePlan[] = [];
 
   for (const st of stages) {
     // Data própria manda e empurra o restante da fila.
@@ -97,28 +107,60 @@ export function montarSemanas(stages: StageIn[], inicio: string | null): Week[] 
     }
 
     const dias = Math.max(0, Math.round(st.days));
-    const trabalhados: Date[] = [];
 
     if (dias === 0) {
       // Marco sem duração: aparece no dia corrente, sem consumi-lo.
-      periodo.set(st.id, { inicio: new Date(cursor), fim: new Date(cursor) });
-      diasPorEtapa.set(st.id, [new Date(cursor)]);
+      const d = iso(cursor);
+      out.push({ id: st.id, inicio: d, fim: d, dias: [d] });
       continue;
     }
 
-    const primeiro = new Date(cursor);
+    const trabalhados: string[] = [];
     for (let i = 0; i < dias; i++) {
       cursor = proximoDiaUtil(cursor);
-      trabalhados.push(new Date(cursor));
-      cursor = new Date(cursor.getTime() + DIA);
-      cursor = proximoDiaUtil(cursor);
+      trabalhados.push(iso(cursor));
+      cursor = proximoDiaUtil(new Date(cursor.getTime() + DIA));
     }
-    periodo.set(st.id, {
-      inicio: proximoDiaUtil(primeiro),
+    out.push({
+      id: st.id,
+      inicio: trabalhados[0],
       fim: trabalhados[trabalhados.length - 1],
+      dias: trabalhados,
     });
-    diasPorEtapa.set(st.id, trabalhados);
   }
+  return out;
+}
+
+/** Último dia útil do cronograma — quando a obra termina se o plano se cumprir. */
+export function fimPrevisto(stages: StageIn[], inicio: string | null): string | null {
+  const plano = planejarEtapas(stages, inicio);
+  if (plano.length === 0) return null;
+  return plano.reduce((max, p) => (p.fim > max ? p.fim : max), plano[0].fim);
+}
+
+/**
+ * Dias úteis de `de` até `ate`, contando o próprio `ate` e não o `de`.
+ * Negativo quando `ate` vem antes — é assim que um atraso aparece.
+ */
+export function diasUteisEntre(de: string, ate: string): number {
+  if (de === ate) return 0;
+  const sinal = ate > de ? 1 : -1;
+  let a = paraData(sinal > 0 ? de : ate);
+  const b = paraData(sinal > 0 ? ate : de);
+  let n = 0;
+  while (a < b) {
+    a = new Date(a.getTime() + DIA);
+    if (!ehFimDeSemana(a)) n++;
+  }
+  return n * sinal;
+}
+
+export function montarSemanas(stages: StageIn[], inicio: string | null): Week[] {
+  const plano = planejarEtapas(stages, inicio);
+  if (plano.length === 0) return [];
+
+  const periodo = new Map(plano.map((p) => [p.id, { inicio: paraData(p.inicio), fim: paraData(p.fim) }]));
+  const diasPorEtapa = new Map(plano.map((p) => [p.id, p.dias.map(paraData)]));
 
   // Agrupa por semana de calendário (segunda a domingo).
   const porSemana = new Map<string, Map<string, number>>(); // segundaISO → etapaId → dias

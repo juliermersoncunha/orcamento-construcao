@@ -13,9 +13,9 @@ import {
   applyScheduleTemplate, addScheduleStage, updateScheduleStage,
   deleteScheduleStage, moveScheduleStage, addStageMaterial, updateStageMaterial,
   addScheduleTask, toggleScheduleTask, renameScheduleTask, deleteScheduleTask,
-  fillTemplateTasks, toggleStageMaterialPurchased, setScheduleStart,
+  fillTemplateTasks, toggleStageMaterialPurchased, setScheduleStart, setScheduleEnd,
 } from "@/app/actions/schedule";
-import { montarSemanas, dataBR } from "@/lib/schedule-weeks";
+import { montarSemanas, dataBR, fimPrevisto, diasUteisEntre } from "@/lib/schedule-weeks";
 
 export type CatalogMaterial = {
   id: string; name: string; unit: string; category: string;
@@ -46,9 +46,9 @@ const STATUS_STYLE: Record<string, string> = {
 };
 
 export function CronogramaClient({
-  projectId, scheduleStart, stages, materials,
+  projectId, scheduleStart, scheduleEnd, stages, materials,
 }: {
-  projectId: string; scheduleStart: string | null;
+  projectId: string; scheduleStart: string | null; scheduleEnd: string | null;
   stages: Stage[]; materials: CatalogMaterial[];
 }) {
   const router = useRouter();
@@ -72,6 +72,17 @@ export function CronogramaClient({
     ),
     [stages, scheduleStart]
   );
+
+  // Termino que o cronograma projeta, comparado ao prazo prometido. Folga e
+  // atraso em dias UTEIS, a mesma unidade das duracoes.
+  const termino = useMemo(
+    () => fimPrevisto(
+      stages.map((s) => ({ id: s.id, name: s.name, status: s.status, days: s.days, startDate: s.startDate, materials: [] })),
+      scheduleStart
+    ),
+    [stages, scheduleStart]
+  );
+  const folga = termino && scheduleEnd ? diasUteisEntre(termino, scheduleEnd) : null;
 
   const [copiado, setCopiado] = useState(false);
 
@@ -218,9 +229,35 @@ export function CronogramaClient({
             />
           </label>
 
-          {vista === "semanas" && semanas.length > 0 && (
-            <span className="text-sm text-gray-500">
-              {semanas.length} semanas até {dataBR(semanas[semanas.length - 1].fim)}
+          <label className="flex items-center gap-2 text-sm text-gray-600">
+            Prazo de entrega
+            <input
+              type="date"
+              defaultValue={scheduleEnd ?? ""}
+              onChange={(e) => run(() => setScheduleEnd(projectId, e.target.value || null))}
+              className="rounded-md border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+            />
+          </label>
+
+          {termino && (
+            <span className="text-sm text-gray-600">
+              Término previsto <strong>{dataBR(termino)}/{termino.slice(2, 4)}</strong>
+              {vista === "semanas" && semanas.length > 0 && <> · {semanas.length} semanas</>}
+            </span>
+          )}
+
+          {folga !== null && (
+            <span
+              className={`rounded-md px-2 py-1 text-xs font-semibold ${
+                folga >= 0 ? "bg-green-100 text-green-800" : "bg-red-100 text-red-700"
+              }`}
+              title="Diferença entre o prazo de entrega e o término previsto, em dias úteis"
+            >
+              {folga === 0
+                ? "termina no prazo exato"
+                : folga > 0
+                ? `${folga} dias úteis de folga`
+                : `${-folga} dias úteis de atraso`}
             </span>
           )}
         </div>

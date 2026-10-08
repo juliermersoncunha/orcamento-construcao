@@ -46,6 +46,17 @@ export async function setScheduleStart(projectId: string, date: string | null) {
   return {};
 }
 
+// Prazo de entrega da obra.
+export async function setScheduleEnd(projectId: string, date: string | null) {
+  await assertOwnsProject(projectId);
+  await prisma.project.update({
+    where: { id: projectId },
+    data: { scheduleEnd: date ? new Date(`${date}T12:00:00`) : null },
+  });
+  touch(projectId);
+  return {};
+}
+
 // ── Etapas ─────────────────────────────────────────────────────────────────
 
 // Carrega o modelo sugerido. Só funciona com o cronograma vazio — nunca

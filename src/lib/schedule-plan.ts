@@ -108,8 +108,14 @@ function arred(n: number): number {
 
 /**
  * Previsto de cada etapa: da segunda da primeira semana programada à sexta da
- * última. Etapa ainda não programada cai no cronograma sequencial (ordem +
- * duração a partir do início), para o Gantt não ficar com buracos.
+ * última.
+ *
+ * Enquanto nenhuma etapa foi programada, todas caem no cronograma sequencial
+ * (ordem + duração a partir do início), para o Gantt ter o que mostrar. Assim
+ * que a programação começa, a etapa ainda sem semana fica SEM previsto: a
+ * sequência soma as durações de todas as etapas como se nenhuma se
+ * sobrepusesse, e uma etapa sem semana acabaria jogada para depois do prazo,
+ * acusando um atraso que não existe no plano.
  */
 export function previstoPorEtapa(
   stages: PlanStage[],
@@ -117,14 +123,19 @@ export function previstoPorEtapa(
   inicio: string | null
 ): Map<string, { inicio: string; fim: string }> {
   const out = new Map<string, { inicio: string; fim: string }>();
-  const seq = new Map(planejarEtapas(stages.map((s) => ({ ...s, materials: [] })), inicio).map((p) => [p.id, p]));
+  const algumaProgramada = stages.some((s) => (porEtapa.get(s.id) ?? []).length > 0);
+
+  if (!algumaProgramada) {
+    for (const p of planejarEtapas(stages.map((s) => ({ ...s, materials: [] })), inicio)) {
+      out.set(p.id, { inicio: p.inicio, fim: p.fim });
+    }
+    return out;
+  }
+
   for (const st of stages) {
     const semanas = porEtapa.get(st.id);
     if (semanas && semanas.length > 0) {
       out.set(st.id, { inicio: semanas[0], fim: somarDias(semanas[semanas.length - 1], 4) });
-    } else {
-      const p = seq.get(st.id);
-      if (p) out.set(st.id, { inicio: p.inicio, fim: p.fim });
     }
   }
   return out;

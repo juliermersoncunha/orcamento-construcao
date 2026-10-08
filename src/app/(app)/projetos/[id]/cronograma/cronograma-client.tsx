@@ -13,10 +13,10 @@ import {
   applyScheduleTemplate, addScheduleStage, updateScheduleStage,
   deleteScheduleStage, moveScheduleStage, addStageMaterial, updateStageMaterial,
   addScheduleTask, toggleScheduleTask, renameScheduleTask, deleteScheduleTask,
-  fillTemplateTasks, toggleStageMaterialPurchased, setScheduleStart, setScheduleEnd,
+  fillTemplateTasks, toggleStageMaterialPurchased, setScheduleStart, setScheduleEnd, toggleWeekStage,
 } from "@/app/actions/schedule";
 import { dataBR, diasUteisEntre } from "@/lib/schedule-weeks";
-import { previstoPorEtapa, semanasPorEtapa } from "@/lib/schedule-plan";
+import { previstoPorEtapa, semanasPorEtapa, semanasDoPeriodo } from "@/lib/schedule-plan";
 import { Programacao } from "./programacao";
 import { Gantt } from "./gantt";
 
@@ -79,6 +79,12 @@ export function CronogramaClient({
     })),
     [stages]
   );
+
+  // Grade de semanas do início ao prazo, e em quais semanas cada etapa está.
+  const gradeSemanas = useMemo(() => semanasDoPeriodo(scheduleStart, scheduleEnd), [scheduleStart, scheduleEnd]);
+  const semanasDaEtapa = useMemo(() => semanasPorEtapa(weekStages), [weekStages]);
+  const semSemana = stages.filter((s) => (semanasDaEtapa.get(s.id) ?? []).length === 0).length;
+  const programou = semSemana < stages.length;
 
   // Termino projetado. Usa a programação semanal onde ela existe e a sequência
   // de durações nas etapas ainda não programadas — a mesma regra do Gantt, para
@@ -181,9 +187,20 @@ export function CronogramaClient({
           <span className="rounded-md bg-gray-100 px-3 py-1.5 text-gray-700">
             <strong>{stages.length}</strong> etapas
           </span>
-          <span className="rounded-md bg-gray-100 px-3 py-1.5 text-gray-700">
-            <strong>{totalDias.toLocaleString("pt-BR")}</strong> dias úteis
-          </span>
+          {programou ? (
+            <span className="rounded-md bg-gray-100 px-3 py-1.5 text-gray-700">
+              <strong>{new Set(weekStages.map((w) => w.weekStart)).size}</strong> semanas programadas
+            </span>
+          ) : (
+            <span className="rounded-md bg-gray-100 px-3 py-1.5 text-gray-700" title="Soma das durações, como se as etapas não se sobrepusessem">
+              <strong>{totalDias.toLocaleString("pt-BR")}</strong> dias úteis
+            </span>
+          )}
+          {programou && semSemana > 0 && (
+            <span className="rounded-md bg-amber-50 px-3 py-1.5 text-amber-800" title="Etapas sem semana não entram no término previsto">
+              <strong>{semSemana}</strong> {semSemana === 1 ? "etapa sem semana" : "etapas sem semana"}
+            </span>
+          )}
           <span className="rounded-md bg-gray-100 px-3 py-1.5 text-gray-700">
             <strong>{concluidas}</strong> de {stages.length} concluídas
           </span>
@@ -390,6 +407,9 @@ export function CronogramaClient({
           run={run}
           selecionados={selecionados}
           alternarSelecao={alternarSelecao}
+          projectId={projectId}
+          gradeSemanas={gradeSemanas}
+          semanasDaEtapa={semanasDaEtapa.get(stage.id) ?? []}
         />
       ))}
 
@@ -430,8 +450,11 @@ export function CronogramaClient({
 
 function StageCard({
   stage, index, isFirst, isLast, materials, isPending, run,
-  selecionados, alternarSelecao,
+  selecionados, alternarSelecao, projectId, gradeSemanas, semanasDaEtapa,
 }: {
+  projectId: string;
+  gradeSemanas: string[];
+  semanasDaEtapa: string[];
   stage: Stage; index: number; isFirst: boolean; isLast: boolean;
   materials: CatalogMaterial[]; isPending: boolean;
   run: (fn: () => Promise<{ error?: string } | void>) => void;
@@ -570,22 +593,16 @@ function StageCard({
                   className={`w-full bg-white ${inputClass}`}
                 />
               </Field>
-              <Field label="Duração (dias úteis)">
-                <input
-                  type="number" min="0" step="any"
-                  defaultValue={stage.days}
-                  onBlur={(e) => save({ days: Number(e.target.value) })}
-                  className={`w-full bg-white ${inputClass}`}
+              <div className="sm:col-span-2">
+                <SemanasDaEtapa
+                  projectId={projectId}
+                  stageId={stage.id}
+                  grade={gradeSemanas}
+                  marcadas={semanasDaEtapa}
+                  isPending={isPending}
+                  run={run}
                 />
-              </Field>
-              <Field label="Início previsto">
-                <input
-                  type="date"
-                  defaultValue={stage.startDate ?? ""}
-                  onBlur={(e) => save({ startDate: e.target.value || null })}
-                  className={`w-full bg-white ${inputClass}`}
-                />
-              </Field>
+              </div>
               <Field label="Início real">
                 <input
                   type="date"
@@ -892,6 +909,81 @@ function MaterialPicker({
           <Plus className="w-4 h-4" />
         </Button>
       </div>
+    </div>
+  );
+}
+
+// Em quais semanas da programação a etapa acontece. É daqui que sai o previsto
+// dela: da segunda da primeira semana marcada à sexta da última. Marcar aqui é
+// o mesmo que incluir a etapa na semana pela aba Programação — os dois lados
+// gravam no mesmo lugar.
+function SemanasDaEtapa({
+  projectId, stageId, grade, marcadas, isPending, run,
+}: {
+  projectId: string;
+  stageId: string;
+  grade: string[];
+  marcadas: string[];
+  isPending: boolean;
+  run: (fn: () => Promise<{ error?: string } | void>) => void;
+}) {
+  const [otim, setOtim] = useState<Record<string, boolean>>({});
+  const marcada = (w: string) => otim[w] ?? marcadas.includes(w);
+  const ativas = grade.filter(marcada);
+
+  function alternar(w: string) {
+    const nova = !marcada(w);
+    setOtim((o) => ({ ...o, [w]: nova }));
+    run(async () => {
+      const r = await toggleWeekStage(projectId, stageId, w, nova);
+      setOtim((o) => {
+        const { [w]: _x, ...resto } = o;
+        return resto;
+      });
+      return r;
+    });
+  }
+
+  const sexta = (seg: string) => {
+    const d = new Date(`${seg}T12:00:00Z`);
+    d.setUTCDate(d.getUTCDate() + 4);
+    return d.toISOString().slice(0, 10);
+  };
+
+  return (
+    <div className="flex flex-col gap-1">
+      <label className="text-xs font-medium text-gray-600">Semanas da programação</label>
+      {grade.length === 0 ? (
+        <p className="text-xs text-gray-400">
+          Informe o início da obra e o prazo de entrega, no topo, para escolher as semanas.
+        </p>
+      ) : (
+        <>
+          <div className="flex flex-wrap gap-1">
+            {grade.map((w, i) => (
+              <button
+                key={w}
+                type="button"
+                disabled={isPending && otim[w] !== undefined}
+                onClick={() => alternar(w)}
+                title={`Semana ${i + 1}: ${dataBR(w)} a ${dataBR(sexta(w))}`}
+                className={`min-w-[2.25rem] rounded px-1.5 py-1 text-xs font-medium border ${
+                  marcada(w)
+                    ? "bg-brand-600 border-brand-600 text-white"
+                    : "bg-white border-gray-300 text-gray-600 hover:border-brand-400"
+                }`}
+              >
+                S{i + 1}
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-gray-500">
+            {ativas.length === 0
+              ? "Nenhuma semana marcada."
+              : `Previsto: ${dataBR(ativas[0])} a ${dataBR(sexta(ativas[ativas.length - 1]))} · ${ativas.length} ${ativas.length === 1 ? "semana" : "semanas"}`}
+          </p>
+        </>
+      )}
     </div>
   );
 }

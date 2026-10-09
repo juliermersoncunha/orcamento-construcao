@@ -70,7 +70,11 @@ export default async function ConsumoPage({
   };
   for (const r of planejado) linha(r.materialId, r.material.name, r.material.unit).estimado += r.quantity;
   for (const r of compras) linha(r.materialId, r.material.name, r.material.unit).comprado += r.quantity;
-  for (const u of usages) linha(u.materialId, u.material.name, u.material.unit).consumido += u.quantity;
+  // Lançamento que voltou ao estoque fica no histórico, mas não é consumo.
+  for (const u of usages) {
+    if (u.status === "ESTOQUE") continue;
+    linha(u.materialId, u.material.name, u.material.unit).consumido += u.quantity;
+  }
 
   return (
     <div className="p-8 max-w-5xl">
@@ -102,6 +106,9 @@ export default async function ConsumoPage({
           quantity: u.quantity,
           location: u.location,
           stageName: u.stage?.name ?? null,
+          stageId: u.stageId,
+          materialId: u.materialId,
+          status: u.status,
           usedAt: u.usedAt.toISOString().slice(0, 10),
           automatico: u.autoStageId !== null,
           corrigido: u.autoStageId !== null && u.autoQuantity !== null && u.quantity !== u.autoQuantity,

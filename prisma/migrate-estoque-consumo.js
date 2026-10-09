@@ -14,6 +14,7 @@ async function main() {
   await c.query(`ALTER TABLE "ScheduleWeekPurchase" ADD COLUMN IF NOT EXISTS "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP`);
   await c.query(`ALTER TABLE "MaterialUsage" ADD COLUMN IF NOT EXISTS "autoStageId" TEXT`);
   await c.query(`ALTER TABLE "MaterialUsage" ADD COLUMN IF NOT EXISTS "autoQuantity" DOUBLE PRECISION`);
+  await c.query(`ALTER TABLE "MaterialUsage" ADD COLUMN IF NOT EXISTS "status" TEXT NOT NULL DEFAULT 'CONSUMIDO'`);
   console.log("colunas OK");
   await c.end();
 }

@@ -717,6 +717,10 @@ model MaterialUsage {
   // reaberta, a linha sai; se ele corrigiu, a correcao fica.
   autoStageId  String?
   autoQuantity Float?
+  // CONSUMIDO conta como gasto. ESTOQUE e o lancamento que voltou para a
+  // obra (sobrou, ou foi lancado errado): fica no historico, mas sai do
+  // consumo e o material volta a contar como "na obra".
+  status       String  @default("CONSUMIDO")
   createdAt  DateTime @default(now())
 
   project  Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)

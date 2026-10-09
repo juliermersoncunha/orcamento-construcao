@@ -88,11 +88,27 @@ export async function addMaterialUsage(
 
 export async function updateMaterialUsage(
   usageId: string,
-  input: { quantity?: number; location?: string | null; usedAt?: string | null; stageId?: string | null }
+  input: {
+    quantity?: number;
+    location?: string | null;
+    usedAt?: string | null;
+    stageId?: string | null;
+    materialId?: string;
+    status?: string;
+  }
 ) {
   const usage = await assertOwnsUsage(usageId);
 
   const data: Record<string, unknown> = {};
+  if (input.status !== undefined) {
+    if (input.status !== "CONSUMIDO" && input.status !== "ESTOQUE") return { error: "Situação inválida." };
+    data.status = input.status;
+  }
+  if (input.materialId !== undefined) {
+    const m = await prisma.material.findUnique({ where: { id: input.materialId }, select: { id: true } });
+    if (!m) return { error: "Material não encontrado." };
+    data.materialId = m.id;
+  }
   if (input.quantity !== undefined) {
     const q = Number(input.quantity);
     if (!Number.isFinite(q) || q <= 0) return { error: "Quantidade inválida." };

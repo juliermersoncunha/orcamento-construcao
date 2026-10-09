@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, ClipboardList } from "lucide-react";
+import { Plus, Trash2, ClipboardList, Pencil, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { addMaterialUsage, updateMaterialUsage, deleteMaterialUsage } from "@/app/actions/material-usage";
@@ -17,6 +17,9 @@ export type UsageRow = {
   quantity: number;
   location: string | null;
   stageName: string | null;
+  stageId: string | null;
+  materialId: string;
+  status: string;
   usedAt: string;
   automatico: boolean;
   corrigido: boolean;
@@ -319,79 +322,22 @@ export function ConsumoClient({
                     <th className="text-left font-medium py-1">Material</th>
                     <th className="text-center font-medium py-1 w-24">Qtd</th>
                     <th className="text-center font-medium py-1 w-16">Un</th>
+                    <th className="text-left font-medium py-1">Situação</th>
                     <th className="text-left font-medium py-1">Onde foi utilizado</th>
                     <th className="text-left font-medium py-1">Etapa</th>
-                    <th className="w-8" />
+                    <th className="w-14" />
                   </tr>
                 </thead>
                 <tbody>
                   {usages.map((u) => (
-                    <tr key={u.id} className="border-b border-gray-100">
-                      <td className="py-1.5">
-                        <input
-                          type="date"
-                          defaultValue={u.usedAt}
-                          onBlur={(e) => {
-                            if (e.target.value && e.target.value !== u.usedAt) {
-                              run(() => updateMaterialUsage(u.id, { usedAt: e.target.value }));
-                            }
-                          }}
-                          className="w-full rounded border border-transparent hover:border-gray-300 px-1 py-0.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-                          title={dataBR(u.usedAt)}
-                        />
-                      </td>
-                      <td className="py-1.5 text-gray-800">
-                        {u.materialName}
-                        {u.automatico && (
-                          <span
-                            className={`ml-1.5 rounded px-1 py-0.5 text-[10px] font-medium ${u.corrigido ? "bg-amber-100 text-amber-800" : "bg-gray-100 text-gray-500"}`}
-                            title={u.corrigido ? "Lançado ao concluir a etapa e corrigido por você" : "Lançado ao concluir a etapa — corrija se sobrou ou faltou"}
-                          >
-                            {u.corrigido ? "automático, corrigido" : "automático"}
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-1.5 text-center">
-                        <input
-                          type="number" min="0" step="any"
-                          defaultValue={u.quantity}
-                          onBlur={(e) => {
-                            const v = Number(e.target.value);
-                            if (v > 0 && v !== u.quantity) {
-                              run(() => updateMaterialUsage(u.id, { quantity: v }));
-                            }
-                          }}
-                          className="w-20 text-center rounded border border-gray-300 px-1 py-0.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-                        />
-                      </td>
-                      <td className="py-1.5 text-center text-gray-500">{u.unit}</td>
-                      <td className="py-1.5">
-                        <input
-                          defaultValue={u.location ?? ""}
-                          onBlur={(e) => {
-                            if (e.target.value !== (u.location ?? "")) {
-                              run(() => updateMaterialUsage(u.id, { location: e.target.value }));
-                            }
-                          }}
-                          placeholder="—"
-                          className="w-full rounded border border-transparent hover:border-gray-300 px-1 py-0.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-                        />
-                      </td>
-                      <td className="py-1.5 text-gray-500 text-xs">
-                        {u.stageName ?? <span className="text-gray-300">—</span>}
-                      </td>
-                      <td className="py-1.5 text-right">
-                        <button
-                          type="button"
-                          aria-label="Excluir lançamento"
-                          disabled={isPending}
-                          onClick={() => run(() => deleteMaterialUsage(u.id))}
-                          className="text-gray-300 hover:text-red-600"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </td>
-                    </tr>
+                    <LinhaLancamento
+                      key={u.id}
+                      u={u}
+                      materials={materials}
+                      stages={stages}
+                      isPending={isPending}
+                      run={run}
+                    />
                   ))}
                 </tbody>
               </table>
@@ -457,5 +403,124 @@ function Baixa({
         Baixar
       </button>
     </div>
+  );
+}
+
+// Um lançamento: só leitura, com o lápis para editar tudo de uma vez — data,
+// material, quantidade, situação, onde e etapa. Editar campo a campo no blur,
+// como era, salvava sem querer quem só passava o mouse/teclado pela linha.
+function LinhaLancamento({
+  u, materials, stages, isPending, run,
+}: {
+  u: UsageRow;
+  materials: UsageMaterial[];
+  stages: UsageStage[];
+  isPending: boolean;
+  run: (fn: () => Promise<{ error?: string } | void>) => void;
+}) {
+  const [editando, setEditando] = useState(false);
+  const [data, setData] = useState(u.usedAt);
+  const [materialId, setMaterialId] = useState(u.materialId);
+  const [qtd, setQtd] = useState(String(u.quantity));
+  const [status, setStatus] = useState(u.status);
+  const [onde, setOnde] = useState(u.location ?? "");
+  const [stageId, setStageId] = useState(u.stageId ?? "");
+
+  function abrir() {
+    setData(u.usedAt); setMaterialId(u.materialId); setQtd(String(u.quantity));
+    setStatus(u.status); setOnde(u.location ?? ""); setStageId(u.stageId ?? "");
+    setEditando(true);
+  }
+
+  const noEstoque = u.status === "ESTOQUE";
+  const campo = "rounded border border-gray-300 px-1.5 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500";
+
+  if (!editando) {
+    return (
+      <tr className={`border-b border-gray-100 ${noEstoque ? "text-gray-400" : ""}`}>
+        <td className="py-1.5">{dataBR(u.usedAt)}</td>
+        <td className={`py-1.5 ${noEstoque ? "line-through" : "text-gray-800"}`}>{u.materialName}</td>
+        <td className="py-1.5 text-center">{fmt(u.quantity)}</td>
+        <td className="py-1.5 text-center text-gray-500">{u.unit}</td>
+        <td className="py-1.5">
+          <span className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${noEstoque ? "bg-amber-100 text-amber-800" : "bg-gray-100 text-gray-600"}`}>
+            {noEstoque ? "voltou ao estoque" : "consumido"}
+          </span>
+        </td>
+        <td className="py-1.5">{u.location ?? <span className="text-gray-300">—</span>}</td>
+        <td className="py-1.5 text-xs text-gray-500">{u.stageName ?? <span className="text-gray-300">—</span>}</td>
+        <td className="py-1.5 text-right whitespace-nowrap">
+          <button type="button" aria-label="Editar lançamento" onClick={abrir} className="mr-2 text-gray-400 hover:text-brand-600">
+            <Pencil className="w-3.5 h-3.5" />
+          </button>
+          <button
+            type="button"
+            aria-label="Excluir lançamento"
+            disabled={isPending}
+            onClick={() => { if (confirm(`Excluir o lançamento de ${fmt(u.quantity)} ${u.unit} de ${u.materialName}?`)) run(() => deleteMaterialUsage(u.id)); }}
+            className="text-gray-300 hover:text-red-600"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        </td>
+      </tr>
+    );
+  }
+
+  const n = Number(qtd.replace(",", "."));
+  const valido = Number.isFinite(n) && n > 0 && !!materialId;
+
+  return (
+    <tr className="border-b border-brand-200 bg-brand-50/40">
+      <td className="py-1.5 pr-1"><input type="date" value={data} onChange={(e) => setData(e.target.value)} className={`w-32 ${campo}`} /></td>
+      <td className="py-1.5 pr-1">
+        <select value={materialId} onChange={(e) => setMaterialId(e.target.value)} className={`w-full max-w-[16rem] bg-white ${campo}`}>
+          {materials.some((m) => m.id === materialId) ? null : <option value={materialId}>{u.materialName}</option>}
+          {materials.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+        </select>
+      </td>
+      <td className="py-1.5 pr-1 text-center">
+        <input value={qtd} onChange={(e) => setQtd(e.target.value)} inputMode="decimal" className={`w-20 text-center ${campo}`} />
+      </td>
+      <td className="py-1.5 text-center text-gray-500">{materials.find((m) => m.id === materialId)?.unit ?? u.unit}</td>
+      <td className="py-1.5 pr-1">
+        <select value={status} onChange={(e) => setStatus(e.target.value)} className={`bg-white ${campo}`}>
+          <option value="CONSUMIDO">consumido</option>
+          <option value="ESTOQUE">voltou ao estoque</option>
+        </select>
+      </td>
+      <td className="py-1.5 pr-1">
+        <input value={onde} onChange={(e) => setOnde(e.target.value)} list="sugestoes-local" placeholder="—" className={`w-full ${campo}`} />
+      </td>
+      <td className="py-1.5 pr-1">
+        <select value={stageId} onChange={(e) => setStageId(e.target.value)} className={`w-full max-w-[11rem] bg-white text-xs ${campo}`}>
+          <option value="">— sem etapa —</option>
+          {stages.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+        </select>
+      </td>
+      <td className="py-1.5 text-right whitespace-nowrap">
+        <button
+          type="button"
+          aria-label="Salvar"
+          disabled={!valido || isPending}
+          onClick={() => {
+            run(async () => {
+              const r = await updateMaterialUsage(u.id, {
+                usedAt: data, materialId, quantity: n, status,
+                location: onde, stageId: stageId || null,
+              });
+              if (!r?.error) setEditando(false);
+              return r;
+            });
+          }}
+          className="mr-2 text-green-600 hover:text-green-800 disabled:opacity-40"
+        >
+          <Check className="w-4 h-4" />
+        </button>
+        <button type="button" aria-label="Cancelar" onClick={() => setEditando(false)} className="text-gray-400 hover:text-gray-700">
+          <X className="w-4 h-4" />
+        </button>
+      </td>
+    </tr>
   );
 }

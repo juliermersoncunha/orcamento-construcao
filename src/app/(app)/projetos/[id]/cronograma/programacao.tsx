@@ -9,7 +9,7 @@ import {
   semanasDoPeriodo, semanasPorEtapa, materiaisDaSemana, type PlanStage, type WeekOverride,
 } from "@/lib/schedule-plan";
 import {
-  toggleWeekStage, setWeekMaterial, suggestWeekPlan, clearWeekPlan, toggleWeekPurchase, replaceWeekMaterial,
+  toggleWeekStage, setWeekMaterial, suggestWeekPlan, clearWeekPlan, toggleWeekPurchase, replaceWeekMaterial, setWeekMaterialOrigin,
 } from "@/app/actions/schedule";
 
 type Run = (fn: () => Promise<{ error?: string } | void>) => void;
@@ -453,8 +453,32 @@ function SemanaCard({
                     {fmt(m.quantity)}
                   </td>
                   <td className="py-1 text-center text-gray-500">{m.unit}</td>
-                  <td className="py-1 pl-3 text-xs text-gray-400">
-                    {m.etapas.length > 0 ? m.etapas.join(", ") : "acrescentado à mão"}
+                  <td className="py-1 pl-3">
+                    <select
+                      value={m.origemId ?? ""}
+                      disabled={isPending}
+                      onChange={(e) => run(() => setWeekMaterialOrigin(projectId, semana, {
+                        materialId: m.materialId,
+                        stageId: e.target.value || null,
+                        quantity: m.quantity,
+                        autoQuantity: Math.round(m.auto * 100) / 100,
+                        fromStages: m.auto > 0,
+                      }))}
+                      title="Etapa de origem deste material"
+                      className={`max-w-[15rem] truncate rounded border border-transparent bg-transparent px-1 py-0.5 text-xs hover:border-gray-300 focus:border-gray-300 focus:outline-none ${
+                        m.origemId ? "text-gray-700" : "text-gray-400"
+                      }`}
+                    >
+                      <option value="">
+                        {m.auto > 0 ? `automático${m.origemId ? "" : ` — ${m.etapas.join(", ")}`}` : "acrescentado à mão"}
+                      </option>
+                      <optgroup label="Etapas desta semana">
+                        {nestaSemana.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                      </optgroup>
+                      <optgroup label="Outras etapas">
+                        {fora.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                      </optgroup>
+                    </select>
                   </td>
                   <td className="py-1 text-right whitespace-nowrap">
                     {m.revisado && m.etapas.length > 0 && (

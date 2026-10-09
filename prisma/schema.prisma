@@ -678,6 +678,7 @@ model ScheduleStage {
 
   project   Project                 @relation(fields: [projectId], references: [id], onDelete: Cascade)
   weeks     ScheduleWeekStage[]
+  weekMaterials ScheduleWeekMaterial[]
   materials ScheduleStageMaterial[]
   tasks     ScheduleTask[]
   usages    MaterialUsage[]
@@ -774,9 +775,14 @@ model ScheduleWeekMaterial {
   materialId String
   weekStart  DateTime
   quantity   Float
+  // Origem escolhida pelo usuario para a linha. Nula = a calculada, que sao
+  // as etapas da semana que usam o material. E so rotulo: nao muda
+  // quantidade, estoque nem consumo.
+  stageId    String?
 
-  project  Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  material Material @relation(fields: [materialId], references: [id])
+  project  Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  material Material       @relation(fields: [materialId], references: [id])
+  stage    ScheduleStage? @relation(fields: [stageId], references: [id], onDelete: SetNull)
 
   @@unique([projectId, weekStart, materialId])
 }

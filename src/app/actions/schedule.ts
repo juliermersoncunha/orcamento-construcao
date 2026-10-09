@@ -539,3 +539,36 @@ export async function replaceWeekMaterial(
   revalidatePath(`/projetos/${projectId}/consumo`);
   return {};
 }
+
+// Escolhe a etapa de origem de uma linha de material da semana. É só rótulo —
+// grava junto a quantidade que a linha mostra agora, para fixar a origem não
+// alterar o número. `stageId` nulo volta à origem calculada; se a linha não
+// tinha outra revisão, a gravação é apagada.
+export async function setWeekMaterialOrigin(
+  projectId: string,
+  weekStart: string,
+  input: { materialId: string; stageId: string | null; quantity: number; autoQuantity: number; fromStages: boolean }
+) {
+  await assertOwnsProject(projectId);
+  const ws = meioDia(weekStart);
+  const where = { projectId_weekStart_materialId: { projectId, weekStart: ws, materialId: input.materialId } };
+
+  if (input.stageId) {
+    const stage = await prisma.scheduleStage.findFirst({ where: { id: input.stageId, projectId }, select: { id: true } });
+    if (!stage) return { error: "Etapa não encontrada." };
+    await prisma.scheduleWeekMaterial.upsert({
+      where,
+      create: { projectId, weekStart: ws, materialId: input.materialId, quantity: input.quantity, stageId: stage.id },
+      update: { stageId: stage.id },
+    });
+  } else {
+    const atual = await prisma.scheduleWeekMaterial.findUnique({ where });
+    if (atual) {
+      const semOutraRevisao = input.fromStages && atual.quantity === input.autoQuantity;
+      if (semOutraRevisao) await prisma.scheduleWeekMaterial.delete({ where });
+      else await prisma.scheduleWeekMaterial.update({ where, data: { stageId: null } });
+    }
+  }
+  touch(projectId);
+  return {};
+}

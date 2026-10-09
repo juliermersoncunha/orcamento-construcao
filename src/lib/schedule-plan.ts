@@ -22,7 +22,10 @@ export type PlanStage = {
   materials: { materialId: string; name: string; unit: string; quantity: number }[];
 };
 
-export type WeekOverride = { materialId: string; name: string; unit: string; quantity: number };
+export type WeekOverride = {
+  materialId: string; name: string; unit: string; quantity: number;
+  stageId?: string | null; // origem escolhida pelo usuário
+};
 
 export type PlanWeekMaterial = {
   materialId: string;
@@ -32,6 +35,7 @@ export type PlanWeekMaterial = {
   quantity: number;      // o que vale (revisado ou automático)
   revisado: boolean;
   etapas: string[];
+  origemId: string | null; // etapa escolhida como origem; nula = calculada
 };
 
 /** Segundas-feiras do início ao prazo, inclusive. */
@@ -75,7 +79,7 @@ export function materiaisDaSemana(
     for (const m of st.materials) {
       const a = acc.get(m.materialId) ?? {
         materialId: m.materialId, name: m.name, unit: m.unit,
-        auto: 0, quantity: 0, revisado: false, etapas: [],
+        auto: 0, quantity: 0, revisado: false, etapas: [], origemId: null,
       };
       a.auto += m.quantity * fracao;
       if (!a.etapas.includes(st.name)) a.etapas.push(st.name);
@@ -85,17 +89,25 @@ export function materiaisDaSemana(
 
   for (const a of acc.values()) a.quantity = arred(a.auto);
 
+  const nomeDe = new Map(stages.map((s) => [s.id, s.name]));
   for (const o of overrides) {
     const a = acc.get(o.materialId);
     if (a) {
+      // A revisão só conta como revisão de quantidade se mudou o número: quem
+      // apenas escolheu a origem não "revisou" a linha.
+      if (o.quantity !== arred(a.auto)) a.revisado = true;
       a.quantity = o.quantity;
-      a.revisado = true;
     } else {
       // Material que nenhuma etapa da semana tem: acréscimo manual.
       acc.set(o.materialId, {
         materialId: o.materialId, name: o.name, unit: o.unit,
-        auto: 0, quantity: o.quantity, revisado: true, etapas: [],
+        auto: 0, quantity: o.quantity, revisado: true, etapas: [], origemId: null,
       });
+    }
+    if (o.stageId && nomeDe.has(o.stageId)) {
+      const l = acc.get(o.materialId)!;
+      l.origemId = o.stageId;
+      l.etapas = [nomeDe.get(o.stageId)!];
     }
   }
 

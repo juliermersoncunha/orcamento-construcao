@@ -56,7 +56,7 @@ export function CronogramaClient({
   projectId: string; scheduleStart: string | null; scheduleEnd: string | null;
   baselineAt: string | null;
   weekStages: { stageId: string; weekStart: string }[];
-  weekMaterials: { weekStart: string; materialId: string; name: string; unit: string; quantity: number }[];
+  weekMaterials: { weekStart: string; materialId: string; name: string; unit: string; quantity: number; stageId: string | null }[];
   weekPurchases: string[]; // "semana|materialId" já comprados
   stages: Stage[]; materials: CatalogMaterial[];
 }) {

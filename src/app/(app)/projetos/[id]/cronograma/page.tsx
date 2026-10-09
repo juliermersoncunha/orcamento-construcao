@@ -82,6 +82,7 @@ export default async function CronogramaPage({
           name: w.material.name,
           unit: w.material.unit,
           quantity: w.quantity,
+          stageId: w.stageId,
         }))}
         stages={stages.map((s) => ({
           id: s.id,

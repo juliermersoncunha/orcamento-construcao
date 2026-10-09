@@ -795,8 +795,9 @@ model ScheduleWeekPurchase {
   projectId  String
   materialId String
   weekStart  DateTime
-  // Quantidade que entrou na obra — a da linha da semana no momento em que
-  // foi marcada. Fica gravada: revisar a linha depois nao muda o que chegou.
+  // Quantidade da linha no momento em que foi marcada. O estoque usa a
+  // quantidade ATUAL da linha (corrigir a linha comprada corrige a compra);
+  // esta so vale se a linha deixar de existir na semana.
   quantity   Float    @default(0)
   createdAt  DateTime @default(now())
 

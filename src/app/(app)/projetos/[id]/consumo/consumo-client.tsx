@@ -67,6 +67,9 @@ export function ConsumoClient({
   const [stageId, setStageId] = useState("");
   const [usedAt, setUsedAt] = useState(hoje());
 
+  // Por padrão mostra só o que ainda tem saldo na obra: é dali que sai a baixa.
+  const [soNaObra, setSoNaObra] = useState(true);
+
   function run(fn: () => Promise<{ error?: string } | void>) {
     setError(null);
     startTransition(async () => {
@@ -217,10 +220,16 @@ export function ConsumoClient({
       {quadro.length > 0 && (
         <Card>
           <CardContent className="py-4">
-            <p className="text-sm font-semibold text-gray-700">Estimado × comprado × consumido</p>
+            <div className="flex flex-wrap items-baseline gap-3">
+              <p className="text-sm font-semibold text-gray-700">Estoque da obra</p>
+              <label className="flex items-center gap-1.5 text-xs text-gray-600">
+                <input type="checkbox" checked={soNaObra} onChange={(e) => setSoNaObra(e.target.checked)} />
+                só o que está na obra
+              </label>
+            </div>
             <p className="text-xs text-gray-500 mb-3">
-              Estimado vem das etapas; comprado, das compras marcadas na Programação; consumido, dos
-              lançamentos abaixo — inclusive os automáticos, feitos ao concluir uma etapa.
+              Comprado vem das compras marcadas na Programação. Dê baixa no que foi usado — a etapa é
+              opcional — e o consumo sai do que está na obra.
             </p>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -233,10 +242,11 @@ export function ConsumoClient({
                     <th className="text-right font-medium py-1 w-20">Consumido</th>
                     <th className="text-right font-medium py-1 w-20" title="Comprado menos consumido">Na obra</th>
                     <th className="text-right font-medium py-1 w-24" title="Consumido menos estimado">Desvio</th>
+                    <th className="text-left font-medium py-1 pl-4">Dar baixa</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {quadro.map((q) => {
+                  {quadro.filter((q) => !soNaObra || q.comprado - q.consumido > 0).map((q) => {
                     const naObra = q.comprado - q.consumido;
                     const desvio = q.consumido - q.estimado;
                     const pct = q.estimado > 0 ? (desvio / q.estimado) * 100 : null;
@@ -257,6 +267,24 @@ export function ConsumoClient({
                           {q.consumido === 0
                             ? "—"
                             : `${desvio > 0 ? "+" : ""}${fmt(desvio)}${pct !== null ? ` (${desvio > 0 ? "+" : ""}${Math.round(pct)}%)` : ""}`}
+                        </td>
+                        <td className="py-1 pl-4">
+                          <Baixa
+                            linha={q}
+                            naObra={naObra}
+                            stages={stages}
+                            isPending={isPending}
+                            onBaixar={(quantidade, stageId) => {
+                              const etapa = stages.find((s) => s.id === stageId);
+                              run(() => addMaterialUsage(projectId, {
+                                materialId: q.materialId,
+                                quantity: quantidade,
+                                stageId: stageId || null,
+                                location: etapa?.name ?? null,
+                                usedAt: hoje(),
+                              }));
+                            }}
+                          />
                         </td>
                       </tr>
                     );
@@ -371,6 +399,63 @@ export function ConsumoClient({
           )}
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+// Baixa direta a partir do estoque: quantidade usada e, se quiser, a etapa.
+// Passar do que está na obra é permitido — pode ser material que não foi
+// marcado como comprado —, mas a tela avisa antes.
+function Baixa({
+  linha, naObra, stages, isPending, onBaixar,
+}: {
+  linha: QuadroLinha;
+  naObra: number;
+  stages: UsageStage[];
+  isPending: boolean;
+  onBaixar: (quantidade: number, stageId: string) => void;
+}) {
+  const [qtd, setQtd] = useState("");
+  const [stageId, setStageId] = useState("");
+  const n = Number(qtd.replace(",", "."));
+  const valido = qtd.trim() !== "" && Number.isFinite(n) && n > 0;
+  const passa = valido && n > naObra;
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <input
+        value={qtd}
+        onChange={(e) => setQtd(e.target.value)}
+        inputMode="decimal"
+        placeholder="qtd"
+        aria-label={`Quantidade usada de ${linha.name}`}
+        className={`w-16 rounded border px-1.5 py-0.5 text-right text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 ${
+          passa ? "border-amber-400 bg-amber-50" : "border-gray-300"
+        }`}
+        title={passa ? `Mais do que está na obra (${fmt(naObra)} ${linha.unit})` : undefined}
+      />
+      <select
+        value={stageId}
+        onChange={(e) => setStageId(e.target.value)}
+        aria-label="Etapa (opcional)"
+        className="max-w-[9rem] rounded border border-gray-300 bg-white px-1 py-0.5 text-xs text-gray-600"
+      >
+        <option value="">etapa (opcional)</option>
+        {stages.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+      </select>
+      <button
+        type="button"
+        disabled={!valido || isPending}
+        onClick={() => {
+          if (passa && !confirm(`Dar baixa de ${fmt(n)} ${linha.unit}? Na obra constam ${fmt(naObra)}.`)) return;
+          onBaixar(n, stageId);
+          setQtd("");
+          setStageId("");
+        }}
+        className="rounded bg-brand-600 px-2 py-0.5 text-xs font-medium text-white disabled:opacity-40"
+      >
+        Baixar
+      </button>
     </div>
   );
 }

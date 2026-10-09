@@ -56,14 +56,15 @@ export async function addMaterialUsage(
   if (!material) return { error: "Escolha um material." };
 
   // A etapa e opcional, mas se vier tem de ser deste projeto.
-  let stageId: string | null = null;
-  if (input.stageId) {
-    const stage = await prisma.scheduleStage.findFirst({
-      where: { id: input.stageId, projectId },
-      select: { id: true },
-    });
-    stageId = stage?.id ?? null;
-  }
+  // Etapa obrigatória: é ela que permite rastrear depois em que parte da obra
+  // cada material foi consumido. A tela já exige; aqui é a garantia.
+  if (!input.stageId) return { error: "Informe a etapa em que o material foi usado." };
+  const stage = await prisma.scheduleStage.findFirst({
+    where: { id: input.stageId, projectId },
+    select: { id: true },
+  });
+  if (!stage) return { error: "Etapa não encontrada." };
+  const stageId = stage.id;
 
   // Meio-dia evita a data voltar um dia ao cruzar fuso.
   const usedAt = input.usedAt ? new Date(`${input.usedAt}T12:00:00`) : new Date();
@@ -119,15 +120,13 @@ export async function updateMaterialUsage(
     data.usedAt = input.usedAt ? new Date(`${input.usedAt}T12:00:00`) : new Date();
   }
   if (input.stageId !== undefined) {
-    if (input.stageId) {
-      const stage = await prisma.scheduleStage.findFirst({
-        where: { id: input.stageId, projectId: usage.projectId },
-        select: { id: true },
-      });
-      data.stageId = stage?.id ?? null;
-    } else {
-      data.stageId = null;
-    }
+    if (!input.stageId) return { error: "Informe a etapa em que o material foi usado." };
+    const stage = await prisma.scheduleStage.findFirst({
+      where: { id: input.stageId, projectId: usage.projectId },
+      select: { id: true },
+    });
+    if (!stage) return { error: "Etapa não encontrada." };
+    data.stageId = stage.id;
   }
 
   await prisma.materialUsage.update({ where: { id: usageId }, data });

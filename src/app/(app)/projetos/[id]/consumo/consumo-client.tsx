@@ -196,7 +196,7 @@ export function ConsumoClient({
             {stages.length > 0 && (
               <div className="flex flex-col gap-1 flex-1">
                 <label htmlFor="etapa" className="text-xs font-medium text-gray-600">
-                  Etapa do cronograma <span className="text-gray-400">(opcional)</span>
+                  Etapa do cronograma
                 </label>
                 <select
                   id="etapa"
@@ -204,14 +204,14 @@ export function ConsumoClient({
                   onChange={(e) => setStageId(e.target.value)}
                   className={`bg-white ${inputClass}`}
                 >
-                  <option value="">— sem etapa —</option>
+                  <option value="" disabled>escolha a etapa…</option>
                   {stages.map((s) => (
                     <option key={s.id} value={s.id}>{s.name}</option>
                   ))}
                 </select>
               </div>
             )}
-            <Button onClick={lancar} disabled={isPending || !materialId || !quantity}>
+            <Button onClick={lancar} disabled={isPending || !materialId || !quantity || !stageId}>
               <Plus className="w-4 h-4" />
               Lançar
             </Button>
@@ -231,8 +231,8 @@ export function ConsumoClient({
               </label>
             </div>
             <p className="text-xs text-gray-500 mb-3">
-              Comprado vem das compras marcadas na Programação. Dê baixa no que foi usado — a etapa é
-              opcional — e o consumo sai do que está na obra.
+              Comprado vem das compras marcadas na Programação. Dê baixa no que foi usado, informando a
+              etapa — é ela que guarda em que parte da obra o material foi consumido.
             </p>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -383,15 +383,18 @@ function Baixa({
       <select
         value={stageId}
         onChange={(e) => setStageId(e.target.value)}
-        aria-label="Etapa (opcional)"
-        className="max-w-[9rem] rounded border border-gray-300 bg-white px-1 py-0.5 text-xs text-gray-600"
+        aria-label="Etapa"
+        className={`max-w-[9rem] rounded border bg-white px-1 py-0.5 text-xs ${
+          valido && !stageId ? "border-amber-400 text-amber-800" : "border-gray-300 text-gray-600"
+        }`}
       >
-        <option value="">etapa (opcional)</option>
+        <option value="" disabled>escolha a etapa…</option>
         {stages.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
       </select>
       <button
         type="button"
-        disabled={!valido || isPending}
+        disabled={!valido || !stageId || isPending}
+        title={valido && !stageId ? "Escolha a etapa" : undefined}
         onClick={() => {
           if (passa && !confirm(`Dar baixa de ${fmt(n)} ${linha.unit}? Na obra constam ${fmt(naObra)}.`)) return;
           onBaixar(n, stageId);
@@ -468,7 +471,8 @@ function LinhaLancamento({
   }
 
   const n = Number(qtd.replace(",", "."));
-  const valido = Number.isFinite(n) && n > 0 && !!materialId;
+  // Lançamento antigo sem etapa só salva depois de escolher uma.
+  const valido = Number.isFinite(n) && n > 0 && !!materialId && !!stageId;
 
   return (
     <tr className="border-b border-brand-200 bg-brand-50/40">
@@ -494,7 +498,7 @@ function LinhaLancamento({
       </td>
       <td className="py-1.5 pr-1">
         <select value={stageId} onChange={(e) => setStageId(e.target.value)} className={`w-full max-w-[11rem] bg-white text-xs ${campo}`}>
-          <option value="">— sem etapa —</option>
+          <option value="" disabled>escolha a etapa…</option>
           {stages.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
         </select>
       </td>

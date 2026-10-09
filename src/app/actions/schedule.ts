@@ -479,3 +479,57 @@ export async function toggleWeekPurchase(
   revalidatePath(`/projetos/${projectId}/consumo`);
   return {};
 }
+
+// Edita uma linha de material da semana: troca o material e/ou a quantidade.
+//
+// A linha antiga some do jeito certo para a origem dela: se vinha das etapas
+// da semana, ganha revisão 0 (fica entre os excluídos, restaurável); se tinha
+// sido acrescentada à mão, a revisão é apagada. Se estava marcada como
+// comprada, a compra passa para o material novo — quem troca o material está
+// corrigindo qual produto chegou, não desfazendo a compra.
+export async function replaceWeekMaterial(
+  projectId: string,
+  weekStart: string,
+  input: { oldMaterialId: string; oldFromStages: boolean; newMaterialId: string; quantity: number }
+) {
+  await assertOwnsProject(projectId);
+  const q = Number(input.quantity);
+  if (!Number.isFinite(q) || q <= 0) return { error: "Quantidade inválida." };
+  const novo = await prisma.material.findUnique({ where: { id: input.newMaterialId }, select: { id: true } });
+  if (!novo) return { error: "Material não encontrado." };
+
+  const ws = meioDia(weekStart);
+  const chave = (materialId: string) => ({ projectId_weekStart_materialId: { projectId, weekStart: ws, materialId } });
+
+  await prisma.$transaction(async (tx) => {
+    if (input.newMaterialId !== input.oldMaterialId) {
+      if (input.oldFromStages) {
+        await tx.scheduleWeekMaterial.upsert({
+          where: chave(input.oldMaterialId),
+          create: { projectId, weekStart: ws, materialId: input.oldMaterialId, quantity: 0 },
+          update: { quantity: 0 },
+        });
+      } else {
+        await tx.scheduleWeekMaterial.deleteMany({ where: { projectId, weekStart: ws, materialId: input.oldMaterialId } });
+      }
+      const compra = await tx.scheduleWeekPurchase.findUnique({ where: chave(input.oldMaterialId) });
+      if (compra) {
+        await tx.scheduleWeekPurchase.delete({ where: { id: compra.id } });
+        await tx.scheduleWeekPurchase.upsert({
+          where: chave(input.newMaterialId),
+          create: { projectId, weekStart: ws, materialId: input.newMaterialId, quantity: q },
+          update: { quantity: q },
+        });
+      }
+    }
+    await tx.scheduleWeekMaterial.upsert({
+      where: chave(input.newMaterialId),
+      create: { projectId, weekStart: ws, materialId: input.newMaterialId, quantity: q },
+      update: { quantity: q },
+    });
+  });
+
+  touch(projectId);
+  revalidatePath(`/projetos/${projectId}/consumo`);
+  return {};
+}

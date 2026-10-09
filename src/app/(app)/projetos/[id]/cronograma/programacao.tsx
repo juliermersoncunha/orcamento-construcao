@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { X, RotateCcw, Sparkles, Trash2, CalendarRange, ShoppingCart, Copy, Check } from "lucide-react";
+import { X, RotateCcw, Sparkles, Trash2, CalendarRange, ShoppingCart, Copy, Check, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { dataBR, segundaISO } from "@/lib/schedule-weeks";
@@ -9,7 +9,7 @@ import {
   semanasDoPeriodo, semanasPorEtapa, materiaisDaSemana, type PlanStage, type WeekOverride,
 } from "@/lib/schedule-plan";
 import {
-  toggleWeekStage, setWeekMaterial, suggestWeekPlan, clearWeekPlan, toggleWeekPurchase,
+  toggleWeekStage, setWeekMaterial, suggestWeekPlan, clearWeekPlan, toggleWeekPurchase, replaceWeekMaterial,
 } from "@/app/actions/schedule";
 
 type Run = (fn: () => Promise<{ error?: string } | void>) => void;
@@ -295,6 +295,29 @@ function SemanaCard({
   const chave = (materialId: string) => `${semana}|${materialId}`;
   const faltam = materiais.filter((m) => m.quantity > 0 && !comprado(chave(m.materialId)));
   const [copiouSemana, setCopiouSemana] = useState(false);
+  const [editando, setEditando] = useState<string | null>(null);
+  const [verExcluidos, setVerExcluidos] = useState(false);
+  // Linha vinda das etapas e zerada pelo usuário = excluída da semana. Sai da
+  // lista principal e fica recolhida no fim, com opção de restaurar.
+  const excluido = (m: { revisado: boolean; quantity: number; etapas: string[] }) =>
+    m.revisado && m.quantity === 0 && m.etapas.length > 0;
+  const ativos = materiais.filter((m) => !excluido(m));
+  const excluidos = materiais.filter(excluido);
+
+  function excluir(m: { materialId: string; name: string; etapas: string[] }) {
+    const foiComprado = comprado(chave(m.materialId));
+    const aviso = foiComprado
+      ? `"${m.name}" está marcado como comprado. Excluir também retira a compra do estoque. Continuar?`
+      : `Excluir "${m.name}" desta semana?`;
+    if (!confirm(aviso)) return;
+    run(async () => {
+      if (foiComprado) {
+        const r: { error?: string } = await toggleWeekPurchase(projectId, semana, m.materialId, false);
+        if (r.error) return r;
+      }
+      return setWeekMaterial(projectId, semana, m.materialId, m.etapas.length > 0 ? 0 : null);
+    });
+  }
 
   return (
     <Card className={rotulo === "próxima semana" ? "border-brand-300 ring-1 ring-brand-200" : ""}>
@@ -367,7 +390,7 @@ function SemanaCard({
         </div>
 
         {/* Material da semana */}
-        {materiais.length > 0 ? (
+        {ativos.length > 0 || excluidos.length > 0 ? (
           <table className="w-full text-sm mb-2">
             <thead>
               <tr className="border-b border-gray-200 text-xs text-gray-500">
@@ -379,11 +402,30 @@ function SemanaCard({
                 <th className="text-right font-medium py-1 w-28">Qtd</th>
                 <th className="text-center font-medium py-1 w-14">Un</th>
                 <th className="text-left font-medium py-1 pl-3">Origem</th>
-                <th className="w-8" />
+                <th className="w-20" />
               </tr>
             </thead>
             <tbody>
-              {materiais.map((m) => (
+              {ativos.map((m) => editando === m.materialId ? (
+                <EdicaoLinha
+                  key={m.materialId}
+                  m={m}
+                  catalogo={catalogo}
+                  ocupados={new Set(materiais.map((x) => x.materialId))}
+                  isPending={isPending}
+                  onCancelar={() => setEditando(null)}
+                  onSalvar={(newMaterialId, quantity) => run(async () => {
+                    const r = await replaceWeekMaterial(projectId, semana, {
+                      oldMaterialId: m.materialId,
+                      oldFromStages: m.etapas.length > 0,
+                      newMaterialId,
+                      quantity,
+                    });
+                    if (!r?.error) setEditando(null);
+                    return r;
+                  })}
+                />
+              ) : (
                 <tr key={m.materialId} className={`border-b border-gray-100 ${m.quantity === 0 ? "text-gray-400" : ""}`}>
                   <td className="py-1 text-center">
                     <input
@@ -404,40 +446,75 @@ function SemanaCard({
                     />
                   </td>
                   <td className={`py-1 ${m.quantity === 0 || comprado(chave(m.materialId)) ? "line-through text-gray-400" : "text-gray-800"}`}>{m.name}</td>
-                  <td className="py-1 text-right">
-                    <input
-                      key={`${m.materialId}-${m.quantity}`}
-                      type="number" min="0" step="any"
-                      defaultValue={m.quantity}
-                      onBlur={(e) => {
-                        const v = Number(e.target.value);
-                        if (e.target.value !== "" && v !== m.quantity) {
-                          run(() => setWeekMaterial(projectId, semana, m.materialId, v));
-                        }
-                      }}
-                      className={`w-24 text-right rounded border px-1.5 py-0.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 ${
-                        m.revisado ? "border-amber-400 bg-amber-50" : "border-gray-300"
-                      }`}
-                      title={m.revisado ? `Revisado à mão — o cálculo daria ${fmt(m.auto)}` : "Calculado a partir das etapas da semana"}
-                    />
+                  <td
+                    className={`py-1 text-right pr-1 ${m.revisado ? "text-amber-700 font-medium" : ""}`}
+                    title={m.revisado ? `Revisado à mão — o cálculo daria ${fmt(m.auto)}` : "Calculado a partir das etapas da semana"}
+                  >
+                    {fmt(m.quantity)}
                   </td>
                   <td className="py-1 text-center text-gray-500">{m.unit}</td>
                   <td className="py-1 pl-3 text-xs text-gray-400">
                     {m.etapas.length > 0 ? m.etapas.join(", ") : "acrescentado à mão"}
                   </td>
-                  <td className="py-1 text-right">
-                    {m.revisado && (
+                  <td className="py-1 text-right whitespace-nowrap">
+                    {m.revisado && m.etapas.length > 0 && (
                       <button
                         type="button"
                         aria-label="Voltar ao valor calculado"
-                        title={m.etapas.length > 0 ? `Voltar ao calculado (${fmt(m.auto)})` : "Remover"}
+                        title={`Voltar ao calculado (${fmt(m.auto)})`}
                         disabled={isPending}
                         onClick={() => run(() => setWeekMaterial(projectId, semana, m.materialId, null))}
-                        className="text-gray-400 hover:text-brand-600"
+                        className="mr-2 text-gray-400 hover:text-brand-600"
                       >
-                        {m.etapas.length > 0 ? <RotateCcw className="w-3.5 h-3.5" /> : <X className="w-3.5 h-3.5" />}
+                        <RotateCcw className="w-3.5 h-3.5" />
                       </button>
                     )}
+                    <button
+                      type="button"
+                      aria-label={`Editar ${m.name}`}
+                      onClick={() => setEditando(m.materialId)}
+                      className="mr-2 text-gray-400 hover:text-brand-600"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      aria-label={`Excluir ${m.name} desta semana`}
+                      disabled={isPending}
+                      onClick={() => excluir(m)}
+                      className="text-gray-300 hover:text-red-600"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {excluidos.length > 0 && (
+                <tr>
+                  <td colSpan={7} className="pt-2 text-xs text-gray-500">
+                    <button type="button" onClick={() => setVerExcluidos((v) => !v)} className="underline hover:text-gray-700">
+                      {verExcluidos ? "Ocultar" : "Mostrar"} {excluidos.length} {excluidos.length === 1 ? "item excluído" : "itens excluídos"} desta semana
+                    </button>
+                  </td>
+                </tr>
+              )}
+              {verExcluidos && excluidos.map((m) => (
+                <tr key={`exc-${m.materialId}`} className="border-b border-gray-100 text-gray-400">
+                  <td colSpan={2} />
+                  <td className="py-1 line-through">{m.name}</td>
+                  <td className="py-1 text-right pr-1">0</td>
+                  <td className="py-1 text-center">{m.unit}</td>
+                  <td className="py-1 pl-3 text-xs">{m.etapas.join(", ")}</td>
+                  <td className="py-1 text-right">
+                    <button
+                      type="button"
+                      disabled={isPending}
+                      onClick={() => run(() => setWeekMaterial(projectId, semana, m.materialId, null))}
+                      className="flex items-center gap-1 ml-auto text-xs text-brand-600 hover:text-brand-800"
+                      title={`Restaurar com o valor calculado (${fmt(m.auto)})`}
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" /> restaurar
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -467,5 +544,64 @@ function SemanaCard({
         </select>
       </CardContent>
     </Card>
+  );
+}
+
+// Linha da semana em edição: material e quantidade. A lista de materiais não
+// oferece os que já estão na semana, para a troca não juntar duas linhas.
+function EdicaoLinha({
+  m, catalogo, ocupados, isPending, onCancelar, onSalvar,
+}: {
+  m: { materialId: string; name: string; unit: string; quantity: number };
+  catalogo: { id: string; name: string; unit: string }[];
+  ocupados: Set<string>;
+  isPending: boolean;
+  onCancelar: () => void;
+  onSalvar: (materialId: string, quantity: number) => void;
+}) {
+  const [materialId, setMaterialId] = useState(m.materialId);
+  const [qtd, setQtd] = useState(String(m.quantity));
+  const n = Number(qtd.replace(",", "."));
+  const valido = Number.isFinite(n) && n > 0;
+  const unit = catalogo.find((c) => c.id === materialId)?.unit ?? m.unit;
+  const opcoes = catalogo.filter((c) => c.id === m.materialId || !ocupados.has(c.id));
+  const campo = "rounded border border-gray-300 px-1.5 py-0.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500";
+
+  return (
+    <tr className="border-b border-brand-200 bg-brand-50/40">
+      <td colSpan={2} />
+      <td className="py-1 pr-2">
+        <select value={materialId} onChange={(e) => setMaterialId(e.target.value)} className={`w-full bg-white ${campo}`}>
+          {opcoes.some((c) => c.id === m.materialId) ? null : <option value={m.materialId}>{m.name}</option>}
+          {opcoes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+        </select>
+      </td>
+      <td className="py-1 text-right">
+        <input
+          value={qtd}
+          onChange={(e) => setQtd(e.target.value)}
+          inputMode="decimal"
+          autoFocus
+          onKeyDown={(e) => { if (e.key === "Enter" && valido) onSalvar(materialId, n); if (e.key === "Escape") onCancelar(); }}
+          className={`w-24 text-right ${campo}`}
+        />
+      </td>
+      <td className="py-1 text-center text-gray-500">{unit}</td>
+      <td />
+      <td className="py-1 text-right whitespace-nowrap">
+        <button
+          type="button"
+          aria-label="Salvar"
+          disabled={!valido || isPending}
+          onClick={() => onSalvar(materialId, n)}
+          className="mr-2 text-green-600 hover:text-green-800 disabled:opacity-40"
+        >
+          <Check className="w-4 h-4" />
+        </button>
+        <button type="button" aria-label="Cancelar" onClick={onCancelar} className="text-gray-400 hover:text-gray-700">
+          <X className="w-4 h-4" />
+        </button>
+      </td>
+    </tr>
   );
 }

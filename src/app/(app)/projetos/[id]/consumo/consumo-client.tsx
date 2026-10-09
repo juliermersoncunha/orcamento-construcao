@@ -18,10 +18,21 @@ export type UsageRow = {
   location: string | null;
   stageName: string | null;
   usedAt: string;
+  automatico: boolean;
+  corrigido: boolean;
+};
+
+export type QuadroLinha = {
+  materialId: string; name: string; unit: string;
+  estimado: number; comprado: number; consumido: number;
 };
 
 const inputClass =
   "rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent";
+
+function fmt(n: number) {
+  return n.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
+}
 
 function hoje() {
   const d = new Date();
@@ -35,13 +46,14 @@ function dataBR(iso: string) {
 }
 
 export function ConsumoClient({
-  projectId, materials, stages, locationSuggestions, usages,
+  projectId, materials, stages, locationSuggestions, usages, quadro,
 }: {
   projectId: string;
   materials: UsageMaterial[];
   stages: UsageStage[];
   locationSuggestions: string[];
   usages: UsageRow[];
+  quadro: QuadroLinha[];
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -71,20 +83,6 @@ export function ConsumoClient({
   }, [search, materials]);
 
   const chosen = materials.find((m) => m.id === materialId) ?? null;
-
-  // Totais por material: é a leitura que interessa depois — quanto de cada
-  // coisa já saiu, somando todos os lançamentos.
-  const porMaterial = useMemo(() => {
-    const acc = new Map<string, { nome: string; unit: string; total: number; lancamentos: number }>();
-    for (const u of usages) {
-      const k = `${u.materialName}|${u.unit}`;
-      const a = acc.get(k) ?? { nome: u.materialName, unit: u.unit, total: 0, lancamentos: 0 };
-      a.total += u.quantity;
-      a.lancamentos += 1;
-      acc.set(k, a);
-    }
-    return [...acc.values()].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
-  }, [usages]);
 
   function lancar() {
     if (!materialId) { setError("Escolha um material."); return; }
@@ -215,33 +213,57 @@ export function ConsumoClient({
         </CardContent>
       </Card>
 
-      {/* Totais por material */}
-      {porMaterial.length > 0 && (
+      {/* Quadro: estimado x comprado x consumido */}
+      {quadro.length > 0 && (
         <Card>
           <CardContent className="py-4">
-            <p className="text-sm font-semibold text-gray-700 mb-3">Total consumido por material</p>
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-200 text-xs text-gray-500">
-                  <th className="text-left font-medium py-1">Material</th>
-                  <th className="text-center font-medium py-1 w-24">Total</th>
-                  <th className="text-center font-medium py-1 w-20">Un</th>
-                  <th className="text-center font-medium py-1 w-28">Lançamentos</th>
-                </tr>
-              </thead>
-              <tbody>
-                {porMaterial.map((m) => (
-                  <tr key={m.nome + m.unit} className="border-b border-gray-100">
-                    <td className="py-1.5 text-gray-800">{m.nome}</td>
-                    <td className="py-1.5 text-center font-medium text-gray-900">
-                      {m.total.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}
-                    </td>
-                    <td className="py-1.5 text-center text-gray-500">{m.unit}</td>
-                    <td className="py-1.5 text-center text-gray-500">{m.lancamentos}</td>
+            <p className="text-sm font-semibold text-gray-700">Estimado × comprado × consumido</p>
+            <p className="text-xs text-gray-500 mb-3">
+              Estimado vem das etapas; comprado, das compras marcadas na Programação; consumido, dos
+              lançamentos abaixo — inclusive os automáticos, feitos ao concluir uma etapa.
+            </p>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-200 text-xs text-gray-500">
+                    <th className="text-left font-medium py-1">Material</th>
+                    <th className="text-center font-medium py-1 w-12">Un</th>
+                    <th className="text-right font-medium py-1 w-20">Estimado</th>
+                    <th className="text-right font-medium py-1 w-20">Comprado</th>
+                    <th className="text-right font-medium py-1 w-20">Consumido</th>
+                    <th className="text-right font-medium py-1 w-20" title="Comprado menos consumido">Na obra</th>
+                    <th className="text-right font-medium py-1 w-24" title="Consumido menos estimado">Desvio</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {quadro.map((q) => {
+                    const naObra = q.comprado - q.consumido;
+                    const desvio = q.consumido - q.estimado;
+                    const pct = q.estimado > 0 ? (desvio / q.estimado) * 100 : null;
+                    return (
+                      <tr key={q.materialId} className="border-b border-gray-100">
+                        <td className="py-1.5 text-gray-800">{q.name}</td>
+                        <td className="py-1.5 text-center text-gray-500">{q.unit}</td>
+                        <td className="py-1.5 text-right text-gray-600">{fmt(q.estimado)}</td>
+                        <td className="py-1.5 text-right text-gray-600">{fmt(q.comprado)}</td>
+                        <td className="py-1.5 text-right font-medium text-gray-900">{fmt(q.consumido)}</td>
+                        <td className={`py-1.5 text-right ${naObra < 0 ? "text-red-600" : "text-gray-600"}`}
+                            title={naObra < 0 ? "Consumiu mais do que foi marcado como comprado" : undefined}>
+                          {fmt(naObra)}
+                        </td>
+                        <td className={`py-1.5 text-right ${
+                          q.consumido === 0 ? "text-gray-300" : desvio > 0 ? "text-red-600" : desvio < 0 ? "text-green-700" : "text-gray-600"
+                        }`}>
+                          {q.consumido === 0
+                            ? "—"
+                            : `${desvio > 0 ? "+" : ""}${fmt(desvio)}${pct !== null ? ` (${desvio > 0 ? "+" : ""}${Math.round(pct)}%)` : ""}`}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </CardContent>
         </Card>
       )}
@@ -290,7 +312,17 @@ export function ConsumoClient({
                           title={dataBR(u.usedAt)}
                         />
                       </td>
-                      <td className="py-1.5 text-gray-800">{u.materialName}</td>
+                      <td className="py-1.5 text-gray-800">
+                        {u.materialName}
+                        {u.automatico && (
+                          <span
+                            className={`ml-1.5 rounded px-1 py-0.5 text-[10px] font-medium ${u.corrigido ? "bg-amber-100 text-amber-800" : "bg-gray-100 text-gray-500"}`}
+                            title={u.corrigido ? "Lançado ao concluir a etapa e corrigido por você" : "Lançado ao concluir a etapa — corrija se sobrou ou faltou"}
+                          >
+                            {u.corrigido ? "automático, corrigido" : "automático"}
+                          </span>
+                        )}
+                      </td>
                       <td className="py-1.5 text-center">
                         <input
                           type="number" min="0" step="any"

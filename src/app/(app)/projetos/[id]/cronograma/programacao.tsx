@@ -59,11 +59,11 @@ export function Programacao({
   const [otimCompra, setOtimCompra] = useState<Record<string, boolean>>({});
   const compradosSet = useMemo(() => new Set(weekPurchases), [weekPurchases]);
   const comprado = (chave: string) => otimCompra[chave] ?? compradosSet.has(chave);
-  function alternarCompra(semana: string, materialId: string, valor: boolean) {
+  function alternarCompra(semana: string, materialId: string, valor: boolean, quantidade: number) {
     const chave = `${semana}|${materialId}`;
     setOtimCompra((o) => ({ ...o, [chave]: valor }));
     run(async () => {
-      const r = await toggleWeekPurchase(projectId, semana, materialId, valor);
+      const r = await toggleWeekPurchase(projectId, semana, materialId, valor, quantidade);
       setOtimCompra((o) => {
         const { [chave]: _x, ...resto } = o;
         return resto;
@@ -270,7 +270,7 @@ function SemanaCard({
   comprado, alternarCompra, selecao, alternarSelecao,
 }: {
   comprado: (chave: string) => boolean;
-  alternarCompra: (semana: string, materialId: string, valor: boolean) => void;
+  alternarCompra: (semana: string, materialId: string, valor: boolean, quantidade: number) => void;
   selecao: Set<string>;
   alternarSelecao: (chave: string) => void;
   projectId: string;
@@ -389,7 +389,7 @@ function SemanaCard({
                     <input
                       type="checkbox"
                       checked={comprado(chave(m.materialId))}
-                      onChange={(e) => alternarCompra(semana, m.materialId, e.target.checked)}
+                      onChange={(e) => alternarCompra(semana, m.materialId, e.target.checked, m.quantity)}
                       title="Já comprado"
                       className="w-4 h-4 rounded accent-green-600"
                     />

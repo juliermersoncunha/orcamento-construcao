@@ -21,7 +21,7 @@ export default async function ConsumoPage({
   });
   if (!project) redirect("/projetos");
 
-  const [usages, materials, stages, rooms] = await Promise.all([
+  const [usages, materials, stages, rooms, planejado, compras] = await Promise.all([
     prisma.materialUsage.findMany({
       where: { projectId: id },
       orderBy: [{ usedAt: "desc" }, { createdAt: "desc" }],
@@ -47,7 +47,30 @@ export default async function ConsumoPage({
       orderBy: { order: "asc" },
       select: { name: true },
     }),
+    // Estimado = o que as etapas do cronograma preveem consumir.
+    prisma.scheduleStageMaterial.findMany({
+      where: { stage: { projectId: id } },
+      select: { materialId: true, quantity: true, material: { select: { name: true, unit: true } } },
+    }),
+    // Comprado = o que entrou na obra pela programação semanal.
+    prisma.scheduleWeekPurchase.findMany({
+      where: { projectId: id },
+      select: { materialId: true, quantity: true, material: { select: { name: true, unit: true } } },
+    }),
   ]);
+
+  // Quadro por material: estimado, comprado, consumido. A diferença entre eles
+  // é o que esta tela existe para mostrar — sobra, desperdício, erro de
+  // estimativa.
+  const quadro = new Map<string, { materialId: string; name: string; unit: string; estimado: number; comprado: number; consumido: number }>();
+  const linha = (materialId: string, name: string, unit: string) => {
+    const l = quadro.get(materialId) ?? { materialId, name, unit, estimado: 0, comprado: 0, consumido: 0 };
+    quadro.set(materialId, l);
+    return l;
+  };
+  for (const r of planejado) linha(r.materialId, r.material.name, r.material.unit).estimado += r.quantity;
+  for (const r of compras) linha(r.materialId, r.material.name, r.material.unit).comprado += r.quantity;
+  for (const u of usages) linha(u.materialId, u.material.name, u.material.unit).consumido += u.quantity;
 
   return (
     <div className="p-8 max-w-5xl">
@@ -80,7 +103,10 @@ export default async function ConsumoPage({
           location: u.location,
           stageName: u.stage?.name ?? null,
           usedAt: u.usedAt.toISOString().slice(0, 10),
+          automatico: u.autoStageId !== null,
+          corrigido: u.autoStageId !== null && u.autoQuantity !== null && u.quantity !== u.autoQuantity,
         }))}
+        quadro={[...quadro.values()].sort((a, b) => a.name.localeCompare(b.name, "pt-BR"))}
       />
     </div>
   );

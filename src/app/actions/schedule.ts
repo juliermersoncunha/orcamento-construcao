@@ -315,9 +315,15 @@ export async function addScheduleTask(stageId: string, name: string) {
   return {};
 }
 
-export async function toggleScheduleTask(taskId: string, done: boolean) {
+// Situação do item: PENDENTE | EM_ANDAMENTO | CONCLUIDA. `done` vai junto,
+// porque é o que os contadores "3/5 itens" leem.
+export async function setScheduleTaskStatus(taskId: string, status: string) {
+  if (!["PENDENTE", "EM_ANDAMENTO", "CONCLUIDA"].includes(status)) return { error: "Situação inválida." };
   const task = await assertOwnsTask(taskId);
-  await prisma.scheduleTask.update({ where: { id: taskId }, data: { done } });
+  await prisma.scheduleTask.update({
+    where: { id: taskId },
+    data: { status, done: status === "CONCLUIDA" },
+  });
   touch(task.stage.projectId);
   return {};
 }

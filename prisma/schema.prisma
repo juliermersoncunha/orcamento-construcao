@@ -692,6 +692,9 @@ model ScheduleTask {
   stageId String
   order   Int
   name    String
+  // PENDENTE | EM_ANDAMENTO | CONCLUIDA. `done` continua gravado em sincronia
+  // (done = CONCLUIDA) porque e o que os contadores "3/5 itens" leem.
+  status  String  @default("PENDENTE")
   done    Boolean @default(false)
 
   stage ScheduleStage @relation(fields: [stageId], references: [id], onDelete: Cascade)

@@ -97,7 +97,7 @@ export default async function CronogramaPage({
           baselineEnd: isoOrNull(s.baselineEnd),
           status: s.status,
           notes: s.notes,
-          tasks: s.tasks.map((t) => ({ id: t.id, name: t.name, done: t.done })),
+          tasks: s.tasks.map((t) => ({ id: t.id, name: t.name, done: t.done, status: t.status })),
           materials: s.materials.map((m) => ({
             rowId: m.id,
             materialId: m.material.id,

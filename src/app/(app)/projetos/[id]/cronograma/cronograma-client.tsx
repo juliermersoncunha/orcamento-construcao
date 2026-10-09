@@ -4,7 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   CalendarDays, Plus, Trash2, ChevronUp, ChevronDown, ChevronRight, Sparkles, Package,
-  ListChecks, CalendarRange, List, GanttChart,
+  ListChecks, CalendarRange, List, GanttChart, Clock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -12,7 +12,7 @@ import { STAGE_STATUS } from "@/lib/schedule-template";
 import {
   applyScheduleTemplate, addScheduleStage, updateScheduleStage,
   deleteScheduleStage, moveScheduleStage, addStageMaterial, updateStageMaterial,
-  addScheduleTask, toggleScheduleTask, renameScheduleTask, deleteScheduleTask,
+  addScheduleTask, setScheduleTaskStatus, renameScheduleTask, deleteScheduleTask,
   fillTemplateTasks, setScheduleStart, setScheduleEnd, toggleWeekStage,
 } from "@/app/actions/schedule";
 import { dataBR, diasUteisEntre } from "@/lib/schedule-weeks";
@@ -29,7 +29,7 @@ export type StageMaterialRow = {
   quantity: number; purchased: boolean;
 };
 
-export type StageTask = { id: string; name: string; done: boolean };
+export type StageTask = { id: string; name: string; done: boolean; status: string };
 
 export type Stage = {
   id: string; order: number; name: string;
@@ -333,14 +333,15 @@ function StageCard({
   // marcam-se varios itens seguidos. O estado visual anda na frente e so cede
   // quando a resposta chega. Fica aqui, e nao na lista, para o contador do
   // cabecalho nunca discordar dos riscos nos itens.
-  const [otim, setOtim] = useState<Record<string, boolean>>({});
-  const estaFeito = (t: StageTask) => otim[t.id] ?? t.done;
+  const [otim, setOtim] = useState<Record<string, string>>({});
+  const statusDe = (t: StageTask) => otim[t.id] ?? t.status;
+  const estaFeito = (t: StageTask) => statusDe(t) === "CONCLUIDA";
   const feitas = stage.tasks.filter(estaFeito).length;
 
-  function alternarTask(t: StageTask, done: boolean) {
-    setOtim((o) => ({ ...o, [t.id]: done }));
+  function alternarTask(t: StageTask, status: string) {
+    setOtim((o) => ({ ...o, [t.id]: status }));
     run(async () => {
-      const r = await toggleScheduleTask(t.id, done);
+      const r = await setScheduleTaskStatus(t.id, status);
       setOtim((o) => {
         const { [t.id]: _removido, ...resto } = o;
         return resto;
@@ -476,7 +477,7 @@ function StageCard({
               stageId={stage.id}
               tasks={stage.tasks}
               feitas={feitas}
-              estaFeito={estaFeito}
+              statusDe={statusDe}
               alternar={alternarTask}
               isPending={isPending}
               run={run}
@@ -556,15 +557,16 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 // Passo a passo da etapa: cada item e marcado conforme sai na obra. O nome
 // edita no proprio lugar e salva ao sair do campo.
 function TaskList({
-  stageId, tasks, feitas, estaFeito, alternar, isPending, run,
+  stageId, tasks, feitas, statusDe, alternar, isPending, run,
 }: {
   stageId: string; tasks: StageTask[]; feitas: number;
-  estaFeito: (t: StageTask) => boolean;
-  alternar: (t: StageTask, done: boolean) => void;
+  statusDe: (t: StageTask) => string;
+  alternar: (t: StageTask, status: string) => void;
   isPending: boolean;
   run: (fn: () => Promise<{ error?: string } | void>) => void;
 }) {
   const [novo, setNovo] = useState("");
+  const emAndamento = tasks.filter((t) => statusDe(t) === "EM_ANDAMENTO").length;
 
   return (
     <div>
@@ -572,7 +574,10 @@ function TaskList({
         <ListChecks className="w-4 h-4 text-gray-400" />
         <p className="text-sm font-medium text-gray-700">Passo a passo</p>
         {tasks.length > 0 && (
-          <span className="text-xs text-gray-500">· {feitas} de {tasks.length}</span>
+          <span className="text-xs text-gray-500">
+            · {feitas} de {tasks.length}
+            {emAndamento > 0 && <span className="text-brand-600"> · {emAndamento} em andamento</span>}
+          </span>
         )}
       </div>
 
@@ -582,10 +587,22 @@ function TaskList({
             <li key={t.id} className="flex items-center gap-2 py-1.5">
               <input
                 type="checkbox"
-                checked={estaFeito(t)}
-                onChange={(e) => alternar(t, e.target.checked)}
+                checked={statusDe(t) === "CONCLUIDA"}
+                onChange={(e) => alternar(t, e.target.checked ? "CONCLUIDA" : "PENDENTE")}
+                title="Concluído"
                 className="w-4 h-4 rounded accent-brand-600 shrink-0"
               />
+              <button
+                type="button"
+                onClick={() => alternar(t, statusDe(t) === "EM_ANDAMENTO" ? "PENDENTE" : "EM_ANDAMENTO")}
+                aria-pressed={statusDe(t) === "EM_ANDAMENTO"}
+                title={statusDe(t) === "EM_ANDAMENTO" ? "Em andamento — clique para voltar a pendente" : "Marcar como em andamento"}
+                className={`shrink-0 rounded p-0.5 ${
+                  statusDe(t) === "EM_ANDAMENTO" ? "bg-brand-100 text-brand-700" : "text-gray-300 hover:text-brand-600"
+                }`}
+              >
+                <Clock className="w-3.5 h-3.5" />
+              </button>
               <input
                 defaultValue={t.name}
                 onBlur={(e) => {
@@ -594,9 +611,14 @@ function TaskList({
                   }
                 }}
                 className={`flex-1 bg-transparent rounded px-1 py-0.5 text-sm hover:bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500 ${
-                  estaFeito(t) ? "line-through text-gray-400" : "text-gray-800"
+                  statusDe(t) === "CONCLUIDA" ? "line-through text-gray-400" : "text-gray-800"
                 }`}
               />
+              {statusDe(t) === "EM_ANDAMENTO" && (
+                <span className="shrink-0 rounded bg-brand-100 px-1.5 py-0.5 text-[11px] font-medium text-brand-800">
+                  em andamento
+                </span>
+              )}
               <button
                 type="button"
                 aria-label="Excluir item"

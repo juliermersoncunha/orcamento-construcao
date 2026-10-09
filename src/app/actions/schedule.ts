@@ -180,88 +180,9 @@ export async function updateScheduleStage(
     data.startDate = input.startDate ? new Date(`${input.startDate}T12:00:00`) : null;
   }
 
-  const antes = input.status !== undefined
-    ? await prisma.scheduleStage.findUnique({ where: { id: stageId }, select: { status: true } })
-    : null;
-
   await prisma.scheduleStage.update({ where: { id: stageId }, data });
-
-  if (antes && input.status !== antes.status) {
-    if (input.status === "CONCLUIDA") await lancarConsumoDaEtapa(stageId);
-    else if (antes.status === "CONCLUIDA") await desfazerConsumoDaEtapa(stageId);
-  }
   touch(stage.projectId);
-  revalidatePath(`/projetos/${stage.projectId}/consumo`);
   return {};
-}
-
-// Etapa concluída: o material dela vira consumo. Vale o planejado da etapa —
-// a compra é por semana e a linha da semana mistura etapas, então não há como
-// dizer quanto do cimento comprado foi desta etapa. O usuário corrige na tela
-// de Consumo o que sobrou ou faltou.
-//
-// Lança só o que FALTA: o planejado menos o que já foi lançado para a etapa,
-// seja ligado a ela, seja com o nome dela no campo "onde" (como se lançava
-// antes de existir o vínculo). Sem isso, quem lançou à mão durante a obra veria
-// o material contado em dobro ao concluir. Não duplica se a etapa já tiver
-// consumo automático (concluída, reaberta com correções, concluída de novo).
-async function lancarConsumoDaEtapa(stageId: string) {
-  const stage = await prisma.scheduleStage.findUnique({
-    where: { id: stageId },
-    select: {
-      projectId: true, name: true, realEnd: true,
-      materials: { select: { materialId: true, quantity: true } },
-    },
-  });
-  if (!stage) return;
-  const ja = await prisma.materialUsage.count({ where: { autoStageId: stageId } });
-  if (ja > 0) return;
-
-  const lancados = await prisma.materialUsage.findMany({
-    where: {
-      projectId: stage.projectId,
-      OR: [
-        { stageId },
-        { stageId: null, location: { equals: stage.name, mode: "insensitive" } },
-      ],
-    },
-    select: { materialId: true, quantity: true },
-  });
-  const jaLancado = new Map<string, number>();
-  for (const u of lancados) jaLancado.set(u.materialId, (jaLancado.get(u.materialId) ?? 0) + u.quantity);
-
-  const quando = stage.realEnd ?? new Date();
-  const linhas = stage.materials
-    .map((m) => ({ materialId: m.materialId, falta: Math.round((m.quantity - (jaLancado.get(m.materialId) ?? 0)) * 100) / 100 }))
-    .filter((m) => m.falta > 0);
-  if (linhas.length === 0) return;
-
-  await prisma.materialUsage.createMany({
-    data: linhas.map((m) => ({
-      projectId: stage.projectId,
-      materialId: m.materialId,
-      stageId,
-      quantity: m.falta,
-      location: stage.name,
-      usedAt: quando,
-      notes: "Lançado ao concluir a etapa",
-      autoStageId: stageId,
-      autoQuantity: m.falta,
-    })),
-  });
-}
-
-// Etapa reaberta: sai o consumo automático que o usuário não mexeu. O que ele
-// corrigiu fica — é informação que ele deu e que não dá para reconstruir.
-async function desfazerConsumoDaEtapa(stageId: string) {
-  const auto = await prisma.materialUsage.findMany({
-    where: { autoStageId: stageId },
-    select: { id: true, quantity: true, autoQuantity: true },
-  });
-  const intocados = auto.filter((u) => u.autoQuantity !== null && u.quantity === u.autoQuantity);
-  if (intocados.length > 0) {
-    await prisma.materialUsage.deleteMany({ where: { id: { in: intocados.map((u) => u.id) } } });
-  }
 }
 
 export async function deleteScheduleStage(stageId: string) {

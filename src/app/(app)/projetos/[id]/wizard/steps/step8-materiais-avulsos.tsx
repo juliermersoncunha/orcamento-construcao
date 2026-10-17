@@ -2,10 +2,10 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { PackagePlus, Plus, Trash2, ChevronRight, Wrench, AlertTriangle } from "lucide-react";
+import { PackagePlus, Plus, Trash2, ChevronRight, Wrench, AlertTriangle, Pencil, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { addManualPhaseItem, removeManualPhaseItem } from "@/app/actions/manual-phase-items";
+import { addManualPhaseItem, removeManualPhaseItem, updateManualPhaseItem } from "@/app/actions/manual-phase-items";
 
 export type CatalogMaterial = {
   id: string;
@@ -295,32 +295,15 @@ export function Step8MateriaisAvulsos({ projectId, materials, rows, servicosPend
                         </thead>
                         <tbody>
                           {list.map((r) => (
-                            <tr key={r.materialId} className="border-t border-gray-200">
-                              <td className="py-2 px-3 text-gray-800">{r.name}</td>
-                              <td className="py-2 px-3 text-center text-gray-600">{r.unit}</td>
-                              <td className="py-2 px-3 text-right text-gray-700">
-                                {r.quantity.toLocaleString("pt-BR")}
-                              </td>
-                              <td className="py-2 px-3 text-right text-gray-600">
-                                {r.currentPrice > 0
-                                  ? brl(r.currentPrice)
-                                  : <span className="text-amber-600">R$ 0</span>}
-                              </td>
-                              <td className="py-2 px-3 text-right font-medium text-gray-800">
-                                {brl(r.quantity * r.currentPrice)}
-                              </td>
-                              <td className="py-2 px-2 text-right">
-                                <button
-                                  type="button"
-                                  onClick={() => remove(r.materialId)}
-                                  disabled={isPending}
-                                  title="Remover"
-                                  className="p-1.5 rounded text-gray-400 hover:text-red-600 hover:bg-red-50 disabled:opacity-40"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              </td>
-                            </tr>
+                            <LinhaManual
+                              key={r.materialId}
+                              r={r}
+                              projectId={projectId}
+                              isPending={isPending}
+                              onRemover={() => remove(r.materialId)}
+                              onEditado={() => router.refresh()}
+                              onErro={setError}
+                            />
                           ))}
                         </tbody>
                       </table>
@@ -445,5 +428,117 @@ function PainelServicosPendentes({
         ))}
       </div>
     </div>
+  );
+}
+
+// Linha de material avulso: só leitura por padrão. O lápis abre a edição de
+// quantidade e fase na própria linha. Trocar a fase move a linha para a seção
+// correta ao salvar.
+function LinhaManual({
+  r, projectId, isPending, onRemover, onEditado, onErro,
+}: {
+  r: ManualPhaseRow;
+  projectId: string;
+  isPending: boolean;
+  onRemover: () => void;
+  onEditado: () => void;
+  onErro: (msg: string) => void;
+}) {
+  const [editando, setEditando] = useState(false);
+  const [qtd, setQtd] = useState(String(r.quantity).replace(".", ","));
+  const [fase, setFase] = useState(r.phase);
+  const [salvando, iniciar] = useTransition();
+  const campo = "rounded border border-gray-300 bg-white px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500";
+
+  function salvar() {
+    const q = Number(qtd.replace(/\./g, "").replace(",", "."));
+    if (!(q > 0)) { onErro("Quantidade inválida."); return; }
+    iniciar(async () => {
+      const resp = await updateManualPhaseItem(projectId, r.materialId, { quantity: q, phase: fase });
+      if (resp?.error) { onErro(resp.error); return; }
+      setEditando(false);
+      onEditado();
+    });
+  }
+
+  if (!editando) {
+    return (
+      <tr className="border-t border-gray-200">
+        <td className="py-2 px-3 text-gray-800">{r.name}</td>
+        <td className="py-2 px-3 text-center text-gray-600">{r.unit}</td>
+        <td className="py-2 px-3 text-right text-gray-700">{r.quantity.toLocaleString("pt-BR")}</td>
+        <td className="py-2 px-3 text-right text-gray-600">
+          {r.currentPrice > 0 ? brl(r.currentPrice) : <span className="text-amber-600">R$ 0</span>}
+        </td>
+        <td className="py-2 px-3 text-right font-medium text-gray-800">{brl(r.quantity * r.currentPrice)}</td>
+        <td className="py-2 px-2 text-right whitespace-nowrap">
+          <button
+            type="button"
+            onClick={() => setEditando(true)}
+            className="mr-1 p-1.5 rounded text-gray-400 hover:text-brand-600 hover:bg-brand-50"
+            title="Editar"
+          >
+            <Pencil className="w-3.5 h-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => { if (confirm(`Remover "${r.name}"?`)) onRemover(); }}
+            disabled={isPending}
+            title="Remover"
+            className="p-1.5 rounded text-gray-400 hover:text-red-600 hover:bg-red-50 disabled:opacity-40"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        </td>
+      </tr>
+    );
+  }
+
+  return (
+    <tr className="border-t border-brand-200 bg-brand-50/40">
+      <td className="py-2 px-3 text-gray-800">
+        {r.name}
+        <select
+          value={fase}
+          onChange={(e) => setFase(e.target.value)}
+          className={`block mt-1 text-xs ${campo}`}
+          title="Fase da obra"
+        >
+          {PHASE_OPTIONS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
+        </select>
+      </td>
+      <td className="py-2 px-3 text-center text-gray-600">{r.unit}</td>
+      <td className="py-2 px-3 text-right">
+        <input
+          value={qtd}
+          onChange={(e) => setQtd(e.target.value)}
+          inputMode="decimal"
+          autoFocus
+          onKeyDown={(e) => { if (e.key === "Enter") salvar(); if (e.key === "Escape") setEditando(false); }}
+          className={`w-20 text-right ${campo}`}
+        />
+      </td>
+      <td className="py-2 px-3 text-right text-gray-400">—</td>
+      <td className="py-2 px-3 text-right text-gray-400">—</td>
+      <td className="py-2 px-2 text-right whitespace-nowrap">
+        <button
+          type="button"
+          onClick={salvar}
+          disabled={salvando}
+          className="mr-1 p-1.5 rounded text-green-600 hover:bg-green-50"
+          title="Salvar"
+        >
+          <Check className="w-4 h-4" />
+        </button>
+        <button
+          type="button"
+          onClick={() => { setQtd(String(r.quantity).replace(".", ",")); setFase(r.phase); setEditando(false); }}
+          className="p-1.5 rounded text-gray-400 hover:text-gray-700"
+          title="Cancelar"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </td>
+    </tr>
   );
 }

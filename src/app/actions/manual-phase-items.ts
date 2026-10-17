@@ -57,3 +57,34 @@ export async function removeManualPhaseItem(projectId: string, materialId: strin
   revalidatePath(`/projetos/${projectId}/wizard`);
   return {};
 }
+
+// Edita quantidade e/ou fase de um item ja lancado. Trocar a fase move a linha
+// de uma secao para outra, sem apagar e re-adicionar.
+export async function updateManualPhaseItem(
+  projectId: string,
+  materialId: string,
+  input: { quantity?: number; phase?: string }
+) {
+  await assertOwnsProject(projectId);
+  const data: Record<string, unknown> = {};
+  if (input.quantity !== undefined) {
+    const q = Number(input.quantity);
+    if (!Number.isFinite(q) || q <= 0) return { error: "Quantidade inválida." };
+    data.quantity = q;
+  }
+  if (input.phase !== undefined) {
+    if (!input.phase) return { error: "Escolha a fase." };
+    data.phase = input.phase as PhaseType;
+  }
+  const existe = await prisma.manualBudgetItem.findUnique({
+    where: { projectId_materialId: { projectId, materialId } },
+    select: { id: true },
+  });
+  if (!existe) return { error: "Item não encontrado." };
+  await prisma.manualBudgetItem.update({
+    where: { projectId_materialId: { projectId, materialId } },
+    data,
+  });
+  revalidatePath(`/projetos/${projectId}/wizard`);
+  return {};
+}

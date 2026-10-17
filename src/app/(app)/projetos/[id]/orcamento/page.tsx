@@ -82,7 +82,7 @@ export default async function OrcamentoPage({
         include: { material: true },
         orderBy: { createdAt: "asc" },
       },
-      laborConfig: { include: { phases: true } },
+      laborLines: { select: { value: true } },
       installations: { include: { electricalPoints: true, hydraulicPoints: true } },
     },
   });
@@ -107,24 +107,18 @@ export default async function OrcamentoPage({
     phaseMat.set(phase, items.reduce((s, i) => s + i.quantity * i.unitPriceSnapshot, 0));
   }
 
-  // MO totals per phase
+  // Mão de obra agora vem por função (pedreiro, pintor...), não por fase.
+  // phaseMO fica em zero para preservar a tabela mat × MO por fase que existia;
+  // o total de MO soma as linhas novas e vai como linha única no quadro geral.
   const phaseMO = new Map<string, number>();
-  if (project.laborConfig) {
-    for (const lp of project.laborConfig.phases) {
-      phaseMO.set(
-        lp.phase,
-        computeMO(project.laborConfig.model, lp.value, phaseMat.get(lp.phase) ?? 0, totalFloorArea)
-      );
-    }
-  }
 
   const totalMat = Array.from(phaseMat.values()).reduce((a, b) => a + b, 0);
-  const totalMO = Array.from(phaseMO.values()).reduce((a, b) => a + b, 0);
+  const totalMO = project.laborLines.reduce((s, l) => s + l.value, 0);
   const totalGeral = totalMat + totalMO;
   const custoM2 = totalFloorArea > 0 ? totalGeral / totalFloorArea : 0;
 
   const hasZeroPrice = project.budgetItems.some((i) => i.unitPriceSnapshot === 0);
-  const hasMO = project.laborConfig !== null;
+  const hasMO = totalMO > 0;
 
   // Validação Caixa — usa somente custo de materiais (sem MO) como base
   const caixaValidation = totalMat > 0

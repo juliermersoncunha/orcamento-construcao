@@ -53,6 +53,11 @@ type WizardContainerProps = {
   manualPipeQuantities: Record<string, number>;
   catalogMaterials: CatalogMaterial[];
   manualPhaseRows: ManualPhaseRow[];
+  servicosPendentes: {
+    id: string; label: string; unit: string; quantity: number;
+    ambiente: string; problema: string | null; gravidade: string | null;
+    descricao: string | null; faseSugerida: string;
+  }[];
 };
 
 export function WizardContainer({
@@ -64,6 +69,7 @@ export function WizardContainer({
   manualPipeQuantities,
   catalogMaterials,
   manualPhaseRows,
+  servicosPendentes,
 }: WizardContainerProps) {
   const reforma = project.type === "REFORMA";
   const etapas = reforma ? STEPS_REFORMA : STEPS;
@@ -158,6 +164,7 @@ export function WizardContainer({
           projectId={project.id}
           materials={catalogMaterials}
           rows={manualPhaseRows}
+          servicosPendentes={project.type === "REFORMA" ? servicosPendentes : []}
         />
       )}
       {etapa === 9 && <Step7Revisao project={project} />}

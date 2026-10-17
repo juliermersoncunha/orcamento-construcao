@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { PackagePlus, Plus, Trash2, ChevronRight } from "lucide-react";
+import { PackagePlus, Plus, Trash2, ChevronRight, Wrench, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { addManualPhaseItem, removeManualPhaseItem } from "@/app/actions/manual-phase-items";
@@ -66,15 +66,24 @@ function brl(n: number) {
   return n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
+export type ServicoPendente = {
+  id: string; label: string; unit: string; quantity: number;
+  ambiente: string; problema: string | null; gravidade: string | null;
+  descricao: string | null; faseSugerida: string;
+};
+
 type Props = {
   projectId: string;
   materials: CatalogMaterial[];
   rows: ManualPhaseRow[];
+  servicosPendentes?: ServicoPendente[];
 };
 
-export function Step8MateriaisAvulsos({ projectId, materials, rows }: Props) {
+export function Step8MateriaisAvulsos({ projectId, materials, rows, servicosPendentes = [] }: Props) {
   const router = useRouter();
-  const [phase, setPhase] = useState("LAJE");
+  // Em reforma, a fase inicial e a do primeiro servico pendente — leva o
+  // usuario direto ao caso mais comum.
+  const [phase, setPhase] = useState(servicosPendentes[0]?.faseSugerida ?? "LAJE");
   const [search, setSearch] = useState("");
   const [materialId, setMaterialId] = useState("");
   const [quantity, setQuantity] = useState("");
@@ -155,6 +164,14 @@ export function Step8MateriaisAvulsos({ projectId, materials, rows }: Props) {
         </CardDescription>
       </CardHeader>
       <CardContent>
+        {servicosPendentes.length > 0 && (
+          <PainelServicosPendentes
+            servicos={servicosPendentes}
+            materiaisPorFase={new Map(rows.map((r) => [r.phase, (rows.filter((x) => x.phase === r.phase).length)]))}
+            onEscolher={(fase) => { setPhase(fase); document.getElementById("search")?.focus(); }}
+          />
+        )}
+
         {/* ── Formulário de inclusão ── */}
         <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
@@ -333,5 +350,100 @@ export function Step8MateriaisAvulsos({ projectId, materials, rows }: Props) {
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+const GRAVIDADE_COR: Record<string, string> = {
+  URGENTE: "bg-red-100 text-red-700",
+  ALTA: "bg-orange-100 text-orange-800",
+  MEDIA: "bg-amber-100 text-amber-800",
+  BAIXA: "bg-gray-100 text-gray-700",
+};
+const GRAVIDADE_LABEL: Record<string, string> = {
+  URGENTE: "Urgente", ALTA: "Alta", MEDIA: "Média", BAIXA: "Baixa",
+};
+
+// Mostra os serviços da reforma que não geram material sozinhos. O usuário vê
+// problema → ambiente → serviço, e um botão pré-seleciona a fase do formulário
+// abaixo. O vínculo material ↔ serviço fica implícito pela fase, que é o que o
+// banco já guarda; marcar explicitamente qual material resolve qual serviço
+// seria outra entrega.
+function PainelServicosPendentes({
+  servicos, materiaisPorFase, onEscolher,
+}: {
+  servicos: ServicoPendente[];
+  materiaisPorFase: Map<string, number>;
+  onEscolher: (fase: string) => void;
+}) {
+  // Agrupa por ambiente, mantendo a ordem em que o usuário vistoriou.
+  const porAmbiente = new Map<string, ServicoPendente[]>();
+  for (const s of servicos) {
+    const l = porAmbiente.get(s.ambiente) ?? [];
+    l.push(s);
+    porAmbiente.set(s.ambiente, l);
+  }
+
+  return (
+    <div className="mb-5 rounded-lg border border-brand-200 bg-brand-50/40 p-4">
+      <div className="flex items-center gap-2 mb-1">
+        <Wrench className="w-4 h-4 text-brand-700" />
+        <h3 className="text-sm font-semibold text-gray-800">
+          Serviços que precisam de material à mão
+        </h3>
+        <span className="text-xs text-gray-500">· {servicos.length}</span>
+      </div>
+      <p className="text-xs text-gray-600 mb-3">
+        Estes serviços da reforma não têm material calculado. Clique em um para o formulário abaixo
+        abrir já na fase certa, pronto para você escolher o produto no catálogo.
+      </p>
+      <div className="flex flex-col gap-3">
+        {[...porAmbiente.entries()].map(([ambiente, lista]) => (
+          <div key={ambiente}>
+            <p className="text-xs font-semibold text-gray-700 mb-1">{ambiente}</p>
+            <ul className="flex flex-col gap-1.5">
+              {lista.map((s) => {
+                const nLanc = materiaisPorFase.get(s.faseSugerida) ?? 0;
+                const fase = PHASE_LABEL[s.faseSugerida] ?? s.faseSugerida;
+                return (
+                  <li key={s.id} className="flex flex-wrap items-center gap-2 text-sm">
+                    {s.gravidade && (
+                      <span className={`shrink-0 rounded px-1.5 py-0.5 text-[11px] font-semibold ${GRAVIDADE_COR[s.gravidade] ?? ""}`}>
+                        {GRAVIDADE_LABEL[s.gravidade] ?? s.gravidade}
+                      </span>
+                    )}
+                    {s.problema ? (
+                      <span className="text-gray-800">
+                        <strong>{s.problema}</strong>
+                        {s.descricao && <span className="text-gray-500"> — {s.descricao}</span>}
+                        <span className="text-gray-500"> · {s.label}</span>
+                      </span>
+                    ) : (
+                      <span className="text-gray-800 inline-flex items-center gap-1">
+                        <AlertTriangle className="w-3 h-3 text-gray-400" />
+                        <span>{s.label}</span>
+                        <span className="text-xs text-gray-500">(melhoria)</span>
+                      </span>
+                    )}
+                    <span className="text-xs text-gray-400">
+                      {s.quantity} {s.unit}
+                    </span>
+                    <div className="flex-1" />
+                    <button
+                      type="button"
+                      onClick={() => onEscolher(s.faseSugerida)}
+                      className="shrink-0 rounded-md border border-brand-300 bg-white px-2 py-1 text-xs font-medium text-brand-700 hover:bg-brand-100"
+                      title={`Pré-selecionar a fase "${fase}" no formulário abaixo`}
+                    >
+                      Lançar material em {fase}
+                      {nLanc > 0 && <span className="ml-1 text-gray-500">({nLanc})</span>}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }

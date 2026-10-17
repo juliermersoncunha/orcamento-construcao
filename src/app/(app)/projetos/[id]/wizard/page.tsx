@@ -3,6 +3,7 @@ import { getSession } from "@/lib/session";
 import { redirect } from "next/navigation";
 import { WizardContainer } from "./wizard-container";
 import { buildManualGroups, MANUAL_BLOCK_CATEGORIES } from "@/lib/manual-catalog";
+import { SERVICE_BY_KEY } from "@/lib/renovation-services";
 import type { MaterialCategory } from "@prisma/client";
 
 export default async function WizardPage({
@@ -94,6 +95,38 @@ export default async function WizardPage({
       phase: r.phase as string,
     }));
 
+  // Serviços da reforma SEM regra de material (louças, elétrica, hidráulica,
+  // esquadrias, forro, outros) — a Etapa 8 lista cada um para o usuário saber
+  // onde o material à mão vai. A fase sugerida vem da categoria do serviço.
+  const CATEGORIA_PARA_FASE: Record<string, string> = {
+    "Elétrica": "INSTALACOES_ELETRICAS",
+    "Hidráulica": "INSTALACOES_HIDROSSANITARIAS",
+    "Louças e metais": "INSTALACOES_HIDROSSANITARIAS",
+    "Esquadrias": "ACABAMENTO",
+    "Forro": "ACABAMENTO",
+    "Outros": "OUTROS",
+  };
+  const nomeAmbiente = (roomId: string | null) =>
+    project.rooms.find((r) => r.id === roomId)?.name ?? "Geral / área externa";
+  const servicosPendentes = project.renovationServices
+    .map((sv) => {
+      const def = SERVICE_BY_KEY.get(sv.serviceKey);
+      if (!def || def.materiais) return null;
+      const issue = sv.issueId ? project.renovationIssues.find((i) => i.id === sv.issueId) : null;
+      return {
+        id: sv.id,
+        label: sv.label || def.label,
+        unit: def.unit,
+        quantity: sv.quantity,
+        ambiente: nomeAmbiente(sv.roomId),
+        problema: issue ? issue.category : null,
+        gravidade: issue?.severity ?? null,
+        descricao: issue?.description ?? null,
+        faseSugerida: CATEGORIA_PARA_FASE[def.categoria] ?? "OUTROS",
+      };
+    })
+    .filter((x): x is NonNullable<typeof x> => x !== null);
+
   // Catálogo completo para o buscador da Etapa 8.
   const catalogMaterials = await prisma.material.findMany({
     where: { active: true },
@@ -111,6 +144,7 @@ export default async function WizardPage({
       manualPipeQuantities={manualPipeQuantities}
       catalogMaterials={catalogMaterials}
       manualPhaseRows={manualPhaseRows}
+      servicosPendentes={servicosPendentes}
     />
   );
 }

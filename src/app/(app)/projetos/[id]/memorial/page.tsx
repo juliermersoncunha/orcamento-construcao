@@ -126,7 +126,7 @@ export default async function MemorialPage({
         include: { material: true },
         orderBy: { createdAt: "asc" },
       },
-      laborConfig: { include: { phases: true } },
+      laborLines: { select: { value: true } },
     },
   });
 
@@ -154,26 +154,15 @@ export default async function MemorialPage({
     );
   }
 
+  // Mão de obra: total das linhas por função (pedreiro, pintor, eletricista...).
+  // phaseMO fica em zero para preservar a tabela por fase existente — o total de
+  // MO só aparece como linha única no quadro geral.
   const phaseMO = new Map<string, number>();
-  if (project.laborConfig) {
-    for (const lp of project.laborConfig.phases) {
-      phaseMO.set(
-        lp.phase,
-        computeMO(
-          project.laborConfig.model,
-          lp.value,
-          phaseMat.get(lp.phase) ?? 0,
-          totalFloorArea
-        )
-      );
-    }
-  }
-
   const totalMat = Array.from(phaseMat.values()).reduce((a, b) => a + b, 0);
-  const totalMO = Array.from(phaseMO.values()).reduce((a, b) => a + b, 0);
+  const totalMO = project.laborLines.reduce((s, l) => s + l.value, 0);
   const totalGeral = totalMat + totalMO;
   const custoM2 = totalFloorArea > 0 ? totalGeral / totalFloorArea : 0;
-  const hasMO = project.laborConfig !== null;
+  const hasMO = totalMO > 0;
 
   const today = new Date().toLocaleDateString("pt-BR");
 

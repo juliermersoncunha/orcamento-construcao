@@ -1,198 +1,173 @@
 "use client";
 
-import { useTransition, useState } from "react";
-import { saveLaborConfig } from "@/app/actions/laborConfig";
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { Plus, Trash2, HardHat, Paintbrush, Zap, Sparkles, MoreHorizontal, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { formatCurrency } from "@/lib/utils";
-import { Check, Info } from "lucide-react";
-import Link from "next/link";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  setLaborLineValue, updateLaborLineLabel, addLaborLineOutro, deleteLaborLine,
+} from "@/app/actions/labor-lines";
 
-const PHASE_LABELS: Record<string, string> = {
-  TERRAPLENAGEM: "Terraplenagem",
-  FUNDACAO: "Fundação",
-  ESTRUTURA_ALVENARIA: "Estrutura e Alvenaria",
-  LAJE: "Laje",
-  INSTALACOES_ELETRICAS: "Instalações Elétricas",
-  INSTALACOES_HIDROSSANITARIAS: "Instalações Hidrossanitárias",
-  ESCADA: "Escada",
-  REVESTIMENTOS: "Revestimentos",
-  PINTURA: "Pintura",
-  COBERTURA: "Cobertura",
-  ACABAMENTO: "Acabamento",
-  OUTROS: "Outros",
+type Linha = { id: string; role: string; label: string | null; value: number };
+
+const ROLE_INFO: Record<string, { label: string; icone: React.ReactNode }> = {
+  PEDREIRO:    { label: "Pedreiro",    icone: <HardHat className="w-4 h-4 text-amber-700" /> },
+  PINTOR:      { label: "Pintor",      icone: <Paintbrush className="w-4 h-4 text-cyan-700" /> },
+  ELETRICISTA: { label: "Eletricista", icone: <Zap className="w-4 h-4 text-yellow-600" /> },
+  LIMPEZA:     { label: "Limpeza",     icone: <Sparkles className="w-4 h-4 text-emerald-600" /> },
+  OUTRO:       { label: "Outros",      icone: <MoreHorizontal className="w-4 h-4 text-gray-500" /> },
 };
 
-type LaborPhase = { phase: string; value: number };
-type LaborConfig = { model: string; phases: LaborPhase[] } | null;
-
-type Props = {
-  projectId: string;
-  phaseTotals: Record<string, number>;
-  totalFloorArea: number;
-  laborConfig: LaborConfig;
-};
-
-function computeMO(
-  model: string,
-  values: Record<string, number>,
-  phaseTotals: Record<string, number>,
-  totalFloorArea: number,
-  phase: string
-): number {
-  const v = values[phase] ?? 0;
-  if (v <= 0) return 0;
-  if (model === "FIXED") return v;
-  if (model === "PER_M2") return v * totalFloorArea;
-  if (model === "PERCENT") return (phaseTotals[phase] ?? 0) * (v / 100);
-  return 0;
+function brl(n: number) {
+  return n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
-export function MaoDeObraForm({ projectId, phaseTotals, totalFloorArea, laborConfig }: Props) {
+export function MaoDeObraForm({ projectId, linhas }: { projectId: string; linhas: Linha[] }) {
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [saved, setSaved] = useState(false);
-  const [model, setModel] = useState<string>(laborConfig?.model ?? "PERCENT");
+  const [error, setError] = useState<string | null>(null);
+  const [novoLabel, setNovoLabel] = useState("");
+  const [novoValor, setNovoValor] = useState("");
 
-  const initialValues: Record<string, number> = {};
-  if (laborConfig) {
-    for (const p of laborConfig.phases) {
-      initialValues[p.phase] = p.value;
-    }
-  }
-  const [values, setValues] = useState<Record<string, number>>(initialValues);
-
-  const phases = Object.keys(phaseTotals);
-
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    const fd = new FormData();
-    fd.append("model", model);
-    for (const phase of phases) {
-      fd.append("phase", phase);
-      fd.append("value", String(values[phase] ?? 0));
-    }
+  function run(fn: () => Promise<{ error?: string } | void>) {
+    setError(null);
     startTransition(async () => {
-      await saveLaborConfig(projectId, fd);
-      setSaved(true);
-      setTimeout(() => setSaved(false), 3000);
+      const r = await fn();
+      if (r && "error" in r && r.error) { setError(r.error); return; }
+      router.refresh();
     });
   }
 
-  const modelLabel =
-    model === "FIXED" ? "R$ fixo por etapa"
-    : model === "PER_M2" ? `R$/m² × ${totalFloorArea.toFixed(1)} m²`
-    : "% do custo de materiais";
-
-  const totalMO = phases.reduce((sum, phase) => sum + computeMO(model, values, phaseTotals, totalFloorArea, phase), 0);
-  const totalMat = phases.reduce((sum, phase) => sum + (phaseTotals[phase] ?? 0), 0);
+  const total = linhas.reduce((s, l) => s + l.value, 0);
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-      {/* Model selector */}
-      <div>
-        <p className="text-sm font-medium text-gray-700 mb-2">Modelo de cálculo</p>
-        <div className="flex gap-2 flex-wrap">
-          {[
-            { value: "FIXED", label: "Valor fixo (R$)" },
-            { value: "PER_M2", label: "Por m² (R$/m²)" },
-            { value: "PERCENT", label: "Percentual (%)" },
-          ].map((opt) => (
-            <button
-              key={opt.value}
-              type="button"
-              onClick={() => setModel(opt.value)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
-                model === opt.value
-                  ? "bg-brand-600 text-white border-brand-600"
-                  : "bg-white text-gray-700 border-gray-200 hover:border-brand-400"
-              }`}
-            >
-              {opt.label}
-            </button>
+    <Card>
+      <CardContent className="py-5 flex flex-col gap-4">
+        {error && (
+          <div className="rounded-md bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700">{error}</div>
+        )}
+
+        <ul className="divide-y divide-gray-100">
+          {linhas.map((l) => (
+            <LinhaMO key={l.id} l={l} isPending={isPending} run={run} />
           ))}
+        </ul>
+
+        {/* Novo "Outros" */}
+        <div className="rounded-md border border-dashed border-gray-300 bg-gray-50 p-3">
+          <p className="text-xs font-medium text-gray-600 mb-2 flex items-center gap-1.5">
+            <Plus className="w-3.5 h-3.5" /> Adicionar outra função
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              value={novoLabel}
+              onChange={(e) => setNovoLabel(e.target.value)}
+              placeholder="descrição (ex.: azulejista, encanador, servente)"
+              className="flex-1 min-w-[14rem] rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+            />
+            <input
+              value={novoValor}
+              onChange={(e) => setNovoValor(e.target.value)}
+              placeholder="R$"
+              inputMode="decimal"
+              className="w-28 text-right rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+            />
+            <Button
+              variant="outline" size="sm"
+              disabled={isPending || novoLabel.trim().length < 2}
+              onClick={() => run(async () => {
+                const v = Number(novoValor.replace(",", ".")) || 0;
+                const r = await addLaborLineOutro(projectId, novoLabel, v);
+                if (!r?.error) { setNovoLabel(""); setNovoValor(""); }
+                return r;
+              })}
+            >
+              <Plus className="w-4 h-4" /> Adicionar
+            </Button>
+          </div>
         </div>
-        <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">
-          <Info className="w-3 h-3" /> {modelLabel}
-        </p>
-      </div>
 
-      {/* Phase table */}
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-gray-100">
-              <th className="text-left font-medium text-gray-500 py-2">Etapa</th>
-              <th className="text-right font-medium text-gray-500 py-2 w-36">Mat. (R$)</th>
-              <th className="text-right font-medium text-gray-500 py-2 w-32">
-                {model === "FIXED" ? "Valor (R$)" : model === "PER_M2" ? "R$/m²" : "%"}
-              </th>
-              <th className="text-right font-medium text-gray-500 py-2 w-32">MO (R$)</th>
-            </tr>
-          </thead>
-          <tbody>
-            {phases.map((phase) => {
-              const mo = computeMO(model, values, phaseTotals, totalFloorArea, phase);
-              return (
-                <tr key={phase} className="border-b border-gray-50">
-                  <td className="py-2 pr-4 text-gray-800">{PHASE_LABELS[phase] ?? phase}</td>
-                  <td className="py-2 px-2 text-right text-gray-500">
-                    {formatCurrency(phaseTotals[phase] ?? 0)}
-                  </td>
-                  <td className="py-2 pl-2">
-                    <input type="hidden" name="phase" value={phase} />
-                    <input
-                      type="number"
-                      name="value"
-                      min="0"
-                      step="0.01"
-                      value={values[phase] ?? ""}
-                      onChange={(e) =>
-                        setValues((prev) => ({ ...prev, [phase]: parseFloat(e.target.value) || 0 }))
-                      }
-                      className="w-full text-right rounded border border-gray-200 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
-                      placeholder="0"
-                    />
-                  </td>
-                  <td className="py-2 pl-2 text-right font-semibold text-amber-700">
-                    {mo > 0 ? formatCurrency(mo) : "—"}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-          <tfoot>
-            <tr className="border-t-2 border-gray-200">
-              <td className="py-3 font-bold text-gray-900">Total</td>
-              <td className="py-3 text-right font-bold text-gray-900">{formatCurrency(totalMat)}</td>
-              <td></td>
-              <td className="py-3 text-right font-bold text-amber-700">{formatCurrency(totalMO)}</td>
-            </tr>
-            <tr>
-              <td colSpan={2} className="pt-1 text-xs text-gray-400">Total Geral (mat. + MO)</td>
-              <td colSpan={2} className="pt-1 text-right font-bold text-gray-900">
-                {formatCurrency(totalMat + totalMO)}
-              </td>
-            </tr>
-          </tfoot>
-        </table>
-      </div>
+        <div className="flex items-center justify-between border-t border-gray-200 pt-3">
+          <span className="text-sm font-semibold text-gray-800">Total de mão de obra</span>
+          <span className="text-lg font-bold text-amber-700">{brl(total)}</span>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
-      <div className="flex items-center justify-between pt-2">
-        <Link href={`/projetos/${projectId}/orcamento`}>
-          <Button type="button" variant="outline">Ver orçamento</Button>
-        </Link>
-        <Button type="submit" disabled={isPending}>
-          {saved ? (
-            <>
-              <Check className="w-4 h-4" /> Salvo!
-            </>
-          ) : isPending ? (
-            "Salvando..."
-          ) : (
-            "Salvar Mão de Obra"
-          )}
-        </Button>
-      </div>
-    </form>
+function LinhaMO({
+  l, isPending, run,
+}: {
+  l: Linha;
+  isPending: boolean;
+  run: (fn: () => Promise<{ error?: string } | void>) => void;
+}) {
+  const info = ROLE_INFO[l.role] ?? ROLE_INFO.OUTRO;
+  const fixa = l.role !== "OUTRO";
+  const [valor, setValor] = useState(l.value ? String(l.value).replace(".", ",") : "");
+  const [labelTxt, setLabelTxt] = useState(l.label ?? "");
+  const [salvo, setSalvo] = useState(false);
+
+  function salvarValor() {
+    const v = Number(valor.replace(/\./g, "").replace(",", ".")) || 0;
+    if (v !== l.value) {
+      run(async () => {
+        const r = await setLaborLineValue(l.id, v);
+        if (!r?.error) { setSalvo(true); setTimeout(() => setSalvo(false), 1200); }
+        return r;
+      });
+    }
+  }
+  function salvarLabel() {
+    const t = labelTxt.trim();
+    if (t.length >= 2 && t !== l.label) {
+      run(() => updateLaborLineLabel(l.id, t));
+    } else {
+      setLabelTxt(l.label ?? "");
+    }
+  }
+
+  return (
+    <li className="flex flex-wrap items-center gap-2 py-2.5">
+      <span className="shrink-0 w-6">{info.icone}</span>
+      {fixa ? (
+        <span className="flex-1 min-w-[8rem] text-sm font-medium text-gray-800">{info.label}</span>
+      ) : (
+        <input
+          value={labelTxt}
+          onChange={(e) => setLabelTxt(e.target.value)}
+          onBlur={salvarLabel}
+          onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+          placeholder="descrição"
+          className="flex-1 min-w-[8rem] rounded-md border border-transparent hover:border-gray-300 focus:border-gray-300 bg-transparent px-2 py-1 text-sm font-medium text-gray-800 focus:outline-none"
+        />
+      )}
+      <span className="text-xs text-gray-400">R$</span>
+      <input
+        value={valor}
+        onChange={(e) => setValor(e.target.value)}
+        onBlur={salvarValor}
+        onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+        inputMode="decimal"
+        placeholder="0,00"
+        className="w-32 text-right rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+      />
+      {salvo && <Check className="w-4 h-4 text-green-600" />}
+      <button
+        type="button"
+        aria-label={fixa ? `Zerar ${info.label}` : "Excluir função"}
+        title={fixa ? "Zerar — a função fica na lista" : "Excluir"}
+        disabled={isPending}
+        onClick={() => {
+          const msg = fixa ? `Zerar o valor de ${info.label}?` : `Excluir "${l.label}"?`;
+          if (confirm(msg)) run(() => deleteLaborLine(l.id));
+        }}
+        className="text-gray-300 hover:text-red-600"
+      >
+        <Trash2 className="w-4 h-4" />
+      </button>
+    </li>
   );
 }

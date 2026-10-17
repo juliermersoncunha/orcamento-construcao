@@ -52,7 +52,7 @@ export default async function FluxoCaixaPage({
     include: {
       rooms: { select: { width: true, length: true } },
       budgetItems: { select: { phase: true, quantity: true, unitPriceSnapshot: true } },
-      laborConfig: { include: { phases: true } },
+      laborLines: { select: { value: true } },
     },
   });
   if (!project) redirect("/projetos");
@@ -72,19 +72,12 @@ export default async function FluxoCaixaPage({
     phaseMat.set(item.phase, (phaseMat.get(item.phase) ?? 0) + item.quantity * item.unitPriceSnapshot);
   }
 
-  // Phase MO totals
+  // Mão de obra: total das linhas por função. Não é distribuído por fase (as
+  // funções não casam 1:1 com as fases do orçamento); vai aparecer como linha
+  // única "Mão de obra" na matriz do fluxo.
   const totalFloorArea = project.rooms.reduce((sum, r) => sum + r.width * r.length, 0);
+  const totalMO = project.laborLines.reduce((s, l) => s + l.value, 0);
   const phaseMO = new Map<string, number>();
-  if (project.laborConfig) {
-    for (const lp of project.laborConfig.phases) {
-      phaseMO.set(lp.phase, computeMOForPhase(
-        project.laborConfig.model,
-        lp.value,
-        phaseMat.get(lp.phase) ?? 0,
-        totalFloorArea
-      ));
-    }
-  }
 
   // Phase total (mat + MO)
   const phaseTotal = new Map<string, number>();

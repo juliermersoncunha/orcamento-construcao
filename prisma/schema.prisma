@@ -186,6 +186,7 @@ model Project {
   finishes      ProjectFinishes?
   budgetItems   BudgetItem[]
   laborConfig     LaborConfig?
+  laborLines      LaborLine[]
   cashFlowEntries CashFlowEntry[]
   walls           ProjectWall[]
   indirectCosts   IndirectCost[]
@@ -869,4 +870,19 @@ model ProjectCostLine {
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@unique([projectId, kind, key])
+}
+
+// Mao de obra por funcao fixa. Pedreiro, pintor, eletricista, limpeza e os
+// "Outros" (descricao livre). Substituiu a divisao por fase do orcamento, que
+// nao refletia como a MO e contratada.
+model LaborLine {
+  id        String   @id @default(cuid())
+  projectId String
+  role      String   // PEDREIRO | PINTOR | ELETRICISTA | LIMPEZA | OUTRO
+  label     String?  // obrigatorio quando role = OUTRO
+  value     Float    @default(0)
+  order     Int      @default(0)
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  @@index([projectId])
 }

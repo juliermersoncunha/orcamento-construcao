@@ -16,13 +16,24 @@ export function Step7Revisao({ project }: { project: any }) {
     0
   );
 
-  const checks = [
+  const reforma = project.type === "REFORMA";
+  const nProblemas = project.renovationIssues?.length ?? 0;
+  const nServicos = project.renovationServices?.length ?? 0;
+
+  const checksReforma = [
+    { label: "Ambientes cadastrados", ok: true, etapa: 2, detail: hasRooms ? `${project.rooms.length} cômodo(s)` : "Nenhum — o diagnóstico fica todo em \"Geral\"" },
+    { label: "Diagnóstico com serviços", ok: nServicos > 0, etapa: 3, detail: `${nProblemas} problema(s) · ${nServicos} serviço(s)` },
+  ];
+
+  const checksConstrucao = [
     { label: "Ambientes cadastrados", ok: hasRooms, detail: hasRooms ? `${project.rooms.length} cômodo(s) — ${totalArea.toFixed(2)} m²` : "Nenhum cômodo informado" },
     { label: "Estrutura definida", ok: !!project.structure, detail: project.structure ? `${project.structure.blockType} / ${project.structure.floors} pavimento(s)` : "Não configurado" },
     { label: "Cobertura definida", ok: !!project.roofing, detail: project.roofing ? `${project.roofing.roofType} — ${project.roofing.tileType}` : "Não configurado" },
     { label: "Instalações configuradas", ok: !!project.installations, detail: project.installations ? "Pontos elétricos e hidráulicos definidos" : "Não configurado" },
     { label: "Revestimentos definidos", ok: !!project.finishes, detail: project.finishes ? `${project.finishes.doors + project.finishes.externalDoors} porta(s), ${project.finishes.windows} janela(s)` : "Não configurado" },
-  ];
+  ].map((c, i) => ({ ...c, etapa: i + 2 }));
+
+  const checks = reforma ? checksReforma : checksConstrucao;
 
   const allOk = checks.every((c) => c.ok);
 
@@ -59,7 +70,7 @@ export function Step7Revisao({ project }: { project: any }) {
               </div>
               {!ok && (
                 <Link
-                  href={`/projetos/${project.id}/wizard?etapa=${checks.indexOf(checks.find((c) => c.label === label)!) + 2}`}
+                  href={`/projetos/${project.id}/wizard?etapa=${checks.find((c) => c.label === label)!.etapa}`}
                   className="ml-auto text-xs text-amber-700 font-medium hover:underline"
                 >
                   Preencher

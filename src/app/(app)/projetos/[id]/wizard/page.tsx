@@ -20,6 +20,8 @@ export default async function WizardPage({
   const project = await prisma.project.findFirst({
     where: { id, userId: session.userId },
     include: {
+      renovationIssues: { orderBy: { order: "asc" } },
+      renovationServices: { orderBy: { order: "asc" } },
       rooms: {
         orderBy: { order: "asc" },
         include: {

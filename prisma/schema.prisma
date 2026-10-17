@@ -203,6 +203,8 @@ model Project {
   weekStages        ScheduleWeekStage[]
   weekMaterials     ScheduleWeekMaterial[]
   weekPurchases     ScheduleWeekPurchase[]
+  renovationIssues   RenovationIssue[]
+  renovationServices RenovationService[]
   materialUsages    MaterialUsage[]
 }
 
@@ -249,6 +251,8 @@ model Room {
   joineries        RoomJoinery[]
   accessories      Accessory[]
   imperm           RoomImpermeabilization?
+  renovationIssues   RenovationIssue[]
+  renovationServices RenovationService[]
 }
 
 model ProjectStructure {
@@ -805,4 +809,45 @@ model ScheduleWeekPurchase {
   material Material @relation(fields: [materialId], references: [id])
 
   @@unique([projectId, weekStart, materialId])
+}
+
+// ── Reforma ─────────────────────────────────────────────────────────────────
+// Na reforma o ponto de partida é a vistoria: problemas encontrados por
+// ambiente, com gravidade. Deles saem os serviços, e dos serviços com medida
+// sai o material (ver lib/renovation-services.ts).
+
+model RenovationIssue {
+  id          String   @id @default(cuid())
+  projectId   String
+  roomId      String?  // nulo = geral / área externa
+  category    String
+  description String?
+  severity    String   @default("MEDIA") // BAIXA | MEDIA | ALTA | URGENTE
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  project  Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  room     Room?               @relation(fields: [roomId], references: [id], onDelete: SetNull)
+  services RenovationService[]
+
+  @@index([projectId])
+}
+
+model RenovationService {
+  id         String   @id @default(cuid())
+  projectId  String
+  roomId     String?
+  issueId    String?  // problema que o serviço resolve; nulo = melhoria sem problema
+  serviceKey String
+  label      String?  // descrição livre (obrigatória no "Outro serviço")
+  quantity   Float    @default(0)
+  notes      String?
+  order      Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  project Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  room    Room?            @relation(fields: [roomId], references: [id], onDelete: SetNull)
+  issue   RenovationIssue? @relation(fields: [issueId], references: [id], onDelete: SetNull)
+
+  @@index([projectId])
 }

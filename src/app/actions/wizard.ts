@@ -10,6 +10,7 @@ import { resolveRoomFixtures } from "@/lib/calculations/fixture-engine";
 import type { RoomEngineInput } from "@/lib/calculations/fixture-engine";
 import { MaterialCategory, PhaseType, ProjectType } from "@prisma/client";
 import { CARDINAL_WALL_SIDES } from "@/lib/wall-sides";
+import { materiaisDosServicos } from "@/lib/renovation-services";
 
 async function getProject(projectId: string) {
   const session = await getSession();
@@ -393,6 +394,7 @@ export async function calculateAndSaveBudget(projectId: string) {
       installations: true,
       finishes: { include: { roomFinishes: true } },
       walls: true,
+      renovationServices: { select: { serviceKey: true, quantity: true } },
     },
   });
 
@@ -482,14 +484,20 @@ export async function calculateAndSaveBudget(projectId: string) {
     },
   };
 
-  const materials = calculateMaterials(input);
+  // Reforma: o material vem só dos serviços lançados no diagnóstico. Fundação,
+  // estrutura, cobertura, muro e equipamentos são contas de construção nova —
+  // aplicá-las aqui cobraria a casa inteira para trocar um piso.
+  const reforma = project.type === "REFORMA";
+  const materials = reforma
+    ? materiaisDosServicos(project.renovationServices)
+    : calculateMaterials(input);
 
   // Add muro materials if any walls are configured
   const wallArea = (project.walls ?? [])
     .filter((w: { hasWall: boolean }) => w.hasWall)
     .reduce((sum: number, w: { length: number; height: number }) => sum + w.length * w.height, 0);
 
-  if (wallArea > 0) {
+  if (wallArea > 0 && !reforma) {
     // Muro alvenaria coefficients (mirrors GlobalPremise seed values)
     const muroMats = [
       { name: "Tijolo Cerâmico Furado 9x19x19", unit: "un", category: "ALVENARIA", qty: wallArea * 25 * 1.10 },
@@ -630,7 +638,7 @@ export async function calculateAndSaveBudget(projectId: string) {
   //
   // Portas detalhadas (JOINERY) ficam de fora porque portas já eram manuais.
   const ORIGENS_MANUAIS = new Set(["FIXTURE", "ACCESSORY", "JOINERY"]);
-  for (const it of fixtureItems.filter((f) => !ORIGENS_MANUAIS.has(f.sourceKind))) {
+  for (const it of reforma ? [] : fixtureItems.filter((f) => !ORIGENS_MANUAIS.has(f.sourceKind))) {
     if (it.quantity <= 0) continue;
     const m = await resolveMaterial(it.materialName, it.unit, it.category);
     await prisma.budgetItem.create({

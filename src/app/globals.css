@@ -35,7 +35,10 @@ body {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
-  nav, aside, .print\\:hidden {
+  /* print:hidden vem do próprio Tailwind. Aqui estava ".print\\:hidden" — escape
+     inválido, que fazia o navegador descartar a regra inteira e imprimir a
+     barra lateral junto. */
+  nav, aside {
     display: none !important;
   }
   main {

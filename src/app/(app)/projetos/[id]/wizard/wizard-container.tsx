@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { Check, ArrowLeft } from "lucide-react";
 import { Step1Identificacao } from "./steps/step1-identificacao";
 import { Step2Ambientes } from "./steps/step2-ambientes";
+import { Step3Diagnostico } from "./steps/step3-diagnostico";
 import { Step3Estrutura } from "./steps/step3-estrutura";
 import { Step4Cobertura } from "./steps/step4-cobertura";
 import { Step5Instalacoes } from "./steps/step5-instalacoes";
@@ -25,6 +26,18 @@ const STEPS = [
   { number: 5, label: "Instalações" },
   { number: 6, label: "Revestimentos" },
   { number: 7, label: "Muros" },
+  { number: 8, label: "Materiais" },
+  { number: 9, label: "Revisão" },
+];
+
+// Reforma não descreve a casa inteira: depois dos ambientes vem o diagnóstico
+// (problemas → serviços → material) e as etapas 4 a 7 da construção somem.
+// Os números ficam os mesmos das etapas reaproveitadas, assim os links de
+// avançar/voltar que já existem continuam certos (2 → 3, 8 → 9).
+const STEPS_REFORMA = [
+  { number: 1, label: "Identificação" },
+  { number: 2, label: "Ambientes" },
+  { number: 3, label: "Diagnóstico" },
   { number: 8, label: "Materiais" },
   { number: 9, label: "Revisão" },
 ];
@@ -52,6 +65,10 @@ export function WizardContainer({
   catalogMaterials,
   manualPhaseRows,
 }: WizardContainerProps) {
+  const reforma = project.type === "REFORMA";
+  const etapas = reforma ? STEPS_REFORMA : STEPS;
+  // Na reforma, as etapas 4–7 não existem; um link antigo cai no diagnóstico.
+  const etapa = reforma && currentStep >= 4 && currentStep <= 7 ? 3 : currentStep;
   return (
     <div className="p-8 max-w-3xl mx-auto">
       <div className="flex items-center gap-3 mb-6">
@@ -68,9 +85,9 @@ export function WizardContainer({
 
       {/* Progress Steps */}
       <div className="flex items-center gap-0 mb-10 overflow-x-auto pb-2">
-        {STEPS.map((step, idx) => {
-          const isCompleted = step.number < currentStep;
-          const isCurrent = step.number === currentStep;
+        {etapas.map((step, idx) => {
+          const isCompleted = step.number < etapa;
+          const isCurrent = step.number === etapa;
           const isReachable = step.number <= project.wizardStep;
 
           return (
@@ -107,11 +124,11 @@ export function WizardContainer({
                   <span className="text-xs text-gray-300">{step.label}</span>
                 </div>
               )}
-              {idx < STEPS.length - 1 && (
+              {idx < etapas.length - 1 && (
                 <div
                   className={cn(
                     "w-8 h-0.5 mx-1",
-                    step.number < currentStep ? "bg-green-400" : "bg-gray-200"
+                    step.number < etapa ? "bg-green-400" : "bg-gray-200"
                   )}
                 />
               )}
@@ -121,11 +138,11 @@ export function WizardContainer({
       </div>
 
       {/* Step Content */}
-      {currentStep === 1 && <Step1Identificacao project={project} />}
-      {currentStep === 2 && <Step2Ambientes project={project} />}
-      {currentStep === 3 && <Step3Estrutura project={project} />}
-      {currentStep === 4 && <Step4Cobertura project={project} />}
-      {currentStep === 5 && (
+      {etapa === 1 && <Step1Identificacao project={project} />}
+      {etapa === 2 && <Step2Ambientes project={project} />}
+      {etapa === 3 && (reforma ? <Step3Diagnostico project={project} /> : <Step3Estrutura project={project} />)}
+      {etapa === 4 && <Step4Cobertura project={project} />}
+      {etapa === 5 && (
         <Step5Instalacoes
           project={project}
           hydraulicGroups={hydraulicGroups}
@@ -134,16 +151,16 @@ export function WizardContainer({
           manualPipeQuantities={manualPipeQuantities}
         />
       )}
-      {currentStep === 6 && <Step6Revestimentos project={project} />}
-      {currentStep === 7 && <Step7Muros project={project} />}
-      {currentStep === 8 && (
+      {etapa === 6 && <Step6Revestimentos project={project} />}
+      {etapa === 7 && <Step7Muros project={project} />}
+      {etapa === 8 && (
         <Step8MateriaisAvulsos
           projectId={project.id}
           materials={catalogMaterials}
           rows={manualPhaseRows}
         />
       )}
-      {currentStep === 9 && <Step7Revisao project={project} />}
+      {etapa === 9 && <Step7Revisao project={project} />}
     </div>
   );
 }

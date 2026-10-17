@@ -173,6 +173,7 @@ export const ISSUE_CATEGORIES = [
   "Instalação hidráulica / vazamento",
   "Esquadria / porta / janela",
   "Cobertura / telhado",
+  "Alvenaria",
   "Estrutural",
   "Outro",
 ] as const;

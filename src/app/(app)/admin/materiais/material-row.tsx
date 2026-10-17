@@ -264,6 +264,34 @@ export function MaterialRow({
             min="0"
             className={`w-24 text-right ${inputClass}`}
           />
+          {/* Calcula o unitario a partir do preco do pacote (balde, caixa...).
+              Usa a quantidade da embalagem informada ao lado; se nao houver,
+              pergunta na hora. */}
+          {unit.trim().toLowerCase() === "un" && (
+          <button
+            type="button"
+            onClick={() => {
+              const qExistente = Number(quantity.replace(",", ".")) || 0;
+              const pacoteStr = window.prompt("Preço do pacote (R$):", "");
+              if (!pacoteStr) return;
+              const pacote = Number(pacoteStr.replace(/\./g, "").replace(",", ".")) || 0;
+              if (!(pacote > 0)) return;
+              let unidades = qExistente;
+              if (!(unidades > 0)) {
+                const uStr = window.prompt("Quantas unidades vêm no pacote?", "");
+                if (!uStr) return;
+                unidades = Number(uStr.replace(",", ".")) || 0;
+                if (!(unidades > 0)) return;
+                setQuantity(String(unidades));
+              }
+              setPrice((pacote / unidades).toFixed(4).replace(/\.?0+$/, ""));
+            }}
+            className="mt-1 block ml-auto text-[11px] text-brand-600 hover:underline"
+            title="Informe o preço da embalagem e calcule o unitário"
+          >
+            calcular do pacote
+          </button>
+          )}
         </td>
         <td className="py-2 px-2 text-center">
           <input

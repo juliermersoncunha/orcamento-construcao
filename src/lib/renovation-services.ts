@@ -41,7 +41,7 @@ const LOSS_ARG = 1.06;
 export const RENOVATION_SERVICES: ServiceDef[] = [
   // ── Demolição e remoção ──
   { key: "remover_piso", label: "Remover piso", grupo: "Demolição e remoção", unit: "m²", medida: "piso", materiais: entulho(0.05) },
-  { key: "remover_revestimento_parede", label: "Remover revestimento de parede", grupo: "Demolição e remoção", unit: "m²", medida: "parede", materiais: entulho(0.04) },
+  { key: "remover_revestimento_parede", label: "Remover cerâmica / revestimento de parede", grupo: "Demolição e remoção", unit: "m²", medida: "parede", materiais: entulho(0.04) },
   { key: "remover_reboco", label: "Remover reboco", grupo: "Demolição e remoção", unit: "m²", medida: "parede", materiais: entulho(0.04) },
   { key: "demolir_alvenaria", label: "Demolir alvenaria", grupo: "Demolição e remoção", unit: "m²", materiais: entulho(0.18) },
 
@@ -89,7 +89,7 @@ export const RENOVATION_SERVICES: ServiceDef[] = [
     ],
   },
   {
-    key: "revestimento_parede", label: "Revestir parede (azulejo)", grupo: "Revestimentos", unit: "m²", medida: "parede",
+    key: "revestimento_parede", label: "Assentar cerâmica de parede (azulejo)", grupo: "Revestimentos", unit: "m²", medida: "parede",
     materiais: (q) => [
       { name: "Revestimento Cerâmico (parede)", unit: "m²", quantity: q * LOSS_PISO, phase: "REVESTIMENTOS", category: "REVESTIMENTO" },
       { name: ARGAMASSA_PAREDE_GERAL, unit: "sc", quantity: q * 0.45, phase: "REVESTIMENTOS", category: "REVESTIMENTO" },

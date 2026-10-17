@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Stethoscope, Plus, Trash2, Pencil, Check, X, ChevronRight, AlertTriangle } from "lucide-react";
+import { Stethoscope, Plus, Trash2, Pencil, Check, X, ChevronRight, AlertTriangle, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import {
@@ -50,6 +50,19 @@ export function Step3Diagnostico({ project }: { project: any }) {
 
   // "Geral" agrupa o que não pertence a um cômodo (fachada, telhado, quintal).
   const grupos: { room: Room | null }[] = [...rooms.map((r) => ({ room: r })), { room: null }];
+
+  // Um projeto com dez cômodos vira uma página enorme com tudo aberto. Começa
+  // recolhido, com o resumo no cabeçalho, e o usuário abre o que vai mexer.
+  const chave = (room: Room | null) => room?.id ?? "geral";
+  const [abertos, setAbertos] = useState<Set<string>>(new Set());
+  const alternar = (k: string) =>
+    setAbertos((prev) => {
+      const next = new Set(prev);
+      if (next.has(k)) next.delete(k);
+      else next.add(k);
+      return next;
+    });
+  const todosAbertos = grupos.every((g) => abertos.has(chave(g.room)));
   const materiais = useMemo(() => materiaisDosServicos(services), [services]);
 
   return (
@@ -74,6 +87,18 @@ export function Step3Diagnostico({ project }: { project: any }) {
         <div className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">{error}</div>
       )}
 
+      {grupos.length > 1 && (
+        <div className="flex justify-end -mb-2">
+          <button
+            type="button"
+            onClick={() => setAbertos(todosAbertos ? new Set() : new Set(grupos.map((g) => chave(g.room))))}
+            className="text-xs text-brand-700 hover:underline"
+          >
+            {todosAbertos ? "Recolher todos" : "Expandir todos"}
+          </button>
+        </div>
+      )}
+
       {rooms.length === 0 && (
         <Card>
           <CardContent className="py-6 text-sm text-gray-600">
@@ -90,6 +115,8 @@ export function Step3Diagnostico({ project }: { project: any }) {
           room={room}
           issues={issues.filter((i) => i.roomId === (room?.id ?? null))}
           services={services.filter((s) => s.roomId === (room?.id ?? null))}
+          aberto={abertos.has(chave(room))}
+          onAlternar={() => alternar(chave(room))}
           isPending={isPending}
           run={run}
         />
@@ -123,9 +150,10 @@ export function Step3Diagnostico({ project }: { project: any }) {
 }
 
 function AmbienteCard({
-  projectId, room, issues, services, isPending, run,
+  projectId, room, issues, services, aberto, onAlternar, isPending, run,
 }: {
   projectId: string; room: Room | null; issues: Issue[]; services: Service[];
+  aberto: boolean; onAlternar: () => void;
   isPending: boolean; run: Run;
 }) {
   const [cat, setCat] = useState("");
@@ -136,17 +164,43 @@ function AmbienteCard({
   return (
     <Card>
       <CardContent className="py-4 flex flex-col gap-4">
-        <div className="flex items-baseline gap-2">
-          <p className="font-semibold text-gray-900">{room?.name ?? "Geral / área externa"}</p>
+        <button
+          type="button"
+          onClick={onAlternar}
+          aria-expanded={aberto}
+          className="flex items-baseline gap-2 text-left w-full group"
+        >
+          <ChevronDown className={`w-4 h-4 shrink-0 self-center text-gray-400 transition-transform ${aberto ? "" : "-rotate-90"}`} />
+          <p className="font-semibold text-gray-900 group-hover:text-brand-700">{room?.name ?? "Geral / área externa"}</p>
           {room && (
             <span className="text-xs text-gray-400">
               {fmt(room.width)} × {fmt(room.length)} m · piso {fmt(room.width * room.length)} m² · paredes{" "}
               {fmt(2 * (room.width + room.length) * room.height)} m²
             </span>
           )}
-        </div>
+          <span className="flex-1" />
+          {/* Recolhido, o cabeçalho é o que diz se o cômodo já foi vistoriado. */}
+          <span className="text-xs text-gray-500 shrink-0">
+            {issues.length === 0 && services.length === 0
+              ? "sem registros"
+              : `${issues.length} ${issues.length === 1 ? "problema" : "problemas"} · ${services.length} ${services.length === 1 ? "serviço" : "serviços"}`}
+          </span>
+        </button>
 
-        {issues.map((issue) => (
+        {!aberto && issues.length > 0 && (
+          <div className="flex flex-wrap gap-1 -mt-2">
+            {issues.map((i) => {
+              const g = SEVERITIES.find((x) => x.value === i.severity) ?? SEVERITIES[1];
+              return (
+                <span key={i.id} className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${g.cor}`}>
+                  {i.category}
+                </span>
+              );
+            })}
+          </div>
+        )}
+
+        {aberto && issues.map((issue) => (
           <ProblemaBloco
             key={issue.id}
             projectId={projectId}
@@ -159,6 +213,7 @@ function AmbienteCard({
         ))}
 
         {/* Registrar problema */}
+        {aberto && (
         <div className="rounded-md border border-dashed border-gray-300 bg-gray-50 p-3">
           <p className="text-xs font-medium text-gray-600 mb-2 flex items-center gap-1.5">
             <AlertTriangle className="w-3.5 h-3.5" /> Registrar problema encontrado
@@ -190,8 +245,10 @@ function AmbienteCard({
             </Button>
           </div>
         </div>
+        )}
 
         {/* Serviços sem problema associado */}
+        {aberto && (
         <div>
           <p className="text-xs font-medium text-gray-600 mb-1">
             Serviços sem problema associado <span className="text-gray-400">(melhorias, modernização)</span>
@@ -199,6 +256,7 @@ function AmbienteCard({
           <ListaServicos services={semProblema} isPending={isPending} run={run} />
           <NovoServico projectId={projectId} room={room} issueId={null} isPending={isPending} run={run} />
         </div>
+        )}
       </CardContent>
     </Card>
   );

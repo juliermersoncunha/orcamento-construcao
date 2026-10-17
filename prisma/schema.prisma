@@ -205,6 +205,7 @@ model Project {
   weekPurchases     ScheduleWeekPurchase[]
   renovationIssues   RenovationIssue[]
   renovationServices RenovationService[]
+  costLines          ProjectCostLine[]
   materialUsages    MaterialUsage[]
 }
 
@@ -850,4 +851,22 @@ model RenovationService {
   issue   RenovationIssue? @relation(fields: [issueId], references: [id], onDelete: SetNull)
 
   @@index([projectId])
+}
+
+// Estimativa de preco revisada pelo usuario: o valor fechado de cada oficio
+// (pintura, eletrica, alvenaria...) e os itens de gestao da obra. O sistema
+// calcula o material; o preco de venda quem define e o usuario, e e ele que
+// vai para o relatorio do cliente.
+model ProjectCostLine {
+  id        String   @id @default(cuid())
+  projectId String
+  kind      String   // SERVICO | GESTAO
+  key       String   // categoria do oficio, ou chave do item de gestao
+  amount    Float    @default(0)
+  percent   Float?   // so o BDI usa: percentual sobre o custo direto
+  updatedAt DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, kind, key])
 }

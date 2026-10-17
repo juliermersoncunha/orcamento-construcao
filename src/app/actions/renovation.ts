@@ -184,3 +184,33 @@ export async function finishRenovationDiagnosis(projectId: string) {
   revalidatePath(`/projetos/${projectId}/wizard`);
   redirect(`/projetos/${projectId}/wizard?etapa=8`);
 }
+
+// ── Estimativa de preço ─────────────────────────────────────────────────────
+
+// Guarda o valor de um ofício ou de um item de gestão. Zero apaga a linha, para
+// o relatório distinguir "ainda não estimei" de "é zero mesmo".
+export async function setProjectCostLine(
+  projectId: string,
+  input: { kind: "SERVICO" | "GESTAO"; key: string; amount?: number; percent?: number | null }
+) {
+  await assertOwnsProject(projectId);
+  if (input.kind !== "SERVICO" && input.kind !== "GESTAO") return { error: "Tipo inválido." };
+
+  const amount = Number(input.amount ?? 0);
+  const percent = input.percent == null ? null : Number(input.percent);
+  if (!Number.isFinite(amount) || amount < 0) return { error: "Valor inválido." };
+  if (percent !== null && (!Number.isFinite(percent) || percent < 0)) return { error: "Percentual inválido." };
+
+  const where = { projectId_kind_key: { projectId, kind: input.kind, key: input.key } };
+  if (amount === 0 && (percent === null || percent === 0)) {
+    await prisma.projectCostLine.deleteMany({ where: { projectId, kind: input.kind, key: input.key } });
+  } else {
+    await prisma.projectCostLine.upsert({
+      where,
+      create: { projectId, kind: input.kind, key: input.key, amount, percent },
+      update: { amount, percent },
+    });
+  }
+  revalidatePath(`/projetos/${projectId}/diagnostico`);
+  return {};
+}

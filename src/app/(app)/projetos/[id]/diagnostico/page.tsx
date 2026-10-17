@@ -6,6 +6,8 @@ import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PrintButton } from "../memorial/memorial-print";
 import { SERVICE_BY_KEY, SEVERITIES, materiaisDosServicos } from "@/lib/renovation-services";
+import { montarEstimativa } from "@/lib/renovation-estimate";
+import { PainelEstimativa } from "./estimativa";
 
 // Relatório "Diagnóstico de Reforma": o que a vistoria encontrou, ambiente por
 // ambiente, os serviços que resolvem cada problema e a estimativa de material.
@@ -32,6 +34,7 @@ export default async function DiagnosticoPage({ params }: { params: Promise<{ id
       renovationIssues: { orderBy: { order: "asc" } },
       renovationServices: { orderBy: { order: "asc" } },
       manualBudgetItems: { include: { material: { select: { name: true, unit: true, currentPrice: true } } } },
+      costLines: true,
     },
   });
   if (!project) redirect("/projetos");
@@ -67,6 +70,22 @@ export default async function DiagnosticoPage({ params }: { params: Promise<{ id
   ].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
   const totalMaterial = linhasMaterial.reduce((s, l) => s + l.qtd * l.preco, 0);
   const semPreco = linhasMaterial.filter((l) => l.preco === 0).length;
+
+  // Material por ofício: o mesmo cálculo, serviço a serviço, para saber quanto
+  // do custo de material cabe a cada categoria da estimativa.
+  const materialPorCategoria = new Map<string, number>();
+  for (const sv of services) {
+    const cat = SERVICE_BY_KEY.get(sv.serviceKey)?.categoria;
+    if (!cat) continue;
+    const custo = materiaisDosServicos([{ serviceKey: sv.serviceKey, quantity: sv.quantity }])
+      .reduce((acc, m) => acc + m.quantity * precoDe(m.name).preco, 0);
+    materialPorCategoria.set(cat, (materialPorCategoria.get(cat) ?? 0) + custo);
+  }
+  const estimativa = montarEstimativa(
+    services,
+    materialPorCategoria,
+    project.costLines.map((l) => ({ kind: l.kind, key: l.key, amount: l.amount, percent: l.percent })),
+  );
 
   const contagem = ORDEM_GRAVIDADE.map((g) => ({ g, n: issues.filter((i) => i.severity === g).length }));
   const prioridades = issues
@@ -120,9 +139,11 @@ export default async function DiagnosticoPage({ params }: { params: Promise<{ id
               <p className="text-xs text-gray-500">em {ambientes.length} ambiente(s)</p>
             </div>
             <div className="rounded-lg border border-gray-200 p-3">
-              <p className="text-xs text-gray-500">Estimativa de material</p>
-              <p className="text-2xl font-bold">{brl(totalMaterial)}</p>
-              <p className="text-xs text-gray-500">mão de obra não incluída</p>
+              <p className="text-xs text-gray-500">Investimento estimado</p>
+              <p className="text-2xl font-bold">{estimativa.total > 0 ? brl(estimativa.total) : "a definir"}</p>
+              <p className="text-xs text-gray-500">
+                {estimativa.semEstimativa > 0 ? `${estimativa.semEstimativa} serviço(s) a estimar` : "serviços e gestão da obra"}
+              </p>
             </div>
           </div>
         </section>
@@ -177,7 +198,12 @@ export default async function DiagnosticoPage({ params }: { params: Promise<{ id
                             <td className="py-1.5">
                               {sp.length === 0
                                 ? <span className="text-gray-400">a definir</span>
-                                : sp.map((s) => <p key={s.id}>{nomeServico(s)} — {fmt(s.quantity)} {unidade(s.serviceKey)}</p>)}
+                                : sp.map((s) => (
+                                    <p key={s.id}>
+                                      {nomeServico(s)}
+                                      <span className="print:hidden"> — {fmt(s.quantity)} {unidade(s.serviceKey)}</span>
+                                    </p>
+                                  ))}
                             </td>
                           </tr>
                         );
@@ -188,7 +214,12 @@ export default async function DiagnosticoPage({ params }: { params: Promise<{ id
                 {melhorias.length > 0 && (
                   <div>
                     <p className="text-xs text-gray-500 mb-0.5">Melhorias (sem problema associado)</p>
-                    {melhorias.map((s) => <p key={s.id}>• {nomeServico(s)} — {fmt(s.quantity)} {unidade(s.serviceKey)}</p>)}
+                    {melhorias.map((s) => (
+                      <p key={s.id}>
+                        • {nomeServico(s)}
+                        <span className="print:hidden"> — {fmt(s.quantity)} {unidade(s.serviceKey)}</span>
+                      </p>
+                    ))}
                   </div>
                 )}
               </div>
@@ -196,10 +227,15 @@ export default async function DiagnosticoPage({ params }: { params: Promise<{ id
           })}
         </section>
 
-        {/* Materiais */}
+        <PainelEstimativa projectId={project.id} est={estimativa} />
+
+        {/* Materiais — só na tela: o cliente recebe o valor fechado por serviço */}
         {linhasMaterial.length > 0 && (
-          <section className="mb-6">
-            <h2 className="text-base font-bold mb-2">Estimativa de material</h2>
+          <section className="mb-6 print:hidden">
+            <h2 className="text-base font-bold">Material calculado</h2>
+            <p className="text-xs text-gray-500 mb-2">
+              Referência interna: não aparece na impressão entregue ao cliente.
+            </p>
             <table className="w-full">
               <thead>
                 <tr className="text-left text-xs text-gray-500 border-b border-gray-200">
@@ -238,9 +274,9 @@ export default async function DiagnosticoPage({ params }: { params: Promise<{ id
         )}
 
         <footer className="mt-8 pt-3 border-t border-gray-200 text-xs text-gray-500">
-          Diagnóstico elaborado a partir de vistoria no local. Quantidades estimadas a partir das medidas dos
-          ambientes; a mão de obra e eventuais serviços complementares identificados durante a execução não
-          estão incluídos.
+          Diagnóstico elaborado a partir de vistoria no local. Os valores são estimativas baseadas no que foi
+          observado; serviços complementares identificados durante a execução serão orçados à parte. Validade
+          da proposta: 15 dias.
         </footer>
       </article>
     </div>

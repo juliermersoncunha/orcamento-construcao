@@ -6,14 +6,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, BarChart3 } from "lucide-react";
 import Link from "next/link";
 import { ViabilidadeForm } from "./viabilidade-form";
-import { LaborModel } from "@prisma/client";
-
-function computeMO(model: LaborModel, value: number, phaseMat: number, area: number): number {
-  if (model === "FIXED") return value;
-  if (model === "PER_M2") return value * area;
-  if (model === "PERCENT") return phaseMat * (value / 100);
-  return 0;
-}
+import { montarResumoCustos } from "@/lib/cost-summary";
 
 export default async function ViabilidadePage({
   params,
@@ -29,7 +22,8 @@ export default async function ViabilidadePage({
     include: {
       rooms: { select: { width: true, length: true } },
       budgetItems: { select: { phase: true, quantity: true, unitPriceSnapshot: true } },
-      laborConfig: { include: { phases: true } },
+      laborLines: { select: { role: true, label: true, value: true } },
+      costLines: { where: { kind: "GESTAO" } },
       indirectCosts: true,
       viability: true,
     },
@@ -43,22 +37,9 @@ export default async function ViabilidadePage({
     0
   );
 
-  const phaseMat = new Map<string, number>();
-  for (const item of project.budgetItems) {
-    phaseMat.set(item.phase, (phaseMat.get(item.phase) ?? 0) + item.quantity * item.unitPriceSnapshot);
-  }
-
-  let totalLabor = 0;
-  if (project.laborConfig) {
-    for (const lp of project.laborConfig.phases) {
-      totalLabor += computeMO(
-        project.laborConfig.model,
-        lp.value,
-        phaseMat.get(lp.phase) ?? 0,
-        floorArea
-      );
-    }
-  }
+  // Mão de obra por função e gestão da obra, no mesmo cálculo do orçamento.
+  const resumo = montarResumoCustos(totalMaterials, project.laborLines, project.costLines);
+  const bdiGestao = resumo.gestao.find((g) => g.percent)?.percent ?? null;
 
   const totalIndirect = project.indirectCosts.reduce((sum, c) => sum + c.value, 0);
   const v = project.viability;
@@ -85,7 +66,9 @@ export default async function ViabilidadePage({
           <ViabilidadeForm
             projectId={id}
             totalMaterials={totalMaterials}
-            totalLabor={totalLabor}
+            totalLabor={resumo.totalMO}
+            totalGestao={resumo.totalGestao}
+            bdiGestao={bdiGestao}
             totalIndirect={totalIndirect}
             floorArea={floorArea}
             // persistido

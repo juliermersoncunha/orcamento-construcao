@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { montarResumoCustos } from "@/lib/cost-summary";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { redirect } from "next/navigation";
@@ -38,6 +39,8 @@ export default async function ProjetosPage() {
     where: { userId: session.userId },
     include: {
       budgetItems: { select: { quantity: true, unitPriceSnapshot: true } },
+      laborLines: { select: { role: true, label: true, value: true } },
+      costLines: { where: { kind: "GESTAO" } },
     },
     orderBy: { updatedAt: "desc" },
   });
@@ -79,10 +82,11 @@ export default async function ProjetosPage() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {projects.map((project) => {
-            const total = project.budgetItems.reduce(
+            const materiais = project.budgetItems.reduce(
               (sum, item) => sum + item.quantity * item.unitPriceSnapshot,
               0
             );
+            const total = montarResumoCustos(materiais, project.laborLines, project.costLines).total;
             const hasOrçamento = project.budgetItems.length > 0;
 
             return (

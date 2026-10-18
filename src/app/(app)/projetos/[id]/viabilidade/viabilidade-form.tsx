@@ -13,6 +13,9 @@ type Props = {
   projectId: string;
   totalMaterials: number;
   totalLabor: number;
+  // Gestão da obra (mobilização, logística, gestão e BDI) da tela de Mão de Obra.
+  totalGestao: number;
+  bdiGestao: number | null;
   totalIndirect: number;
   floorArea: number;
   // persistido
@@ -87,8 +90,10 @@ function NumInput({
 
 export function ViabilidadeForm(props: Props) {
   const {
-    projectId, totalMaterials, totalLabor, totalIndirect, floorArea,
+    projectId, totalMaterials, totalLabor, totalGestao, bdiGestao, totalIndirect, floorArea,
   } = props;
+  // BDI já lançado na gestão da obra: o campo daqui fica travado, senão conta duas vezes.
+  const bdiTravado = !!bdiGestao;
 
   const [isPending, startTransition] = useTransition();
   const [saved, setSaved] = useState(false);
@@ -119,8 +124,8 @@ export function ViabilidadeForm(props: Props) {
 
   // ── cálculos construção ───────────────────────────────────────────────────
   const directCost    = totalMaterials + totalLabor;
-  const bdiValue      = directCost * (bdiPercent / 100);
-  const totalBuild    = directCost + bdiValue + totalIndirect;
+  const bdiValue      = bdiTravado ? 0 : directCost * (bdiPercent / 100);
+  const totalBuild    = directCost + totalGestao + bdiValue + totalIndirect;
 
   // ── custo total da operação ───────────────────────────────────────────────
   const totalOperation = totalLand + totalBuild;
@@ -237,6 +242,13 @@ export function ViabilidadeForm(props: Props) {
       <FieldGroup label="2 — Construção">
         <Row label="Materiais" value={totalMaterials} />
         <Row label="Mão de obra" value={totalLabor} />
+        {totalGestao > 0 && (
+          <Row
+            label="Gestão da obra"
+            value={totalGestao}
+            sub={bdiGestao ? `inclui BDI de ${bdiGestao.toLocaleString("pt-BR")}%` : undefined}
+          />
+        )}
         {totalIndirect > 0 && <Row label="Custos indiretos" value={totalIndirect} />}
 
         <div className="px-4 py-3 border-t border-gray-100 flex items-center gap-3">
@@ -247,9 +259,13 @@ export function ViabilidadeForm(props: Props) {
             value={bdiPercent || ""}
             onChange={(e) => setBdiPercent(parseFloat(e.target.value) || 0)}
             placeholder="Ex: 25"
-            className="w-20 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
+            disabled={bdiTravado}
+            className="w-20 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400 disabled:bg-gray-100"
           />
-          {bdiPercent > 0 && (
+          {bdiTravado && (
+            <span className="text-xs text-gray-500">já aplicado na gestão da obra (tela Mão de Obra)</span>
+          )}
+          {!bdiTravado && bdiPercent > 0 && (
             <span className="text-sm text-gray-600 ml-auto">= {formatCurrency(bdiValue)}</span>
           )}
         </div>

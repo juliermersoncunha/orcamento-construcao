@@ -523,7 +523,7 @@ function calcPintura(
   if (usaFundoPreparador(primer)) {
     items.push({
       name: FUNDO_PREPARADOR, unit: "un", category: "PINTURA", phase: "PINTURA",
-      quantity: baldesDeFundo(paintWallArea * 0.10),
+      quantity: baldesDeFundo(paintWallArea),
     });
   } else {
     items.push({

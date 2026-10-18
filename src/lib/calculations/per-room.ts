@@ -1,4 +1,4 @@
-import { SELADOR, FUNDO_PREPARADOR, usaFundoPreparador, baldesDeFundo } from "../paint-primer";
+import { SELADOR, FUNDO_PREPARADOR, FORMULA_FUNDO, usaFundoPreparador, baldesDeFundo } from "../paint-primer";
 import type { RoomInput } from "./index";
 import {
   ELECTRICAL_FINISH_DEFAULTS,
@@ -66,7 +66,7 @@ export function calculateRoomMaterials(
         results.push({ name: "Lixa para massa", unit: "un", quantity: Math.ceil(paintArea * 0.2), category: "Pintura", formula: `${fmt(paintArea)} m² × 0,20 un/m²` });
       }
       if (usaFundoPreparador(primer)) {
-        results.push({ name: FUNDO_PREPARADOR, unit: "un", quantity: baldesDeFundo(paintArea * 0.10), category: "Pintura", formula: `${fmt(paintArea)} m² × 0,10 L/m² ÷ 20 L por balde` });
+        results.push({ name: FUNDO_PREPARADOR, unit: "un", quantity: baldesDeFundo(paintArea), category: "Pintura", formula: `${fmt(paintArea)} m² ${FORMULA_FUNDO}` });
       } else {
         results.push({ name: SELADOR, unit: "L", quantity: Math.ceil(paintArea * 0.10), category: "Pintura", formula: `${fmt(paintArea)} m² × 0,10 L/m²` });
       }

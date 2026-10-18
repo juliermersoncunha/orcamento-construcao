@@ -55,6 +55,10 @@ export function MaterialRow({
   const [quantity, setQuantity] = useState(material.quantity == null ? "" : String(material.quantity));
   const [brand, setBrand] = useState(material.brand ?? "");
   const [supplierId, setSupplierId] = useState(material.supplierId ?? "");
+  // Vendido em pacote (só para "un"): o usuário digita o preço do pacote e a
+  // quantidade da embalagem; o preço gravado é o unitário.
+  const [emPacote, setEmPacote] = useState(false);
+  const [precoPacote, setPrecoPacote] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -69,6 +73,8 @@ export function MaterialRow({
     setQuantity(material.quantity == null ? "" : String(material.quantity));
     setBrand(material.brand ?? "");
     setSupplierId(material.supplierId ?? "");
+    setEmPacote(false);
+    setPrecoPacote("");
     setError(null);
     setEditing(true);
   }
@@ -78,8 +84,18 @@ export function MaterialRow({
     setError(null);
   }
 
+  const ehUn = unit.trim().toLowerCase() === "un";
+  const num = (v: string) => Number(v.replace(",", "."));
+  const unitarioDoPacote =
+    emPacote && num(precoPacote) > 0 && num(quantity) > 0 ? num(precoPacote) / num(quantity) : null;
+
   function save() {
-    const p = parseFloat(price);
+    let p = parseFloat(price);
+    if (emPacote && ehUn) {
+      if (!(num(precoPacote) > 0)) { setError("Informe o preço do pacote."); return; }
+      if (!(num(quantity) > 0)) { setError("Informe quantas unidades vêm no pacote."); return; }
+      p = Math.round((num(precoPacote) / num(quantity)) * 10000) / 10000;
+    }
     if (isNaN(p) || p < 0) {
       setError("Preço inválido.");
       return;
@@ -250,47 +266,52 @@ export function MaterialRow({
             onKeyDown={onKeyDown}
             step="0.01"
             min="0"
-            placeholder="—"
-            className={`w-20 text-center ${inputClass}`}
+            placeholder={emPacote ? "un/pacote" : "—"}
+            className={`w-20 text-center ${inputClass} ${emPacote ? "ring-2 ring-brand-300" : ""}`}
           />
+          {emPacote && <p className="mt-1 text-[11px] text-gray-500">un. no pacote</p>}
         </td>
         <td className="py-2 px-2 text-right">
-          <input
-            type="number"
-            value={price}
-            onChange={(e) => setPrice(e.target.value)}
-            onKeyDown={onKeyDown}
-            step="0.01"
-            min="0"
-            className={`w-24 text-right ${inputClass}`}
-          />
-          {/* Calcula o unitario a partir do preco do pacote (balde, caixa...).
-              Usa a quantidade da embalagem informada ao lado; se nao houver,
-              pergunta na hora. */}
-          {unit.trim().toLowerCase() === "un" && (
-          <button
-            type="button"
-            onClick={() => {
-              const qExistente = Number(quantity.replace(",", ".")) || 0;
-              const pacoteStr = window.prompt("Preço do pacote (R$):", "");
-              if (!pacoteStr) return;
-              const pacote = Number(pacoteStr.replace(/\./g, "").replace(",", ".")) || 0;
-              if (!(pacote > 0)) return;
-              let unidades = qExistente;
-              if (!(unidades > 0)) {
-                const uStr = window.prompt("Quantas unidades vêm no pacote?", "");
-                if (!uStr) return;
-                unidades = Number(uStr.replace(",", ".")) || 0;
-                if (!(unidades > 0)) return;
-                setQuantity(String(unidades));
-              }
-              setPrice((pacote / unidades).toFixed(4).replace(/\.?0+$/, ""));
-            }}
-            className="mt-1 block ml-auto text-[11px] text-brand-600 hover:underline"
-            title="Informe o preço da embalagem e calcule o unitário"
-          >
-            calcular do pacote
-          </button>
+          {emPacote && ehUn ? (
+            <input
+              type="number"
+              value={precoPacote}
+              onChange={(e) => setPrecoPacote(e.target.value)}
+              onKeyDown={onKeyDown}
+              step="0.01"
+              min="0"
+              placeholder="R$ pacote"
+              autoFocus
+              className={`w-24 text-right ${inputClass}`}
+            />
+          ) : (
+            <input
+              type="number"
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
+              onKeyDown={onKeyDown}
+              step="0.01"
+              min="0"
+              className={`w-24 text-right ${inputClass}`}
+            />
+          )}
+          {ehUn && (
+            <label className="mt-1 flex items-center justify-end gap-1 text-[11px] text-gray-600 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={emPacote}
+                onChange={(e) => setEmPacote(e.target.checked)}
+                className="rounded"
+              />
+              vendido em pacote
+            </label>
+          )}
+          {emPacote && ehUn && (
+            <p className="mt-0.5 text-[11px] text-right text-brand-700 font-medium">
+              {unitarioDoPacote
+                ? `= ${unitarioDoPacote.toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2, maximumFractionDigits: 4 })} / un`
+                : "informe a qtd. do pacote"}
+            </p>
           )}
         </td>
         <td className="py-2 px-2 text-center">

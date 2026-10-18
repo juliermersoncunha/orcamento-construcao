@@ -8,6 +8,7 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { PrintButton } from "./memorial-print";
 import { generateExplanations } from "@/lib/calculations/memorial-calcs";
+import { memoriaServicos, explicacoesPorFase, formatarCoef } from "@/lib/renovation-memory";
 import { calculateRoomMaterials } from "@/lib/calculations/per-room";
 import type { RoomInput, StructureInput, RoofingInput, FinishesInput } from "@/lib/calculations";
 
@@ -118,6 +119,7 @@ export default async function MemorialPage({
         orderBy: { createdAt: "asc" },
       },
       laborLines: { select: { role: true, label: true, value: true } },
+      renovationServices: { orderBy: { order: "asc" } },
       costLines: { where: { kind: "GESTAO" } },
     },
   });
@@ -274,7 +276,19 @@ export default async function MemorialPage({
       }
     : { doors: 0, windows: 0, externalDoors: 1 };
 
-  const explanations = generateExplanations(roomInputs, structureInput, roofingInput, finishesInput);
+  // Reforma: o material vem dos serviços do diagnóstico, não do cálculo de
+  // casa nova — a memória tem de mostrar essas contas.
+  const reforma = project.type === "REFORMA";
+  const linhasReforma = reforma
+    ? memoriaServicos(
+        project.renovationServices,
+        project.rooms.map((r) => ({ id: r.id, nome: r.name })),
+        project.paintPrimer,
+      )
+    : [];
+  const explanations = reforma
+    ? explicacoesPorFase(linhasReforma)
+    : generateExplanations(roomInputs, structureInput, roofingInput, finishesInput);
 
   function getExplanationsForPhase(phase: string) {
     if (phase === "ESTRUTURA_ALVENARIA") {
@@ -305,10 +319,23 @@ export default async function MemorialPage({
     switchType:     (project.installations?.switchType     ?? "SIMPLES")   as "SIMPLES" | "DUPLO" | "TRIPLO",
     lightPointType: (project.installations?.lightPointType ?? "PLAFON_LED") as "RECEPTACULO_LAMPADA" | "PLAFON_LED",
   };
-  const roomMaterials = roomInputs.map((room) => ({
-    roomName: room.name,
-    items: calculateRoomMaterials(room, wallFinishType, electrical, project.paintPrimer),
-  }));
+  const roomMaterials = reforma
+    ? [...new Set(linhasReforma.map((l) => l.ambiente))].map((ambiente) => ({
+        roomName: ambiente,
+        items: linhasReforma
+          .filter((l) => l.ambiente === ambiente)
+          .map((l) => ({
+            name: l.material,
+            unit: l.unit,
+            quantity: Math.round(l.quantidade * 100) / 100,
+            category: l.servico,
+            formula: `${formatNumber(l.medida)} ${l.unidadeServico} × ${formatarCoef(l.coef, l.unit, l.unidadeServico)}`,
+          })),
+      }))
+    : roomInputs.map((room) => ({
+        roomName: room.name,
+        items: calculateRoomMaterials(room, wallFinishType, electrical, project.paintPrimer),
+      }));
 
   // ── Consolidated material list (shopping list) ──
   const consolidatedMap = new Map<string, { unit: string; quantity: number; price: number }>();
@@ -330,7 +357,9 @@ export default async function MemorialPage({
     .sort((a, b) => (b.quantity * b.price) - (a.quantity * a.price));
 
   // ── Phase ordering ──
-  const generalPhases = GENERAL_PHASES.filter((p) => byPhase.has(p));
+  // Em construção nova, revestimento e pintura aparecem por ambiente (seção 5);
+  // na reforma a seção 5 é por serviço, então a 6 mostra todas as etapas.
+  const generalPhases = (reforma ? ALL_PHASES_ORDER : GENERAL_PHASES).filter((p) => byPhase.has(p));
   const extraPhases = Array.from(byPhase.keys()).filter(
     (p) => !ALL_PHASES_ORDER.includes(p)
   );

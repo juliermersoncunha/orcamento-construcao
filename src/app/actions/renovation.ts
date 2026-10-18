@@ -214,3 +214,16 @@ export async function setProjectCostLine(
   revalidatePath(`/projetos/${projectId}/diagnostico`);
   return {};
 }
+
+// Escopo resumido do relatório. Texto vazio ou null volta ao automático.
+export async function setScopeSummary(projectId: string, texto: string | null) {
+  await assertOwnsProject(projectId);
+  const limpo = (texto ?? "")
+    .split("\n")
+    .map((l) => l.replace(/^\s*[•\-*]\s*/, "").trim())
+    .filter(Boolean)
+    .join("\n");
+  await prisma.project.update({ where: { id: projectId }, data: { scopeSummary: limpo || null } });
+  touch(projectId);
+  return {};
+}

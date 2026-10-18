@@ -70,7 +70,7 @@ export function EnviarFotos({ projectId, ambientes }: { projectId: string; ambie
         <Camera className="w-4 h-4 text-gray-500" /> Fotos da situação atual
       </p>
       <p className="text-xs text-gray-500 mb-3">
-        Escolha o ambiente e, se quiser, uma legenda. As fotos aparecem no ambiente correspondente e saem na impressão.
+        Escolha o ambiente e, se quiser, uma legenda. Na impressão cada foto sai com o nome do ambiente e a legenda.
       </p>
       <div className="flex flex-wrap items-center gap-2">
         <select value={roomId} onChange={(e) => setRoomId(e.target.value)} className={campo} disabled={enviando}>
@@ -113,12 +113,19 @@ export function GaleriaFotos({ fotos, ambientes }: { fotos: Foto[]; ambientes: A
   if (fotos.length === 0) return null;
   return (
     <div className="mt-2 grid grid-cols-2 gap-3">
-      {fotos.map((f) => <FotoItem key={f.id} f={f} ambientes={ambientes} />)}
+      {fotos.map((f) => (
+        <FotoItem
+          key={f.id}
+          f={f}
+          ambientes={ambientes}
+          ambiente={ambientes.find((a) => a.id === f.roomId)?.nome ?? "Geral / área externa"}
+        />
+      ))}
     </div>
   );
 }
 
-function FotoItem({ f, ambientes }: { f: Foto; ambientes: Ambiente[] }) {
+function FotoItem({ f, ambientes, ambiente }: { f: Foto; ambientes: Ambiente[]; ambiente: string }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [legenda, setLegenda] = useState(f.caption ?? "");
@@ -141,7 +148,9 @@ function FotoItem({ f, ambientes }: { f: Foto; ambientes: Ambiente[] }) {
         loading="lazy"
         className="w-full h-auto rounded border border-gray-200 print:max-h-[9cm] print:object-contain"
       />
-      {f.caption && <figcaption className="hidden print:block mt-1 text-xs text-gray-700">{f.caption}</figcaption>}
+      <figcaption className="hidden print:block mt-1 text-xs text-gray-700">
+        <strong>{ambiente}</strong>{f.caption ? ` — ${f.caption}` : ""}
+      </figcaption>
       <div className="mt-1 flex flex-wrap items-center gap-1.5 print:hidden">
         <input
           value={legenda}

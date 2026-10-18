@@ -177,6 +177,9 @@ model Project {
   // Base da pintura: "SELADOR" (selador acrílico, por litro) ou
   // "FUNDO_PREPARADOR" (fundo preparador de parede, balde de 20 L).
   paintPrimer  String        @default("SELADOR")
+  // Escopo resumido do relatório editado à mão (um item por linha). Nulo =
+  // gerado automaticamente a partir dos serviços.
+  scopeSummary String?
   userId       String
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt

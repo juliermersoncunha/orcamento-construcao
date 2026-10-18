@@ -5,15 +5,15 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PrintButton } from "../memorial/memorial-print";
-import { SERVICE_BY_KEY, SEVERITIES, materiaisDosServicos } from "@/lib/renovation-services";
+import { SERVICE_BY_KEY, materiaisDosServicos } from "@/lib/renovation-services";
+import { escopoAutomatico } from "@/lib/renovation-scope";
 import { montarResumoCustos } from "@/lib/cost-summary";
 import { EnviarFotos, GaleriaFotos } from "./fotos";
+import { EscopoReforma } from "./escopo";
 
-// Relatório "Diagnóstico de Reforma": o que a vistoria encontrou, ambiente por
-// ambiente, os serviços que resolvem cada problema e a estimativa de material.
-// Feito para imprimir / salvar em PDF e entregar ao cliente.
-
-const ORDEM_GRAVIDADE = ["URGENTE", "ALTA", "MEDIA", "BAIXA"];
+// Relatório "Diagnóstico de Reforma" para o cliente: escopo resumido, fotos da
+// situação atual, investimento estimado e, no fim, os detalhes por ambiente.
+// Feito para imprimir / salvar em PDF.
 
 function brl(n: number) {
   return n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -47,7 +47,6 @@ export default async function DiagnosticoPage({ params }: { params: Promise<{ id
 
   const issues = project.renovationIssues;
   const services = project.renovationServices;
-  const gravidade = (v: string) => SEVERITIES.find((s) => s.value === v) ?? SEVERITIES[1];
   const nomeServico = (s: { serviceKey: string; label: string | null }) =>
     s.label || SERVICE_BY_KEY.get(s.serviceKey)?.label || s.serviceKey;
   const unidade = (key: string) => SERVICE_BY_KEY.get(key)?.unit ?? "";
@@ -88,19 +87,18 @@ export default async function DiagnosticoPage({ params }: { params: Promise<{ id
     project.costLines.filter((l) => l.kind === "GESTAO"),
   );
 
-  const contagem = ORDEM_GRAVIDADE.map((g) => ({ g, n: issues.filter((i) => i.severity === g).length }));
-  const prioridades = issues
-    .filter((i) => i.severity === "URGENTE" || i.severity === "ALTA")
-    .sort((a, b) => ORDEM_GRAVIDADE.indexOf(a.severity) - ORDEM_GRAVIDADE.indexOf(b.severity));
-  const nomeAmbiente = (roomId: string | null) =>
-    project.rooms.find((r) => r.id === roomId)?.name ?? "Geral / área externa";
-
   const ambientes = [...project.rooms.map((r) => ({ id: r.id as string | null, nome: r.name })), { id: null, nome: "Geral / área externa" }]
-    .filter((a) =>
-      issues.some((i) => i.roomId === a.id) ||
-      services.some((s) => s.roomId === a.id) ||
-      project.photos.some((f) => f.roomId === a.id));
+    .filter((a) => issues.some((i) => i.roomId === a.id) || services.some((s) => s.roomId === a.id));
   const ambientesFoto = project.rooms.map((r) => ({ id: r.id, nome: r.name }));
+
+  // Fotos na ordem dos ambientes; as gerais (sem ambiente) por último.
+  const posicao = (roomId: string | null) => {
+    const i = project.rooms.findIndex((r) => r.id === roomId);
+    return i < 0 ? project.rooms.length : i;
+  };
+  const fotos = [...project.photos].sort((a, b) => posicao(a.roomId) - posicao(b.roomId));
+
+  const escopo = escopoAutomatico(services, ambientesFoto);
 
   const hoje = new Date().toLocaleDateString("pt-BR");
   const endereco = [project.address, project.city && `${project.city}${project.state ? `/${project.state}` : ""}`].filter(Boolean).join(" — ");
@@ -134,9 +132,7 @@ export default async function DiagnosticoPage({ params }: { params: Promise<{ id
             <div className="rounded-lg border border-gray-200 p-3">
               <p className="text-xs text-gray-500">Problemas encontrados</p>
               <p className="text-2xl font-bold">{issues.length}</p>
-              <p className="text-xs text-gray-500">
-                {contagem.filter((c) => c.n > 0).map((c) => `${c.n} ${gravidade(c.g).label.toLowerCase()}`).join(" · ") || "—"}
-              </p>
+              <p className="text-xs text-gray-500">na vistoria</p>
             </div>
             <div className="rounded-lg border border-gray-200 p-3">
               <p className="text-xs text-gray-500">Serviços recomendados</p>
@@ -151,88 +147,13 @@ export default async function DiagnosticoPage({ params }: { params: Promise<{ id
           </div>
         </section>
 
-        {/* Prioridades */}
-        {prioridades.length > 0 && (
-          <section className="mb-6 break-inside-avoid">
-            <h2 className="text-base font-bold mb-2">Prioridades</h2>
-            <ul className="flex flex-col gap-1">
-              {prioridades.map((i) => (
-                <li key={i.id} className="flex gap-2">
-                  <span className={`shrink-0 rounded px-1.5 py-0.5 text-[11px] font-semibold ${gravidade(i.severity).cor}`}>{gravidade(i.severity).label}</span>
-                  <span><strong>{nomeAmbiente(i.roomId)}:</strong> {i.category}{i.description ? ` — ${i.description}` : ""}</span>
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
+        <EscopoReforma projectId={project.id} automatico={escopo} editado={project.scopeSummary} />
 
-        <EnviarFotos projectId={project.id} ambientes={ambientesFoto} />
-
-        {/* Por ambiente */}
-        <section className="mb-6">
-          <h2 className="text-base font-bold mb-2">Diagnóstico por ambiente</h2>
-          {ambientes.length === 0 && <p className="text-gray-500">Nenhum problema ou serviço lançado.</p>}
-          {ambientes.map((a) => {
-            const probs = issues.filter((i) => i.roomId === a.id);
-            const servs = services.filter((s) => s.roomId === a.id);
-            const melhorias = servs.filter((s) => !s.issueId || !probs.some((p) => p.id === s.issueId));
-            const fotos = project.photos.filter((f) => f.roomId === a.id);
-            return (
-              // Com fotos o bloco passa de uma página; aí cada foto evita a quebra sozinha.
-              <div key={a.id ?? "geral"} className={`mb-4 ${fotos.length === 0 ? "break-inside-avoid" : ""}`}>
-                <h3 className="font-semibold text-brand-800 border-b border-gray-200 pb-1 mb-2">{a.nome}</h3>
-                {probs.length > 0 && (
-                  <table className="w-full mb-2">
-                    <thead>
-                      <tr className="text-left text-xs text-gray-500">
-                        <th className="py-1 w-20">Gravidade</th>
-                        <th className="py-1">Problema</th>
-                        <th className="py-1">Serviço recomendado</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {probs.map((p) => {
-                        const sp = servs.filter((s) => s.issueId === p.id);
-                        return (
-                          <tr key={p.id} className="border-t border-gray-100 align-top">
-                            <td className="py-1.5">
-                              <span className={`rounded px-1.5 py-0.5 text-[11px] font-semibold ${gravidade(p.severity).cor}`}>{gravidade(p.severity).label}</span>
-                            </td>
-                            <td className="py-1.5 pr-3">
-                              <p className="font-medium">{p.category}</p>
-                              {p.description && <p className="text-gray-600">{p.description}</p>}
-                            </td>
-                            <td className="py-1.5">
-                              {sp.length === 0
-                                ? <span className="text-gray-400">a definir</span>
-                                : sp.map((s) => (
-                                    <p key={s.id}>
-                                      {nomeServico(s)}
-                                      <span className="print:hidden"> — {fmt(s.quantity)} {unidade(s.serviceKey)}</span>
-                                    </p>
-                                  ))}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                )}
-                {melhorias.length > 0 && (
-                  <div>
-                    <p className="text-xs text-gray-500 mb-0.5">Melhorias (sem problema associado)</p>
-                    {melhorias.map((s) => (
-                      <p key={s.id}>
-                        • {nomeServico(s)}
-                        <span className="print:hidden"> — {fmt(s.quantity)} {unidade(s.serviceKey)}</span>
-                      </p>
-                    ))}
-                  </div>
-                )}
-                <GaleriaFotos fotos={fotos} ambientes={ambientesFoto} />
-              </div>
-            );
-          })}
+        {/* Situação atual: sem fotos, a seção só existe na tela (para enviar). */}
+        <section className={`mb-6 ${fotos.length === 0 ? "print:hidden" : ""}`}>
+          <h2 className="text-base font-bold mb-2">Situação atual</h2>
+          <EnviarFotos projectId={project.id} ambientes={ambientesFoto} />
+          <GaleriaFotos fotos={fotos} ambientes={ambientesFoto} />
         </section>
 
         {/* Investimento estimado */}
@@ -300,6 +221,66 @@ export default async function DiagnosticoPage({ params }: { params: Promise<{ id
               {semPreco} material(is) sem preço no catálogo — o total de materiais está subestimado.
             </p>
           )}
+        </section>
+
+        {/* Detalhes descritivos, ambiente por ambiente */}
+        <section className="mb-6">
+          <h2 className="text-base font-bold mb-2">Detalhes descritivos</h2>
+          {ambientes.length === 0 && <p className="text-gray-500">Nenhum problema ou serviço lançado.</p>}
+          {ambientes.map((a) => {
+            const probs = issues.filter((i) => i.roomId === a.id);
+            const servs = services.filter((s) => s.roomId === a.id);
+            const melhorias = servs.filter((s) => !s.issueId || !probs.some((p) => p.id === s.issueId));
+            return (
+              <div key={a.id ?? "geral"} className="mb-4 break-inside-avoid">
+                <h3 className="font-semibold text-brand-800 border-b border-gray-200 pb-1 mb-2">{a.nome}</h3>
+                {probs.length > 0 && (
+                  <table className="w-full mb-2">
+                    <thead>
+                      <tr className="text-left text-xs text-gray-500">
+                        <th className="py-1 w-1/2">Problema</th>
+                        <th className="py-1">Serviço recomendado</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {probs.map((p) => {
+                        const sp = servs.filter((s) => s.issueId === p.id);
+                        return (
+                          <tr key={p.id} className="border-t border-gray-100 align-top">
+                            <td className="py-1.5 pr-3">
+                              <p className="font-medium">{p.category}</p>
+                              {p.description && <p className="text-gray-600">{p.description}</p>}
+                            </td>
+                            <td className="py-1.5">
+                              {sp.length === 0
+                                ? <span className="text-gray-400">a definir</span>
+                                : sp.map((s) => (
+                                    <p key={s.id}>
+                                      {nomeServico(s)}
+                                      <span className="print:hidden"> — {fmt(s.quantity)} {unidade(s.serviceKey)}</span>
+                                    </p>
+                                  ))}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                )}
+                {melhorias.length > 0 && (
+                  <div>
+                    <p className="text-xs text-gray-500 mb-0.5">Melhorias (sem problema associado)</p>
+                    {melhorias.map((s) => (
+                      <p key={s.id}>
+                        • {nomeServico(s)}
+                        <span className="print:hidden"> — {fmt(s.quantity)} {unidade(s.serviceKey)}</span>
+                      </p>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </section>
 
         <footer className="mt-8 pt-3 border-t border-gray-200 text-xs text-gray-500">

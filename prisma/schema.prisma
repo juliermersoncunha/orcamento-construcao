@@ -210,6 +210,7 @@ model Project {
   renovationIssues   RenovationIssue[]
   renovationServices RenovationService[]
   costLines          ProjectCostLine[]
+  photos             RenovationPhoto[]
   materialUsages    MaterialUsage[]
 }
 
@@ -258,6 +259,7 @@ model Room {
   imperm           RoomImpermeabilization?
   renovationIssues   RenovationIssue[]
   renovationServices RenovationService[]
+  photos    RenovationPhoto[]
 }
 
 model ProjectStructure {
@@ -887,5 +889,25 @@ model LaborLine {
   order     Int      @default(0)
 
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  @@index([projectId])
+}
+
+// Fotos da situação atual (relatório de diagnóstico). Guardadas no banco já
+// reduzidas no navegador (~1600 px, JPEG) para não depender de storage externo.
+model RenovationPhoto {
+  id        String   @id @default(cuid())
+  projectId String
+  roomId    String?
+  caption   String?
+  mime      String
+  data      Bytes
+  width     Int
+  height    Int
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  room    Room?   @relation(fields: [roomId], references: [id], onDelete: SetNull)
+
   @@index([projectId])
 }

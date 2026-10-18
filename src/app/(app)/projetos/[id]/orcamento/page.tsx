@@ -223,7 +223,7 @@ export default async function OrcamentoPage({
             <Link href={`/projetos/${id}/diagnostico`}>
               <Button variant="outline" size="sm">
                 <Stethoscope className="w-4 h-4 mr-1" />
-                Diagnóstico
+                Relatório do diagnóstico
               </Button>
             </Link>
           )}

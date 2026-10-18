@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { PrintButton } from "../memorial/memorial-print";
 import { SERVICE_BY_KEY, SEVERITIES, materiaisDosServicos } from "@/lib/renovation-services";
 import { montarResumoCustos } from "@/lib/cost-summary";
+import { EnviarFotos, GaleriaFotos } from "./fotos";
 
 // Relatório "Diagnóstico de Reforma": o que a vistoria encontrou, ambiente por
 // ambiente, os serviços que resolvem cada problema e a estimativa de material.
@@ -34,6 +35,10 @@ export default async function DiagnosticoPage({ params }: { params: Promise<{ id
       renovationServices: { orderBy: { order: "asc" } },
       manualBudgetItems: { include: { material: { select: { name: true, unit: true, currentPrice: true } } } },
       costLines: true,
+      photos: {
+        orderBy: [{ order: "asc" }, { createdAt: "asc" }],
+        select: { id: true, roomId: true, caption: true, width: true, height: true },
+      },
       budgetItems: { select: { quantity: true, unitPriceSnapshot: true } },
       laborLines: { orderBy: { order: "asc" }, select: { role: true, label: true, value: true } },
     },
@@ -91,7 +96,11 @@ export default async function DiagnosticoPage({ params }: { params: Promise<{ id
     project.rooms.find((r) => r.id === roomId)?.name ?? "Geral / área externa";
 
   const ambientes = [...project.rooms.map((r) => ({ id: r.id as string | null, nome: r.name })), { id: null, nome: "Geral / área externa" }]
-    .filter((a) => issues.some((i) => i.roomId === a.id) || services.some((s) => s.roomId === a.id));
+    .filter((a) =>
+      issues.some((i) => i.roomId === a.id) ||
+      services.some((s) => s.roomId === a.id) ||
+      project.photos.some((f) => f.roomId === a.id));
+  const ambientesFoto = project.rooms.map((r) => ({ id: r.id, nome: r.name }));
 
   const hoje = new Date().toLocaleDateString("pt-BR");
   const endereco = [project.address, project.city && `${project.city}${project.state ? `/${project.state}` : ""}`].filter(Boolean).join(" — ");
@@ -157,6 +166,8 @@ export default async function DiagnosticoPage({ params }: { params: Promise<{ id
           </section>
         )}
 
+        <EnviarFotos projectId={project.id} ambientes={ambientesFoto} />
+
         {/* Por ambiente */}
         <section className="mb-6">
           <h2 className="text-base font-bold mb-2">Diagnóstico por ambiente</h2>
@@ -165,8 +176,10 @@ export default async function DiagnosticoPage({ params }: { params: Promise<{ id
             const probs = issues.filter((i) => i.roomId === a.id);
             const servs = services.filter((s) => s.roomId === a.id);
             const melhorias = servs.filter((s) => !s.issueId || !probs.some((p) => p.id === s.issueId));
+            const fotos = project.photos.filter((f) => f.roomId === a.id);
             return (
-              <div key={a.id ?? "geral"} className="mb-4 break-inside-avoid">
+              // Com fotos o bloco passa de uma página; aí cada foto evita a quebra sozinha.
+              <div key={a.id ?? "geral"} className={`mb-4 ${fotos.length === 0 ? "break-inside-avoid" : ""}`}>
                 <h3 className="font-semibold text-brand-800 border-b border-gray-200 pb-1 mb-2">{a.nome}</h3>
                 {probs.length > 0 && (
                   <table className="w-full mb-2">
@@ -216,6 +229,7 @@ export default async function DiagnosticoPage({ params }: { params: Promise<{ id
                     ))}
                   </div>
                 )}
+                <GaleriaFotos fotos={fotos} ambientes={ambientesFoto} />
               </div>
             );
           })}

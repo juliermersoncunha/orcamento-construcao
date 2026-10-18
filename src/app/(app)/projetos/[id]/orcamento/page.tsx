@@ -82,6 +82,12 @@ export default async function OrcamentoPage({
         include: { material: true },
         orderBy: { createdAt: "asc" },
       },
+      // Materiais avulsos da Etapa 8 — vêm separados dos budgetItems; sem isto,
+      // o total do resumo não contava os R$ dos lançamentos manuais.
+      manualBudgetItems: {
+        where: { phase: { not: null } },
+        include: { material: true },
+      },
       laborLines: { select: { value: true } },
       installations: { include: { electricalPoints: true, hydraulicPoints: true } },
     },
@@ -101,11 +107,16 @@ export default async function OrcamentoPage({
     byPhase.set(item.phase, list);
   }
 
-  // Phase material totals
+  // Phase material totals (gerados + manuais, por fase)
   const phaseMat = new Map<string, number>();
   for (const [phase, items] of byPhase) {
     phaseMat.set(phase, items.reduce((s, i) => s + i.quantity * i.unitPriceSnapshot, 0));
   }
+  for (const m of project.manualBudgetItems) {
+    const key = m.phase as string;
+    phaseMat.set(key, (phaseMat.get(key) ?? 0) + m.quantity * m.material.currentPrice);
+  }
+  const totalManual = project.manualBudgetItems.reduce((s, m) => s + m.quantity * m.material.currentPrice, 0);
 
   // Mão de obra agora vem por função (pedreiro, pintor...), não por fase.
   // phaseMO fica em zero para preservar a tabela mat × MO por fase que existia;

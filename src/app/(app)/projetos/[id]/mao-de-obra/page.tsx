@@ -6,6 +6,7 @@ import { ArrowLeft, HardHat } from "lucide-react";
 import Link from "next/link";
 import { MaoDeObraForm } from "./mao-de-obra-form";
 import { ensureFixedLaborLines } from "@/app/actions/labor-lines";
+import { MANAGEMENT_ITEMS } from "@/lib/renovation-services";
 
 export default async function MaoDeObraPage({
   params,
@@ -30,6 +31,18 @@ export default async function MaoDeObraPage({
     select: { id: true, role: true, label: true, value: true },
   });
 
+  // Gestão da obra (Mobilização, Logística, Gestão, BDI). Vive em ProjectCostLine
+  // e é compartilhada com o painel de estimativa do diagnóstico — preencher aqui
+  // reflete lá e vice-versa.
+  const gestaoLines = await prisma.projectCostLine.findMany({
+    where: { projectId: id, kind: "GESTAO" },
+    select: { key: true, amount: true, percent: true },
+  });
+  const gestao = MANAGEMENT_ITEMS.map((item) => {
+    const l = gestaoLines.find((x) => x.key === item.key);
+    return { ...item, amount: l?.amount ?? 0, percent: l?.percent ?? null };
+  });
+
   return (
     <div className="p-8 max-w-2xl">
       <div className="flex items-center gap-3 mb-6">
@@ -46,7 +59,7 @@ export default async function MaoDeObraPage({
         Informe o valor total previsto de cada função. Para funções que não têm aqui, use <strong>Outros</strong>.
       </p>
 
-      <MaoDeObraForm projectId={id} linhas={linhas} />
+      <MaoDeObraForm projectId={id} linhas={linhas} gestao={gestao} />
     </div>
   );
 }

@@ -133,6 +133,15 @@ export const RENOVATION_SERVICES: ServiceDef[] = [
     ],
   },
   {
+    key: "textura_rolo", categoria: "Pintura", label: "Textura acrílica (rolo)", grupo: "Pintura", unit: "m²", medida: "parede",
+    // Uma demão; balde de 25 kg rende ~30 m² por demão (Coral). Leva a base da
+    // pintura do projeto (selador ou fundo) e dispensa tinta por cima.
+    materiais: (q) => [
+      { name: "Selador acrílico", unit: "L", quantity: q * 0.10, phase: "PINTURA", category: "PINTURA" },
+      { name: "Textura Acrílica 25Kg Coral", unit: "un", quantity: q / 30, phase: "PINTURA", category: "PINTURA" },
+    ],
+  },
+  {
     key: "gesso_liso", categoria: "Gesso", label: "Gesso liso", grupo: "Pintura", unit: "m²", medida: "parede",
     materiais: (q) => [
       { name: "Gesso liso", unit: "kg", quantity: q * 1.26, phase: "PINTURA", category: "PINTURA" },

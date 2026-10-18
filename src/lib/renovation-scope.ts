@@ -38,6 +38,7 @@ const REGRAS: Regra[] = [
   { frase: "Acabamento em gesso liso", chaves: ["gesso_liso"] },
   { frase: "Pintura de paredes", chaves: ["pintura_simples", "pintura_massa"] },
   { frase: "Pintura com cal (caiação)", chaves: ["pintura_cal"] },
+  { frase: "Aplicação de textura acrílica", chaves: ["textura_rolo"] },
   { frase: "Pintura de teto", chaves: ["pintura_teto"] },
   { frase: "Instalação de forro", chaves: ["forro"] },
   { frase: "Revisão e substituição da instalação elétrica", chaves: ["eletrica"] },

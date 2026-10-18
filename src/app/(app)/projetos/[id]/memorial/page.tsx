@@ -1,11 +1,11 @@
 import { prisma } from "@/lib/prisma";
+import { montarResumoCustos } from "@/lib/cost-summary";
 import { getSession } from "@/lib/session";
 import { redirect } from "next/navigation";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
-import { LaborModel } from "@prisma/client";
 import { PrintButton } from "./memorial-print";
 import { generateExplanations } from "@/lib/calculations/memorial-calcs";
 import { calculateRoomMaterials } from "@/lib/calculations/per-room";
@@ -86,18 +86,6 @@ const TILE_TYPE_LABELS: Record<string, string> = {
   metalica: "Metálica",
 };
 
-function computeMO(
-  model: LaborModel,
-  value: number,
-  phaseMat: number,
-  totalFloorArea: number
-): number {
-  if (model === "FIXED") return value;
-  if (model === "PER_M2") return value * totalFloorArea;
-  if (model === "PERCENT") return phaseMat * (value / 100);
-  return 0;
-}
-
 export default async function MemorialPage({
   params,
 }: {
@@ -126,7 +114,8 @@ export default async function MemorialPage({
         include: { material: true },
         orderBy: { createdAt: "asc" },
       },
-      laborLines: { select: { value: true } },
+      laborLines: { select: { role: true, label: true, value: true } },
+      costLines: { where: { kind: "GESTAO" } },
     },
   });
 
@@ -159,8 +148,10 @@ export default async function MemorialPage({
   // MO só aparece como linha única no quadro geral.
   const phaseMO = new Map<string, number>();
   const totalMat = Array.from(phaseMat.values()).reduce((a, b) => a + b, 0);
-  const totalMO = project.laborLines.reduce((s, l) => s + l.value, 0);
-  const totalGeral = totalMat + totalMO;
+  const resumo = montarResumoCustos(totalMat, project.laborLines, project.costLines);
+  const totalMO = resumo.totalMO;
+  const totalGestao = resumo.totalGestao;
+  const totalGeral = resumo.total;
   const custoM2 = totalFloorArea > 0 ? totalGeral / totalFloorArea : 0;
   const hasMO = totalMO > 0;
 
@@ -735,6 +726,14 @@ export default async function MemorialPage({
                   <td className="py-1 font-semibold text-gray-700">Total Mão de Obra</td>
                   <td className="py-1 text-right font-bold text-gray-900">
                     {formatCurrency(totalMO)}
+                  </td>
+                </tr>
+              )}
+              {totalGestao > 0 && (
+                <tr>
+                  <td className="py-1 font-semibold text-gray-700">Gestão da Obra (inclui BDI)</td>
+                  <td className="py-1 text-right font-bold text-gray-900">
+                    {formatCurrency(totalGestao)}
                   </td>
                 </tr>
               )}

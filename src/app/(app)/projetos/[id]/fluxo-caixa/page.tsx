@@ -8,7 +8,7 @@ import Link from "next/link";
 import { initDefaultCashFlow } from "@/app/actions/cashFlow";
 import { FluxoCaixaTable } from "./fluxo-caixa-table";
 import { formatCurrency } from "@/lib/utils";
-import { LaborModel } from "@prisma/client";
+import { montarResumoCustos } from "@/lib/cost-summary";
 import { getCaixaCurves } from "@/lib/caixa-curves";
 
 const PHASE_LABELS: Record<string, string> = {
@@ -26,18 +26,6 @@ const PHASE_LABELS: Record<string, string> = {
   OUTROS: "Outros",
 };
 
-function computeMOForPhase(
-  model: LaborModel,
-  laborPhaseValue: number,
-  phaseMat: number,
-  totalFloorArea: number
-): number {
-  if (model === "FIXED") return laborPhaseValue;
-  if (model === "PER_M2") return laborPhaseValue * totalFloorArea;
-  if (model === "PERCENT") return phaseMat * (laborPhaseValue / 100);
-  return 0;
-}
-
 export default async function FluxoCaixaPage({
   params,
 }: {
@@ -50,9 +38,9 @@ export default async function FluxoCaixaPage({
   const project = await prisma.project.findFirst({
     where: { id, userId: session.userId },
     include: {
-      rooms: { select: { width: true, length: true } },
       budgetItems: { select: { phase: true, quantity: true, unitPriceSnapshot: true } },
-      laborLines: { select: { value: true } },
+      laborLines: { select: { role: true, label: true, value: true } },
+      costLines: { where: { kind: "GESTAO" } },
     },
   });
   if (!project) redirect("/projetos");
@@ -72,17 +60,17 @@ export default async function FluxoCaixaPage({
     phaseMat.set(item.phase, (phaseMat.get(item.phase) ?? 0) + item.quantity * item.unitPriceSnapshot);
   }
 
-  // Mão de obra: total das linhas por função. Não é distribuído por fase (as
-  // funções não casam 1:1 com as fases do orçamento); vai aparecer como linha
-  // única "Mão de obra" na matriz do fluxo.
-  const totalFloorArea = project.rooms.reduce((sum, r) => sum + r.width * r.length, 0);
-  const totalMO = project.laborLines.reduce((s, l) => s + l.value, 0);
-  const phaseMO = new Map<string, number>();
+  // Mão de obra e gestão são por função, não por fase: entram no fluxo
+  // rateadas na proporção do material de cada fase, para o total do fluxo
+  // bater com o Total Geral do orçamento.
+  const totalMat = [...phaseMat.values()].reduce((a, b) => a + b, 0);
+  const resumo = montarResumoCustos(totalMat, project.laborLines, project.costLines);
+  const fator = totalMat > 0 ? resumo.total / totalMat : 1;
 
-  // Phase total (mat + MO)
+  // Phase total (mat + MO + gestão rateadas)
   const phaseTotal = new Map<string, number>();
   for (const phase of phaseMat.keys()) {
-    phaseTotal.set(phase, (phaseMat.get(phase) ?? 0) + (phaseMO.get(phase) ?? 0));
+    phaseTotal.set(phase, (phaseMat.get(phase) ?? 0) * fator);
   }
 
   // Determine months range

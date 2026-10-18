@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { montarResumoCustos } from "@/lib/cost-summary";
 import { getSession } from "@/lib/session";
 import { redirect } from "next/navigation";
 import { formatCurrency, formatNumber } from "@/lib/utils";
@@ -7,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, CalendarDays, ClipboardList, Stethoscope, HardHat, TrendingUp, Receipt, BarChart3, FileText } from "lucide-react";
 import Link from "next/link";
-import { PhaseType, LaborModel } from "@prisma/client";
 import { validateBudgetAgainstCaixa } from "@/lib/caixa-validation";
 import { CaixaValidationPanel } from "@/components/caixa-validation-panel";
 import { validateProject } from "@/lib/calculations/project-validation";
@@ -45,18 +45,6 @@ const PHASE_ORDER: string[] = [
   "OUTROS",
 ];
 
-function computeMO(
-  model: LaborModel,
-  value: number,
-  phaseMat: number,
-  totalFloorArea: number
-): number {
-  if (model === "FIXED") return value;
-  if (model === "PER_M2") return value * totalFloorArea;
-  if (model === "PERCENT") return phaseMat * (value / 100);
-  return 0;
-}
-
 export default async function OrcamentoPage({
   params,
 }: {
@@ -82,7 +70,8 @@ export default async function OrcamentoPage({
         include: { material: true },
         orderBy: { createdAt: "asc" },
       },
-      laborLines: { select: { value: true } },
+      laborLines: { select: { role: true, label: true, value: true } },
+      costLines: { where: { kind: "GESTAO" } },
       installations: { include: { electricalPoints: true, hydraulicPoints: true } },
     },
   });
@@ -114,8 +103,11 @@ export default async function OrcamentoPage({
   const phaseMO = new Map<string, number>();
 
   const totalMat = Array.from(phaseMat.values()).reduce((a, b) => a + b, 0);
-  const totalMO = project.laborLines.reduce((s, l) => s + l.value, 0);
-  const totalGeral = totalMat + totalMO;
+  // Total = material + mão de obra + gestão da obra (BDI sobre o custo direto).
+  const resumo = montarResumoCustos(totalMat, project.laborLines, project.costLines);
+  const totalMO = resumo.totalMO;
+  const totalGestao = resumo.totalGestao;
+  const totalGeral = resumo.total;
   const custoM2 = totalFloorArea > 0 ? totalGeral / totalFloorArea : 0;
 
   const hasZeroPrice = project.budgetItems.some((i) => i.unitPriceSnapshot === 0);
@@ -292,7 +284,7 @@ export default async function OrcamentoPage({
       )}
 
       {/* Summary cards */}
-      <div className="mb-6 grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="mb-6 grid grid-cols-2 sm:grid-cols-5 gap-4">
         <div className="col-span-2 sm:col-span-1 p-5 rounded-xl bg-brand-600 text-white">
           <p className="text-xs font-medium opacity-80">Total Geral</p>
           <p className="text-2xl font-bold mt-1">{formatCurrency(totalGeral)}</p>
@@ -306,6 +298,15 @@ export default async function OrcamentoPage({
           <p className="text-xl font-bold text-gray-900 mt-1">
             {hasMO ? formatCurrency(totalMO) : <span className="text-sm text-gray-400">Não config.</span>}
           </p>
+        </div>
+        <div className="p-4 rounded-xl border border-gray-200 bg-white">
+          <p className="text-xs text-gray-500">Gestão da obra</p>
+          <p className="text-xl font-bold text-gray-900 mt-1">
+            {totalGestao > 0 ? formatCurrency(totalGestao) : <span className="text-sm text-gray-400">Não config.</span>}
+          </p>
+          {resumo.gestao.find((g) => g.percent) && (
+            <p className="text-xs text-gray-400 mt-0.5">inclui BDI de {resumo.gestao.find((g) => g.percent)!.percent!.toLocaleString("pt-BR")}%</p>
+          )}
         </div>
         <div className="p-4 rounded-xl border border-gray-200 bg-white">
           <p className="text-xs text-gray-500">Custo por m²</p>
@@ -421,9 +422,10 @@ export default async function OrcamentoPage({
       <div className="mt-6 p-5 rounded-xl border-2 border-amber-200 bg-amber-50 flex justify-between items-center">
         <div>
           <p className="text-sm text-amber-800 font-medium">Total Geral do Orçamento</p>
-          {hasMO && (
+          {(hasMO || totalGestao > 0) && (
             <p className="text-xs text-amber-600 mt-0.5">
               Materiais: {formatCurrency(totalMat)} + Mão de Obra: {formatCurrency(totalMO)}
+              {totalGestao > 0 && <> + Gestão da obra: {formatCurrency(totalGestao)}</>}
             </p>
           )}
         </div>

@@ -61,8 +61,6 @@ export async function initDefaultCashFlow(projectId: string) {
       });
     }
   }
-
-  revalidatePath(`/projetos/${projectId}/fluxo-caixa`);
 }
 
 export async function saveCashFlow(projectId: string, formData: FormData) {

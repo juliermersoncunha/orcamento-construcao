@@ -288,50 +288,6 @@ export default async function DiagnosticoPage({ params }: { params: Promise<{ id
           )}
         </section>
 
-        {/* Materiais — só na tela: o cliente recebe o valor fechado por serviço */}
-        {linhasMaterial.length > 0 && (
-          <section className="mb-6 print:hidden">
-            <h2 className="text-base font-bold">Material calculado</h2>
-            <p className="text-xs text-gray-500 mb-2">
-              Referência interna: não aparece na impressão entregue ao cliente.
-            </p>
-            <table className="w-full">
-              <thead>
-                <tr className="text-left text-xs text-gray-500 border-b border-gray-200">
-                  <th className="py-1">Material</th>
-                  <th className="py-1 text-right w-20">Qtd</th>
-                  <th className="py-1 text-center w-12">Un</th>
-                  <th className="py-1 text-right w-24">Preço</th>
-                  <th className="py-1 text-right w-28">Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {linhasMaterial.map((l, i) => (
-                  <tr key={l.nome + i} className="border-b border-gray-100">
-                    <td className="py-1">{l.nome}{l.origem === "lançado à mão" && <span className="text-xs text-gray-400"> · lançado à mão</span>}</td>
-                    <td className="py-1 text-right">{fmt(l.qtd)}</td>
-                    <td className="py-1 text-center text-gray-500">{l.unit}</td>
-                    <td className="py-1 text-right">{l.preco > 0 ? brl(l.preco) : <span className="text-amber-600">sem preço</span>}</td>
-                    <td className="py-1 text-right">{brl(l.qtd * l.preco)}</td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr className="font-bold">
-                  <td className="pt-2" colSpan={4}>Total de material</td>
-                  <td className="pt-2 text-right">{brl(totalMaterial)}</td>
-                </tr>
-              </tfoot>
-            </table>
-            {semPreco > 0 && (
-              <p className="mt-2 text-xs text-amber-700 print:hidden">
-                {semPreco} material(is) sem preço no catálogo — o total está subestimado. Cadastre o preço em
-                Administração › Materiais.
-              </p>
-            )}
-          </section>
-        )}
-
         <footer className="mt-8 pt-3 border-t border-gray-200 text-xs text-gray-500">
           Diagnóstico elaborado a partir de vistoria no local. Os valores são estimativas baseadas no que foi
           observado; serviços complementares identificados durante a execução serão orçados à parte. Validade

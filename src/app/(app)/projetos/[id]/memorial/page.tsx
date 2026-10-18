@@ -307,7 +307,7 @@ export default async function MemorialPage({
   };
   const roomMaterials = roomInputs.map((room) => ({
     roomName: room.name,
-    items: calculateRoomMaterials(room, wallFinishType, electrical),
+    items: calculateRoomMaterials(room, wallFinishType, electrical, project.paintPrimer),
   }));
 
   // ── Consolidated material list (shopping list) ──

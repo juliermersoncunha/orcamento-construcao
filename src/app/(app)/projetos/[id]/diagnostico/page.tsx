@@ -48,7 +48,7 @@ export default async function DiagnosticoPage({ params }: { params: Promise<{ id
 
   // Preço de cada material gerado: mesmo critério do orçamento — o apelido de
   // cálculo vence o nome, e entre homônimos vale o ativo.
-  const gerados = materiaisDosServicos(services);
+  const gerados = materiaisDosServicos(services, project.paintPrimer);
   const catalogo = await prisma.material.findMany({
     where: { OR: [{ name: { in: gerados.map((m) => m.name) } }, { calcName: { in: gerados.map((m) => m.name) } }] },
     select: { name: true, calcName: true, currentPrice: true, active: true },
@@ -77,7 +77,7 @@ export default async function DiagnosticoPage({ params }: { params: Promise<{ id
   for (const sv of services) {
     const cat = SERVICE_BY_KEY.get(sv.serviceKey)?.categoria;
     if (!cat) continue;
-    const custo = materiaisDosServicos([{ serviceKey: sv.serviceKey, quantity: sv.quantity }])
+    const custo = materiaisDosServicos([{ serviceKey: sv.serviceKey, quantity: sv.quantity }], project.paintPrimer)
       .reduce((acc, m) => acc + m.quantity * precoDe(m.name).preco, 0);
     materialPorCategoria.set(cat, (materialPorCategoria.get(cat) ?? 0) + custo);
   }

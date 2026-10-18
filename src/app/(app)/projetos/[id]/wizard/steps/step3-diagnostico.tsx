@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { createContext, useContext, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Stethoscope, Plus, Trash2, Pencil, Check, X, ChevronRight, AlertTriangle, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,8 @@ import {
   addRenovationService, updateRenovationService, deleteRenovationService,
   finishRenovationDiagnosis,
 } from "@/app/actions/renovation";
+import { setPaintPrimer } from "@/app/actions/wizard";
+import { PAINT_PRIMERS } from "@/lib/paint-primer";
 
 type Room = { id: string; name: string; width: number; length: number; height: number };
 type Issue = { id: string; roomId: string | null; category: string; severity: string; description: string | null };
@@ -22,6 +24,9 @@ type Service = {
   label: string | null; quantity: number; notes: string | null;
 };
 type Run = (fn: () => Promise<{ error?: string } | void>) => void;
+
+// Base da pintura do projeto, para as linhas de serviço mostrarem o material certo.
+const PrimerContext = createContext<string>("SELADOR");
 
 const campo =
   "rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500";
@@ -63,9 +68,11 @@ export function Step3Diagnostico({ project }: { project: any }) {
       return next;
     });
   const todosAbertos = grupos.every((g) => abertos.has(chave(g.room)));
-  const materiais = useMemo(() => materiaisDosServicos(services), [services]);
+  const [primer, setPrimer] = useState<string>(project.paintPrimer ?? "SELADOR");
+  const materiais = useMemo(() => materiaisDosServicos(services, primer), [services, primer]);
 
   return (
+    <PrimerContext.Provider value={primer}>
     <div className="flex flex-col gap-4">
       <Card>
         <CardHeader>
@@ -80,6 +87,23 @@ export function Step3Diagnostico({ project }: { project: any }) {
             problema. Serviços com medida geram o material sozinhos; os demais você completa na etapa
             Materiais.
           </CardDescription>
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
+            <label htmlFor="paintPrimer" className="font-medium text-gray-700">Base da pintura:</label>
+            <select
+              id="paintPrimer"
+              value={primer}
+              disabled={isPending}
+              onChange={(e) => {
+                const v = e.target.value;
+                setPrimer(v);
+                run(() => setPaintPrimer(project.id, v));
+              }}
+              className={campo}
+            >
+              {PAINT_PRIMERS.map((op) => <option key={op.value} value={op.value}>{op.label}</option>)}
+            </select>
+            <span className="text-xs text-gray-500">vale para todos os serviços de pintura deste projeto</span>
+          </div>
         </CardHeader>
       </Card>
 
@@ -146,6 +170,7 @@ export function Step3Diagnostico({ project }: { project: any }) {
         </CardContent>
       </Card>
     </div>
+    </PrimerContext.Provider>
   );
 }
 
@@ -347,7 +372,8 @@ function LinhaServico({ s, isPending, run }: { s: Service; isPending: boolean; r
   const [editando, setEditando] = useState(false);
   const [qtd, setQtd] = useState(String(s.quantity));
   const n = Number(qtd.replace(",", "."));
-  const mats = def?.materiais ? materiaisDosServicos([{ serviceKey: s.serviceKey, quantity: s.quantity }]) : [];
+  const primer = useContext(PrimerContext);
+  const mats = def?.materiais ? materiaisDosServicos([{ serviceKey: s.serviceKey, quantity: s.quantity }], primer) : [];
 
   return (
     <li className="py-1.5 flex flex-wrap items-center gap-2 text-sm">

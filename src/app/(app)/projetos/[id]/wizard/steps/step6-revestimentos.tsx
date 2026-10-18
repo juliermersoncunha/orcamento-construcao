@@ -1,5 +1,6 @@
 "use client";
 
+import { PAINT_PRIMERS } from "@/lib/paint-primer";
 import { useState, useTransition } from "react";
 import { saveStep6Finishes } from "@/app/actions/wizard";
 import { Button } from "@/components/ui/button";
@@ -228,6 +229,20 @@ export function Step6Revestimentos({ project }: { project: any }) {
               <option value="SO_TINTA">Só reboco + tinta (padrão econômico)</option>
               <option value="MASSA_TINTA">Reboco + massa corrida + tinta</option>
               <option value="GESSO_TINTA">Reboco + gesso liso + tinta</option>
+            </select>
+          </div>
+
+          <div>
+            <p className="text-sm font-semibold text-gray-800 mb-1">Base da pintura</p>
+            <p className="text-xs text-gray-500 mb-2">
+              O que vai antes da tinta. Selador sai em litros; fundo preparador, em baldes de 20 L.
+            </p>
+            <select
+              name="paintPrimer"
+              defaultValue={project.paintPrimer ?? "SELADOR"}
+              className="w-full rounded border border-gray-300 bg-white px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+            >
+              {PAINT_PRIMERS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
             </select>
           </div>
 

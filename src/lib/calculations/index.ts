@@ -69,6 +69,7 @@ import {
   ARGAMASSA_PAREDE_BANHEIRO,
   ARGAMASSA_PAREDE_GERAL,
 } from "../room-classification";
+import { SELADOR, FUNDO_PREPARADOR, usaFundoPreparador, baldesDeFundo } from "../paint-primer";
 
 export type FinishesInput = {
   doors: number;
@@ -76,6 +77,8 @@ export type FinishesInput = {
   externalDoors: number;
   // Acabamento antes da pintura. Default MCMV: só reboco + tinta.
   wallFinishType?: "SO_TINTA" | "MASSA_TINTA" | "GESSO_TINTA";
+  // Base da pintura: "SELADOR" (padrão) ou "FUNDO_PREPARADOR".
+  paintPrimer?: string;
 };
 
 export type CalculationInput = {
@@ -479,7 +482,11 @@ function calcRevestimentos(rooms: RoomInput[]): MaterialResult[] {
 //
 // Padrão MCMV é "SO_TINTA" — reboco + tinta direto. Massa e gesso são opções
 // de acabamento superior, escolhidas em ProjectFinishes.wallFinishType.
-function calcPintura(rooms: RoomInput[], finish: FinishesInput["wallFinishType"] = "SO_TINTA"): MaterialResult[] {
+function calcPintura(
+  rooms: RoomInput[],
+  finish: FinishesInput["wallFinishType"] = "SO_TINTA",
+  primer?: string
+): MaterialResult[] {
   let paintWallArea = 0;
 
   for (const room of rooms) {
@@ -513,10 +520,17 @@ function calcPintura(rooms: RoomInput[], finish: FinishesInput["wallFinishType"]
     });
   }
 
-  items.push({
-    name: "Selador acrílico", unit: "L", category: "PINTURA", phase: "PINTURA",
-    quantity: Math.ceil(paintWallArea * 0.10),
-  });
+  if (usaFundoPreparador(primer)) {
+    items.push({
+      name: FUNDO_PREPARADOR, unit: "un", category: "PINTURA", phase: "PINTURA",
+      quantity: baldesDeFundo(paintWallArea * 0.10),
+    });
+  } else {
+    items.push({
+      name: SELADOR, unit: "L", category: "PINTURA", phase: "PINTURA",
+      quantity: Math.ceil(paintWallArea * 0.10),
+    });
+  }
   items.push({
     name: "Tinta Acrílica Fosca", unit: "L", category: "PINTURA", phase: "PINTURA",
     quantity: Math.ceil(paintWallArea * 0.18),
@@ -564,7 +578,7 @@ export function calculateMaterials(input: CalculationInput): MaterialResult[] {
     // calcEletrica e calcHidrossanitaria continuam no arquivo, sem uso, para
     // documentar o que o motor fazia caso se queira voltar atrás.
     ...calcRevestimentos(input.rooms),
-    ...calcPintura(input.rooms, input.finishes.wallFinishType),
+    ...calcPintura(input.rooms, input.finishes.wallFinishType, input.finishes.paintPrimer),
     ...calcAcabamento(input.finishes),
   ];
 }

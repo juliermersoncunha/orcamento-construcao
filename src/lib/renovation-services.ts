@@ -8,6 +8,7 @@
 // é lançado como serviço e o material entra à mão na etapa Materiais.
 
 import { ARGAMASSA_PAREDE_GERAL } from "./room-classification";
+import { aplicarFundo } from "./paint-primer";
 
 export type ServiceMaterial = {
   name: string;
@@ -209,13 +210,14 @@ export function medidaSugerida(
  * inteira para cada parede removida.
  */
 export function materiaisDosServicos(
-  servicos: { serviceKey: string; quantity: number }[]
+  servicos: { serviceKey: string; quantity: number }[],
+  primer?: string | null
 ): ServiceMaterial[] {
   const acc = new Map<string, ServiceMaterial>();
   for (const s of servicos) {
     const def = SERVICE_BY_KEY.get(s.serviceKey);
     if (!def?.materiais || !(s.quantity > 0)) continue;
-    for (const m of def.materiais(s.quantity)) {
+    for (const m of aplicarFundo(def.materiais(s.quantity), primer)) {
       const a = acc.get(m.name) ?? { ...m, quantity: 0 };
       a.quantity += m.quantity;
       acc.set(m.name, a);

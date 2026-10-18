@@ -99,6 +99,7 @@ function variantes(): CalculationInput[] {
   for (const wallFinishType of ["MASSA_TINTA", "GESSO_TINTA"] as const) {
     saidas.push({ ...base, finishes: { ...base.finishes, wallFinishType } });
   }
+  saidas.push({ ...base, finishes: { ...base.finishes, paintPrimer: "FUNDO_PREPARADOR" } });
 
   return saidas;
 }

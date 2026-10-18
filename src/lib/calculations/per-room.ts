@@ -1,3 +1,4 @@
+import { SELADOR, FUNDO_PREPARADOR, usaFundoPreparador, baldesDeFundo } from "../paint-primer";
 import type { RoomInput } from "./index";
 import {
   ELECTRICAL_FINISH_DEFAULTS,
@@ -21,7 +22,8 @@ function fmt(n: number) {
 export function calculateRoomMaterials(
   room: RoomInput,
   wallFinishType: "SO_TINTA" | "MASSA_TINTA" | "GESSO_TINTA" = "SO_TINTA",
-  electrical: ElectricalFinishes = ELECTRICAL_FINISH_DEFAULTS
+  electrical: ElectricalFinishes = ELECTRICAL_FINISH_DEFAULTS,
+  primer?: string | null
 ): RoomMaterialItem[] {
   const results: RoomMaterialItem[] = [];
   const floorArea = room.width * room.length;
@@ -63,7 +65,11 @@ export function calculateRoomMaterials(
         results.push({ name: "Gesso liso", unit: "kg", quantity: Math.ceil(paintArea * 1.26), category: "Pintura", formula: `${fmt(paintArea)} m² × 1,20 kg/m² × 1,05` });
         results.push({ name: "Lixa para massa", unit: "un", quantity: Math.ceil(paintArea * 0.2), category: "Pintura", formula: `${fmt(paintArea)} m² × 0,20 un/m²` });
       }
-      results.push({ name: "Selador acrílico", unit: "L", quantity: Math.ceil(paintArea * 0.10), category: "Pintura", formula: `${fmt(paintArea)} m² × 0,10 L/m²` });
+      if (usaFundoPreparador(primer)) {
+        results.push({ name: FUNDO_PREPARADOR, unit: "un", quantity: baldesDeFundo(paintArea * 0.10), category: "Pintura", formula: `${fmt(paintArea)} m² × 0,10 L/m² ÷ 20 L por balde` });
+      } else {
+        results.push({ name: SELADOR, unit: "L", quantity: Math.ceil(paintArea * 0.10), category: "Pintura", formula: `${fmt(paintArea)} m² × 0,10 L/m²` });
+      }
       results.push({ name: "Tinta Acrílica Fosca", unit: "L", quantity: Math.ceil(paintArea * 0.18), category: "Pintura", formula: `${fmt(paintArea)} m² × 0,18 L/m² (2 demãos)` });
     }
   }

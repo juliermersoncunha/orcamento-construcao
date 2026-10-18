@@ -287,6 +287,11 @@ export async function saveStep6Finishes(projectId: string, formData: FormData) {
     },
   });
 
+  const primer = formData.get("paintPrimer") as string | null;
+  if (primer === "SELADOR" || primer === "FUNDO_PREPARADOR") {
+    await prisma.project.update({ where: { id: projectId }, data: { paintPrimer: primer } });
+  }
+
   await prisma.roomFinish.deleteMany({ where: { finishesId: finishes.id } });
 
   for (const room of rooms) {
@@ -475,6 +480,7 @@ export async function calculateAndSaveBudget(projectId: string) {
       windows: project.finishes?.windows ?? 0,
       externalDoors: project.finishes?.externalDoors ?? 1,
       wallFinishType: (project.finishes?.wallFinishType ?? "SO_TINTA") as "SO_TINTA" | "MASSA_TINTA" | "GESSO_TINTA",
+      paintPrimer: project.paintPrimer,
     },
     heatingType: project.installations?.heatingType ?? "eletrico",
     electrical: {
@@ -489,7 +495,7 @@ export async function calculateAndSaveBudget(projectId: string) {
   // aplicá-las aqui cobraria a casa inteira para trocar um piso.
   const reforma = project.type === "REFORMA";
   const materials = reforma
-    ? materiaisDosServicos(project.renovationServices)
+    ? materiaisDosServicos(project.renovationServices, project.paintPrimer)
     : calculateMaterials(input);
 
   // Add muro materials if any walls are configured
@@ -694,4 +700,14 @@ export async function calculateAndSaveBudget(projectId: string) {
 
   revalidatePath(`/projetos/${projectId}`);
   redirect(`/projetos/${projectId}/orcamento`);
+}
+
+// Base da pintura do projeto — usada pela reforma, que não passa pela Etapa 6.
+export async function setPaintPrimer(projectId: string, primer: string) {
+  if (primer !== "SELADOR" && primer !== "FUNDO_PREPARADOR") return { error: "Opção inválida." };
+  await getProject(projectId);
+  await prisma.project.update({ where: { id: projectId }, data: { paintPrimer: primer } });
+  revalidatePath(`/projetos/${projectId}/wizard`);
+  revalidatePath(`/projetos/${projectId}/diagnostico`);
+  return {};
 }

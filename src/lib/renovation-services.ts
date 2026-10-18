@@ -125,6 +125,13 @@ export const RENOVATION_SERVICES: ServiceDef[] = [
     ],
   },
   {
+    key: "pintura_cal", categoria: "Pintura", label: "Pintura com cal (caiação)", grupo: "Pintura", unit: "m²", medida: "parede",
+    // Três demãos, ~0,3 kg de cal por m² no total. O catálogo vende em saco de 5 kg.
+    materiais: (q) => [
+      { name: "Cal hidratada 5kg", unit: "un", quantity: (q * 0.3) / 5, phase: "PINTURA", category: "PINTURA" },
+    ],
+  },
+  {
     key: "gesso_liso", categoria: "Gesso", label: "Gesso liso", grupo: "Pintura", unit: "m²", medida: "parede",
     materiais: (q) => [
       { name: "Gesso liso", unit: "kg", quantity: q * 1.26, phase: "PINTURA", category: "PINTURA" },

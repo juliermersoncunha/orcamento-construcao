@@ -17,7 +17,11 @@ import {
 import { setPaintPrimer } from "@/app/actions/wizard";
 import { PAINT_PRIMERS } from "@/lib/paint-primer";
 
-type Room = { id: string; name: string; width: number; length: number; height: number };
+type Room = {
+  id: string; name: string; width: number; length: number; height: number;
+  doors?: number; doorWidth?: number; doorHeight?: number;
+  windows?: number; windowWidth?: number; windowHeight?: number;
+};
 type Issue = { id: string; roomId: string | null; category: string; severity: string; description: string | null };
 type Service = {
   id: string; roomId: string | null; issueId: string | null; serviceKey: string;
@@ -431,7 +435,7 @@ function NovoServico({
   const [qtd, setQtd] = useState("");
   const [label, setLabel] = useState("");
   const def = SERVICE_BY_KEY.get(key);
-  const sugerida = def && room ? medidaSugerida(def.medida, room) : null;
+  const sugerida = def && room ? medidaSugerida(def, room) : null;
   const n = Number(qtd.replace(",", "."));
 
   return (
@@ -442,7 +446,7 @@ function NovoServico({
           setKey(e.target.value);
           const d = SERVICE_BY_KEY.get(e.target.value);
           // Já preenche com a medida do ambiente; o usuário ajusta se for parcial.
-          const sug = d && room ? medidaSugerida(d.medida, room) : null;
+          const sug = d && room ? medidaSugerida(d, room) : null;
           setQtd(sug ? String(sug).replace(".", ",") : d && (d.unit === "un" || d.unit === "vb") ? "1" : "");
         }}
         className={`text-xs ${campo}`}

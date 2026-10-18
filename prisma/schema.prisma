@@ -251,6 +251,14 @@ model Room {
   height    Float     @default(2.8)
   order     Int       @default(0)
   roomType  RoomType?
+  // Vãos de porta e janela do ambiente: descontados da área de parede
+  // (inteiros em reboco/azulejo; na pintura só o que passa de 2 m² por vão).
+  doors        Int   @default(0)
+  doorWidth    Float @default(0.8)
+  doorHeight   Float @default(2.1)
+  windows      Int   @default(0)
+  windowWidth  Float @default(1.2)
+  windowHeight Float @default(1.2)
 
   project          Project                 @relation(fields: [projectId], references: [id], onDelete: Cascade)
   electricalPoints ElectricalPoint[]

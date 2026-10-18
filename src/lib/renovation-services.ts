@@ -9,6 +9,7 @@
 
 import { ARGAMASSA_PAREDE_GERAL } from "./room-classification";
 import { aplicarFundo } from "./paint-primer";
+import { descontoVaos, type RegraVaos, type Vaos } from "./wall-openings";
 
 export type ServiceMaterial = {
   name: string;
@@ -26,6 +27,8 @@ export type ServiceDef = {
   unit: "m²" | "m" | "un" | "vb";
   // De onde vem a medida sugerida a partir do ambiente.
   medida?: "piso" | "parede" | "teto";
+  // Como os vãos de porta/janela saem da medida de parede sugerida.
+  vaos?: RegraVaos;
   materiais?: (q: number) => ServiceMaterial[];
 };
 
@@ -43,8 +46,8 @@ const LOSS_ARG = 1.06;
 export const RENOVATION_SERVICES: ServiceDef[] = [
   // ── Demolição e remoção ──
   { key: "remover_piso", categoria: "Demolição", label: "Remover piso", grupo: "Demolição e remoção", unit: "m²", medida: "piso", materiais: entulho(0.05) },
-  { key: "remover_revestimento_parede", categoria: "Demolição", label: "Remover cerâmica / revestimento de parede", grupo: "Demolição e remoção", unit: "m²", medida: "parede", materiais: entulho(0.04) },
-  { key: "remover_reboco", categoria: "Demolição", label: "Remover reboco", grupo: "Demolição e remoção", unit: "m²", medida: "parede", materiais: entulho(0.04) },
+  { key: "remover_revestimento_parede", categoria: "Demolição", label: "Remover cerâmica / revestimento de parede", grupo: "Demolição e remoção", unit: "m²", medida: "parede", vaos: "cheio", materiais: entulho(0.04) },
+  { key: "remover_reboco", categoria: "Demolição", label: "Remover reboco", grupo: "Demolição e remoção", unit: "m²", medida: "parede", vaos: "cheio", materiais: entulho(0.04) },
   { key: "demolir_alvenaria", categoria: "Demolição", label: "Demolir alvenaria", grupo: "Demolição e remoção", unit: "m²", materiais: entulho(0.18) },
 
   // ── Base ──
@@ -57,7 +60,7 @@ export const RENOVATION_SERVICES: ServiceDef[] = [
     ],
   },
   {
-    key: "reboco", categoria: "Alvenaria", label: "Chapisco e reboco", grupo: "Base", unit: "m²", medida: "parede",
+    key: "reboco", categoria: "Alvenaria", label: "Chapisco e reboco", grupo: "Base", unit: "m²", medida: "parede", vaos: "cheio",
     // Coeficientes de calcAlvenaria (chapisco + reboco interno).
     materiais: (q) => [
       { name: "Cimento CP-II (50kg)", unit: "sc", quantity: q * (0.04 * 1.05 + 0.08 * 1.10), phase: "REVESTIMENTOS", category: "REVESTIMENTO" },
@@ -91,7 +94,7 @@ export const RENOVATION_SERVICES: ServiceDef[] = [
     ],
   },
   {
-    key: "revestimento_parede", categoria: "Revestimentos", label: "Assentar cerâmica de parede (azulejo)", grupo: "Revestimentos", unit: "m²", medida: "parede",
+    key: "revestimento_parede", categoria: "Revestimentos", label: "Assentar cerâmica de parede (azulejo)", grupo: "Revestimentos", unit: "m²", medida: "parede", vaos: "cheio",
     materiais: (q) => [
       { name: "Revestimento Cerâmico (parede)", unit: "m²", quantity: q * LOSS_PISO, phase: "REVESTIMENTOS", category: "REVESTIMENTO" },
       { name: ARGAMASSA_PAREDE_GERAL, unit: "sc", quantity: q * 0.45, phase: "REVESTIMENTOS", category: "REVESTIMENTO" },
@@ -103,14 +106,14 @@ export const RENOVATION_SERVICES: ServiceDef[] = [
 
   // ── Pintura ──
   {
-    key: "pintura_simples", categoria: "Pintura", label: "Pintura (só tinta)", grupo: "Pintura", unit: "m²", medida: "parede",
+    key: "pintura_simples", categoria: "Pintura", label: "Pintura (só tinta)", grupo: "Pintura", unit: "m²", medida: "parede", vaos: "pintura",
     materiais: (q) => [
       { name: "Selador acrílico", unit: "L", quantity: q * 0.10, phase: "PINTURA", category: "PINTURA" },
       { name: "Tinta Acrílica Fosca", unit: "L", quantity: q * 0.18, phase: "PINTURA", category: "PINTURA" },
     ],
   },
   {
-    key: "pintura_massa", categoria: "Pintura", label: "Pintura com massa corrida", grupo: "Pintura", unit: "m²", medida: "parede",
+    key: "pintura_massa", categoria: "Pintura", label: "Pintura com massa corrida", grupo: "Pintura", unit: "m²", medida: "parede", vaos: "pintura",
     materiais: (q) => [
       { name: "Massa corrida", unit: "kg", quantity: q * 1.48, phase: "PINTURA", category: "PINTURA" },
       { name: "Lixa para massa", unit: "un", quantity: q * 0.2, phase: "PINTURA", category: "PINTURA" },
@@ -126,14 +129,14 @@ export const RENOVATION_SERVICES: ServiceDef[] = [
     ],
   },
   {
-    key: "pintura_cal", categoria: "Pintura", label: "Pintura com cal (caiação)", grupo: "Pintura", unit: "m²", medida: "parede",
+    key: "pintura_cal", categoria: "Pintura", label: "Pintura com cal (caiação)", grupo: "Pintura", unit: "m²", medida: "parede", vaos: "pintura",
     // Três demãos, ~0,3 kg de cal por m² no total. O catálogo vende em saco de 5 kg.
     materiais: (q) => [
       { name: "Cal hidratada 5kg", unit: "un", quantity: (q * 0.3) / 5, phase: "PINTURA", category: "PINTURA" },
     ],
   },
   {
-    key: "textura_rolo", categoria: "Pintura", label: "Textura acrílica (rolo)", grupo: "Pintura", unit: "m²", medida: "parede",
+    key: "textura_rolo", categoria: "Pintura", label: "Textura acrílica (rolo)", grupo: "Pintura", unit: "m²", medida: "parede", vaos: "pintura",
     // Uma demão; balde de 25 kg rende ~30 m² por demão (Coral). Leva a base da
     // pintura do projeto (selador ou fundo) e dispensa tinta por cima.
     materiais: (q) => [
@@ -142,7 +145,7 @@ export const RENOVATION_SERVICES: ServiceDef[] = [
     ],
   },
   {
-    key: "gesso_liso", categoria: "Gesso", label: "Gesso liso", grupo: "Pintura", unit: "m²", medida: "parede",
+    key: "gesso_liso", categoria: "Gesso", label: "Gesso liso", grupo: "Pintura", unit: "m²", medida: "parede", vaos: "pintura",
     materiais: (q) => [
       { name: "Gesso liso", unit: "kg", quantity: q * 1.26, phase: "PINTURA", category: "PINTURA" },
       { name: "Lixa para massa", unit: "un", quantity: q * 0.2, phase: "PINTURA", category: "PINTURA" },
@@ -204,13 +207,15 @@ export const SEVERITIES = [
 
 /** Medida sugerida a partir das dimensões do ambiente. */
 export function medidaSugerida(
-  medida: ServiceDef["medida"],
-  room: { width: number; length: number; height: number }
+  def: Pick<ServiceDef, "medida" | "vaos">,
+  room: { width: number; length: number; height: number } & Vaos
 ): number | null {
-  if (!medida) return null;
+  if (!def.medida) return null;
   const piso = room.width * room.length;
-  if (medida === "piso" || medida === "teto") return Math.round(piso * 100) / 100;
-  return Math.round(2 * (room.width + room.length) * room.height * 100) / 100;
+  if (def.medida === "piso" || def.medida === "teto") return Math.round(piso * 100) / 100;
+  const bruta = 2 * (room.width + room.length) * room.height;
+  const liquida = Math.max(bruta - descontoVaos(room, def.vaos ?? "cheio"), 0);
+  return Math.round(liquida * 100) / 100;
 }
 
 /**

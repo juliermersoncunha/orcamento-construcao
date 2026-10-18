@@ -1,4 +1,5 @@
 import { SELADOR, FUNDO_PREPARADOR, FORMULA_FUNDO, usaFundoPreparador, baldesDeFundo } from "../paint-primer";
+import { descontoVaos } from "../wall-openings";
 import type { RoomInput } from "./index";
 import {
   ELECTRICAL_FINISH_DEFAULTS,
@@ -56,7 +57,7 @@ export function calculateRoomMaterials(
   // consolidado.
   if (room.paintWalls !== false) {
     const tileH = room.wallTile ? (room.wallTileHeight ?? 1.5) : 0;
-    const paintArea = perimeter * (room.height - tileH);
+    const paintArea = Math.max(perimeter * (room.height - tileH) - descontoVaos(room, "pintura"), 0);
     if (paintArea > 0) {
       if (wallFinishType === "MASSA_TINTA") {
         results.push({ name: "Massa corrida", unit: "kg", quantity: Math.ceil(paintArea * 1.48), category: "Pintura", formula: `${fmt(paintArea)} m² × 0,70 kg/m² × 2 demãos × 1,06` });

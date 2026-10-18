@@ -24,6 +24,18 @@ async function getProject(projectId: string) {
   return { project, session };
 }
 
+function dadosAmbiente(r: {
+  name: string; width: number; length: number; height: number;
+  doors: number; doorWidth: number; doorHeight: number;
+  windows: number; windowWidth: number; windowHeight: number;
+}) {
+  return {
+    name: r.name, width: r.width, length: r.length, height: r.height,
+    doors: r.doors, doorWidth: r.doorWidth, doorHeight: r.doorHeight,
+    windows: r.windows, windowWidth: r.windowWidth, windowHeight: r.windowHeight,
+  };
+}
+
 export async function saveStep2Rooms(projectId: string, formData: FormData) {
   const { project } = await getProject(projectId);
 
@@ -33,6 +45,10 @@ export async function saveStep2Rooms(projectId: string, formData: FormData) {
   const widths = formData.getAll("roomWidth") as string[];
   const lengths = formData.getAll("roomLength") as string[];
   const heights = formData.getAll("roomHeight") as string[];
+  const num = (k: string, i: number, padrao: number) => {
+    const v = parseFloat((formData.getAll(k) as string[])[i]);
+    return Number.isFinite(v) && v >= 0 ? v : padrao;
+  };
 
   const rooms = names
     .map((name, i) => ({
@@ -41,6 +57,12 @@ export async function saveStep2Rooms(projectId: string, formData: FormData) {
       width: parseFloat(widths[i]) || 0,
       length: parseFloat(lengths[i]) || 0,
       height: parseFloat(heights[i]) || 2.8,
+      doors: Math.round(num("roomDoors", i, 0)),
+      doorWidth: num("roomDoorWidth", i, 0.8) || 0.8,
+      doorHeight: num("roomDoorHeight", i, 2.1) || 2.1,
+      windows: Math.round(num("roomWindows", i, 0)),
+      windowWidth: num("roomWindowWidth", i, 1.2) || 1.2,
+      windowHeight: num("roomWindowHeight", i, 1.2) || 1.2,
     }))
     .filter((r) => r.name && r.width > 0 && r.length > 0);
 
@@ -66,11 +88,11 @@ export async function saveStep2Rooms(projectId: string, formData: FormData) {
       if (existingIds.has(r.id)) {
         await tx.room.update({
           where: { id: r.id },
-          data: { name: r.name, width: r.width, length: r.length, height: r.height, order: i },
+          data: { ...dadosAmbiente(r), order: i },
         });
       } else {
         await tx.room.create({
-          data: { projectId, name: r.name, width: r.width, length: r.length, height: r.height, order: i },
+          data: { projectId, ...dadosAmbiente(r), order: i },
         });
       }
     }
@@ -422,6 +444,12 @@ export async function calculateAndSaveBudget(projectId: string) {
       wallTile: rf?.wallTile,
       wallTileHeight: rf?.wallTileHeight,
       wallTileOpenings: rf?.wallTileOpenings,
+      doors: room.doors,
+      doorWidth: room.doorWidth,
+      doorHeight: room.doorHeight,
+      windows: room.windows,
+      windowWidth: room.windowWidth,
+      windowHeight: room.windowHeight,
       paintWalls: rf?.paintWalls,
       electricalOutlets: ep?.outlets,
       electricalSwitches: ep?.switches,

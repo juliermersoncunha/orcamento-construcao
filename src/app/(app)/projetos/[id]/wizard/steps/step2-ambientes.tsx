@@ -7,7 +7,13 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { LayoutGrid, Plus, Trash2, ChevronRight } from "lucide-react";
 
-type Room = { id: string; name: string; width: string; length: string; height: string };
+type Room = {
+  id: string; name: string; width: string; length: string; height: string;
+  doors: string; doorWidth: string; doorHeight: string;
+  windows: string; windowWidth: string; windowHeight: string;
+};
+
+const VAOS_PADRAO = { doors: "0", doorWidth: "0.80", doorHeight: "2.10", windows: "0", windowWidth: "1.20", windowHeight: "1.20" };
 
 const ROOM_PRESETS = [
   "Quarto",
@@ -29,6 +35,7 @@ const newRoom = (name = ""): Room => ({
   width: "",
   length: "",
   height: "2.80",
+  ...VAOS_PADRAO,
 });
 
 export function Step2Ambientes({ project }: { project: any }) {
@@ -40,6 +47,12 @@ export function Step2Ambientes({ project }: { project: any }) {
           width: String(r.width),
           length: String(r.length),
           height: String(r.height),
+          doors: String(r.doors ?? 0),
+          doorWidth: String(r.doorWidth ?? 0.8),
+          doorHeight: String(r.doorHeight ?? 2.1),
+          windows: String(r.windows ?? 0),
+          windowWidth: String(r.windowWidth ?? 1.2),
+          windowHeight: String(r.windowHeight ?? 1.2),
         }))
       : [newRoom()]
   );
@@ -75,6 +88,12 @@ export function Step2Ambientes({ project }: { project: any }) {
       formData.append("roomWidth", r.width);
       formData.append("roomLength", r.length);
       formData.append("roomHeight", r.height);
+      formData.append("roomDoors", r.doors);
+      formData.append("roomDoorWidth", r.doorWidth);
+      formData.append("roomDoorHeight", r.doorHeight);
+      formData.append("roomWindows", r.windows);
+      formData.append("roomWindowWidth", r.windowWidth);
+      formData.append("roomWindowHeight", r.windowHeight);
     });
     await saveStep2Rooms(project.id, formData);
   }
@@ -90,7 +109,8 @@ export function Step2Ambientes({ project }: { project: any }) {
             <CardTitle>Etapa 2 — Ambientes e Áreas</CardTitle>
           </div>
           <CardDescription>
-            Informe os cômodos e suas dimensões. A área é calculada automaticamente.
+            Informe os cômodos, suas dimensões e as portas e janelas de cada um. A área é calculada
+            automaticamente, e os vãos são descontados das paredes no cálculo de material.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -125,11 +145,12 @@ export function Step2Ambientes({ project }: { project: any }) {
             <div className="flex flex-col gap-2 mb-4">
               {rooms.map((room) => {
                 const area = (parseFloat(room.width) || 0) * (parseFloat(room.length) || 0);
+                const n = (v: string) => parseFloat(v) || 0;
+                const vaos = n(room.doors) * n(room.doorWidth) * n(room.doorHeight)
+                  + n(room.windows) * n(room.windowWidth) * n(room.windowHeight);
                 return (
-                  <div
-                    key={room.id}
-                    className="grid grid-cols-[1fr_80px_80px_80px_80px_40px] gap-2 items-center"
-                  >
+                  <div key={room.id} className="rounded-md border border-gray-100 p-2">
+                  <div className="grid grid-cols-[1fr_80px_80px_80px_80px_40px] gap-2 items-center">
                     <input
                       value={room.name}
                       onChange={(e) => updateRoom(room.id, "name", e.target.value)}
@@ -181,6 +202,26 @@ export function Step2Ambientes({ project }: { project: any }) {
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
+                  <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-600">
+                    <VaoInput
+                      rotulo="Portas"
+                      qtd={room.doors} largura={room.doorWidth} altura={room.doorHeight}
+                      onQtd={(v) => updateRoom(room.id, "doors", v)}
+                      onLargura={(v) => updateRoom(room.id, "doorWidth", v)}
+                      onAltura={(v) => updateRoom(room.id, "doorHeight", v)}
+                    />
+                    <VaoInput
+                      rotulo="Janelas"
+                      qtd={room.windows} largura={room.windowWidth} altura={room.windowHeight}
+                      onQtd={(v) => updateRoom(room.id, "windows", v)}
+                      onLargura={(v) => updateRoom(room.id, "windowWidth", v)}
+                      onAltura={(v) => updateRoom(room.id, "windowHeight", v)}
+                    />
+                    <span className="ml-auto text-gray-500">
+                      vãos: <strong className="text-gray-700">{vaos > 0 ? vaos.toFixed(2) : "0"} m²</strong>
+                    </span>
+                  </div>
+                  </div>
                 );
               })}
             </div>
@@ -202,7 +243,7 @@ export function Step2Ambientes({ project }: { project: any }) {
 
             <div className="flex justify-end">
               <Button type="submit" disabled={isPending}>
-                {isPending ? "Salvando..." : "Próxima etapa — Estrutura"}
+                {isPending ? "Salvando..." : `Próxima etapa — ${project.type === "REFORMA" ? "Diagnóstico" : "Estrutura"}`}
                 <ChevronRight className="w-4 h-4" />
               </Button>
             </div>
@@ -210,5 +251,30 @@ export function Step2Ambientes({ project }: { project: any }) {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+const mini =
+  "rounded border border-gray-300 bg-white px-1.5 py-1 text-xs text-center focus:outline-none focus:ring-2 focus:ring-brand-500";
+
+function VaoInput({
+  rotulo, qtd, largura, altura, onQtd, onLargura, onAltura,
+}: {
+  rotulo: string; qtd: string; largura: string; altura: string;
+  onQtd: (v: string) => void; onLargura: (v: string) => void; onAltura: (v: string) => void;
+}) {
+  return (
+    <span className="inline-flex items-center gap-1">
+      <span className="font-medium text-gray-700">{rotulo}</span>
+      <input type="number" min="0" step="1" value={qtd} onChange={(e) => onQtd(e.target.value)}
+        aria-label={`Quantidade de ${rotulo.toLowerCase()}`} className={`w-12 ${mini}`} />
+      <span>de</span>
+      <input type="number" min="0" step="any" value={largura} onChange={(e) => onLargura(e.target.value)}
+        aria-label={`Largura das ${rotulo.toLowerCase()} (m)`} className={`w-14 ${mini}`} />
+      <span>×</span>
+      <input type="number" min="0" step="any" value={altura} onChange={(e) => onAltura(e.target.value)}
+        aria-label={`Altura das ${rotulo.toLowerCase()} (m)`} className={`w-14 ${mini}`} />
+      <span>m</span>
+    </span>
   );
 }

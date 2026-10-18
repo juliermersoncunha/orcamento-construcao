@@ -1,4 +1,5 @@
 import type { RoomInput, StructureInput, RoofingInput, FinishesInput } from "./index";
+import { descontoVaos } from "../wall-openings";
 import { tileConsumption } from "./index";
 
 export type CalcExplanation = {
@@ -505,7 +506,7 @@ export function generateExplanations(
       if (room.paintWalls === false) continue;
       const perimeter = 2 * (room.width + room.length);
       const tileH = room.wallTile ? (room.wallTileHeight ?? 1.5) : 0;
-      const paintArea = perimeter * (room.height - tileH);
+      const paintArea = Math.max(perimeter * (room.height - tileH) - descontoVaos(room, "pintura"), 0);
       paintWallArea += paintArea;
       paintRooms.push(`${room.name} (${fmt(paintArea)} m²)`);
     }

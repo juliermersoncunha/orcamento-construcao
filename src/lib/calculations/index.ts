@@ -9,6 +9,13 @@ export type RoomInput = {
   wallTileHeight?: number;
   wallTileOpenings?: number;   // m² de porta/janela que cortam a faixa azulejada
   paintWalls?: boolean;
+  // Vãos do ambiente (Etapa 2). Na pintura sai só o que passa de 2 m² por vão.
+  doors?: number;
+  doorWidth?: number;
+  doorHeight?: number;
+  windows?: number;
+  windowWidth?: number;
+  windowHeight?: number;
   electricalOutlets?: number;
   electricalSwitches?: number;
   electricalLightPoints?: number;
@@ -70,6 +77,7 @@ import {
   ARGAMASSA_PAREDE_GERAL,
 } from "../room-classification";
 import { SELADOR, FUNDO_PREPARADOR, usaFundoPreparador, baldesDeFundo } from "../paint-primer";
+import { descontoVaos } from "../wall-openings";
 
 export type FinishesInput = {
   doors: number;
@@ -493,7 +501,7 @@ function calcPintura(
     if (room.paintWalls === false) continue;
     const perimeter = 2 * (room.width + room.length);
     const tileH = room.wallTile ? (room.wallTileHeight ?? 1.5) : 0;
-    paintWallArea += perimeter * (room.height - tileH);
+    paintWallArea += Math.max(perimeter * (room.height - tileH) - descontoVaos(room, "pintura"), 0);
   }
 
   if (paintWallArea <= 0) return [];

@@ -539,7 +539,7 @@ function calcPintura(
   return items;
 }
 
-// ── Acabamento (Esquadrias) ────────────────────────────────────────────────
+// ── Esquadrias ────────────────────────────────────────────────
 function calcAcabamento(finishes: FinishesInput): MaterialResult[] {
   const results: MaterialResult[] = [];
 
@@ -547,14 +547,14 @@ function calcAcabamento(finishes: FinishesInput): MaterialResult[] {
   // portas realmente cadastradas (Timborana, laminada), entrando a R$ 0 e
   // deixando a porta de verdade fora do orçamento. Lançadas na Etapa 8.
   if (finishes.windows > 0) {
-    results.push({ name: "Janela (alumínio)", unit: "un", quantity: finishes.windows, phase: "ACABAMENTO", category: "ESQUADRIA" });
+    results.push({ name: "Janela (alumínio)", unit: "un", quantity: finishes.windows, phase: "ESQUADRIAS", category: "ESQUADRIA" });
   }
 
   const totalDoors = finishes.doors + finishes.externalDoors;
   if (totalDoors > 0) {
     // Uma soleira por vão. O batente dos ambientes detalhados (banheiro) vem da
     // biblioteca de equipamentos, com o marco e a ferragem próprios daquela porta.
-    results.push({ name: "Soleira de Porta", unit: "un", quantity: totalDoors, phase: "ACABAMENTO", category: "ESQUADRIA" });
+    results.push({ name: "Soleira de Porta", unit: "un", quantity: totalDoors, phase: "ESQUADRIAS", category: "ESQUADRIA" });
     // Fechadura saiu do cálculo automático por decisão do usuário — lançada
     // manualmente na Etapa 8. Não recolocar sem alinhar.
   }

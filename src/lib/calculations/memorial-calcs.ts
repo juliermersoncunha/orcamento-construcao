@@ -551,7 +551,7 @@ export function generateExplanations(
       });
     }
     if (explanations.length > 0) {
-      result["ACABAMENTO"] = explanations;
+      result["ESQUADRIAS"] = explanations;
     }
   }
 

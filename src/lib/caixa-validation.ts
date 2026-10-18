@@ -43,7 +43,7 @@ export const CAIXA_ITEMS: CaixaItem[] = [
     label: "Esquadrias e Acabamento",
     min: 4.16,
     max: 13.27,
-    phases: ["ACABAMENTO"],
+    phases: ["ESQUADRIAS", "ACABAMENTO"],
   },
   {
     item: 6,

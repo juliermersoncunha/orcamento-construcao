@@ -36,6 +36,7 @@ export const PHASE_OPTIONS: { value: string; label: string }[] = [
   { value: "ESCADA", label: "Escada" },
   { value: "REVESTIMENTOS", label: "Revestimentos" },
   { value: "PINTURA", label: "Pintura" },
+  { value: "ESQUADRIAS", label: "Esquadrias" },
   { value: "ACABAMENTO", label: "Acabamento" },
   { value: "OUTROS", label: "Outros" },
 ];
@@ -58,7 +59,8 @@ const PHASE_CATEGORIES: Record<string, string[]> = {
   ESCADA: ["ESTRUTURA"],
   REVESTIMENTOS: ["REVESTIMENTO", "IMPERMEABILIZACAO"],
   PINTURA: ["PINTURA"],
-  ACABAMENTO: ["ACABAMENTO", "ESQUADRIA", "VIDROS_BOX", "ACESSORIOS_BANHEIRO"],
+  ESQUADRIAS: ["ESQUADRIA"],
+  ACABAMENTO: ["ACABAMENTO", "VIDROS_BOX", "ACESSORIOS_BANHEIRO"],
   OUTROS: ["OUTROS"],
 };
 

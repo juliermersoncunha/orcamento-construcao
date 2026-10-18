@@ -110,7 +110,7 @@ const CATEGORY_TO_PHASE: Record<string, string> = {
   PINTURA:                "PINTURA",
   VIDROS_BOX:             "ACABAMENTO",
   ACESSORIOS_BANHEIRO:    "ACABAMENTO",
-  ESQUADRIA:              "ACABAMENTO",
+  ESQUADRIA:              "ESQUADRIAS",
   ACABAMENTO:             "ACABAMENTO",
   TERRAPLENAGEM:          "TERRAPLENAGEM",
   FUNDACAO:               "FUNDACAO",

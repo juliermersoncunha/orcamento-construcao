@@ -18,6 +18,7 @@ const DEFAULT_DISTRIBUTION: Record<string, Record<number, number>> = {
   REVESTIMENTOS:                { 4: 0.50, 5: 0.50 },
   PINTURA:                      { 5: 0.60, 6: 0.40 },
   COBERTURA:                    { 2: 0.40, 3: 0.60 },
+  ESQUADRIAS:                   { 5: 0.50, 6: 0.50 },
   ACABAMENTO:                   { 5: 0.40, 6: 0.60 },
   OUTROS:                       { 6: 1.00 },
 };
@@ -43,15 +44,18 @@ export async function getCashFlow(projectId: string) {
 export async function initDefaultCashFlow(projectId: string) {
   await authorizeProject(projectId);
 
-  // Only init if no entries yet
-  const existing = await prisma.cashFlowEntry.count({ where: { projectId } });
-  if (existing > 0) return;
-
-  const phases = await prisma.budgetItem.findMany({
+  // Só as fases do orçamento que ainda não têm distribuição: preserva o que o
+  // usuário já ajustou e cobre fase nova (ex.: Esquadrias), que senão ficaria
+  // fora do fluxo e o total não bateria com o orçamento.
+  const comEntrada = new Set(
+    (await prisma.cashFlowEntry.findMany({ where: { projectId }, select: { phase: true }, distinct: ["phase"] }))
+      .map((e) => e.phase)
+  );
+  const phases = (await prisma.budgetItem.findMany({
     where: { projectId },
     select: { phase: true },
     distinct: ["phase"],
-  });
+  })).filter((p) => !comEntrada.has(p.phase));
 
   for (const { phase } of phases) {
     const dist = DEFAULT_DISTRIBUTION[phase] ?? { 1: 1.00 };

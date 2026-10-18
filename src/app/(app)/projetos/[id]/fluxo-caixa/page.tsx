@@ -22,6 +22,7 @@ const PHASE_LABELS: Record<string, string> = {
   REVESTIMENTOS: "Revestimentos",
   PINTURA: "Pintura",
   COBERTURA: "Cobertura",
+  ESQUADRIAS: "Esquadrias",
   ACABAMENTO: "Acabamento",
   OUTROS: "Outros",
 };

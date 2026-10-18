@@ -22,6 +22,7 @@ const PHASE_LABELS: Record<string, string> = {
   REVESTIMENTOS: "Revestimentos",
   PINTURA: "Pintura",
   COBERTURA: "Cobertura",
+  ESQUADRIAS: "Esquadrias",
   ACABAMENTO: "Acabamento",
   OUTROS: "Outros",
 };
@@ -35,6 +36,7 @@ const GENERAL_PHASES = [
   "COBERTURA",
   "INSTALACOES_ELETRICAS",
   "INSTALACOES_HIDROSSANITARIAS",
+  "ESQUADRIAS",
   "ACABAMENTO",
   "OUTROS",
 ];
@@ -50,6 +52,7 @@ const ALL_PHASES_ORDER = [
   "PINTURA",
   "INSTALACOES_ELETRICAS",
   "INSTALACOES_HIDROSSANITARIAS",
+  "ESQUADRIAS",
   "ACABAMENTO",
   "OUTROS",
 ];

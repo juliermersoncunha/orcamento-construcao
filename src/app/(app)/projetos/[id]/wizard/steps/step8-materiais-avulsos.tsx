@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { PackagePlus, Plus, Trash2, ChevronRight, Wrench, AlertTriangle, Pencil, Check, X } from "lucide-react";
+import { PackagePlus, Plus, Trash2, ChevronRight, Wrench, AlertTriangle, Pencil, Check, X, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { addManualPhaseItem, removeManualPhaseItem, updateManualPhaseItem } from "@/app/actions/manual-phase-items";
@@ -383,14 +383,20 @@ function PainelServicosPendentes({
       </p>
       <div className="flex flex-col gap-3">
         {[...porAmbiente.entries()].map(([ambiente, lista]) => (
-          <div key={ambiente}>
-            <p className="text-xs font-semibold text-gray-700 mb-1">{ambiente}</p>
-            <ul className="flex flex-col gap-1.5">
+          <div key={ambiente} className="rounded-lg border border-gray-200 bg-white overflow-hidden">
+            <div className="flex items-center gap-2 border-b border-gray-200 bg-gray-50 px-3 py-2">
+              <Home className="w-4 h-4 text-brand-700" />
+              <h4 className="text-sm font-bold text-gray-900">{ambiente.trim()}</h4>
+              <span className="ml-auto rounded-full bg-brand-100 px-2 py-0.5 text-[11px] font-medium text-brand-800">
+                {lista.length} {lista.length === 1 ? "serviço" : "serviços"}
+              </span>
+            </div>
+            <ul className="divide-y divide-gray-100">
               {lista.map((s) => {
                 const nLanc = materiaisPorFase.get(s.faseSugerida) ?? 0;
                 const fase = PHASE_LABEL[s.faseSugerida] ?? s.faseSugerida;
                 return (
-                  <li key={s.id} className="flex flex-wrap items-center gap-2 text-sm">
+                  <li key={s.id} className="flex flex-wrap items-center gap-2 px-3 py-2 text-sm">
                     {s.gravidade && (
                       <span className={`shrink-0 rounded px-1.5 py-0.5 text-[11px] font-semibold ${GRAVIDADE_COR[s.gravidade] ?? ""}`}>
                         {GRAVIDADE_LABEL[s.gravidade] ?? s.gravidade}

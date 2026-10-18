@@ -6,8 +6,7 @@ import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PrintButton } from "../memorial/memorial-print";
 import { SERVICE_BY_KEY, SEVERITIES, materiaisDosServicos } from "@/lib/renovation-services";
-import { montarEstimativa } from "@/lib/renovation-estimate";
-import { PainelEstimativa } from "./estimativa";
+import { montarResumoCustos } from "@/lib/cost-summary";
 
 // Relatório "Diagnóstico de Reforma": o que a vistoria encontrou, ambiente por
 // ambiente, os serviços que resolvem cada problema e a estimativa de material.
@@ -35,6 +34,8 @@ export default async function DiagnosticoPage({ params }: { params: Promise<{ id
       renovationServices: { orderBy: { order: "asc" } },
       manualBudgetItems: { include: { material: { select: { name: true, unit: true, currentPrice: true } } } },
       costLines: true,
+      budgetItems: { select: { quantity: true, unitPriceSnapshot: true } },
+      laborLines: { orderBy: { order: "asc" }, select: { role: true, label: true, value: true } },
     },
   });
   if (!project) redirect("/projetos");
@@ -71,20 +72,15 @@ export default async function DiagnosticoPage({ params }: { params: Promise<{ id
   const totalMaterial = linhasMaterial.reduce((s, l) => s + l.qtd * l.preco, 0);
   const semPreco = linhasMaterial.filter((l) => l.preco === 0).length;
 
-  // Material por ofício: o mesmo cálculo, serviço a serviço, para saber quanto
-  // do custo de material cabe a cada categoria da estimativa.
-  const materialPorCategoria = new Map<string, number>();
-  for (const sv of services) {
-    const cat = SERVICE_BY_KEY.get(sv.serviceKey)?.categoria;
-    if (!cat) continue;
-    const custo = materiaisDosServicos([{ serviceKey: sv.serviceKey, quantity: sv.quantity }], project.paintPrimer)
-      .reduce((acc, m) => acc + m.quantity * precoDe(m.name).preco, 0);
-    materialPorCategoria.set(cat, (materialPorCategoria.get(cat) ?? 0) + custo);
-  }
-  const estimativa = montarEstimativa(
-    services,
-    materialPorCategoria,
-    project.costLines.map((l) => ({ kind: l.kind, key: l.key, amount: l.amount, percent: l.percent })),
+  // Material: o do orçamento, para bater com a tela do projeto. Sem orçamento
+  // calculado, vale o material ao vivo (serviços + avulsos com preço atual).
+  const temOrcamento = project.budgetItems.length > 0;
+  const materialOrcamento = project.budgetItems.reduce((s, i) => s + i.quantity * i.unitPriceSnapshot, 0);
+  const materialDesatualizado = temOrcamento && Math.abs(materialOrcamento - totalMaterial) >= 0.01;
+  const resumo = montarResumoCustos(
+    temOrcamento ? materialOrcamento : totalMaterial,
+    project.laborLines,
+    project.costLines.filter((l) => l.kind === "GESTAO"),
   );
 
   const contagem = ORDEM_GRAVIDADE.map((g) => ({ g, n: issues.filter((i) => i.severity === g).length }));
@@ -140,10 +136,8 @@ export default async function DiagnosticoPage({ params }: { params: Promise<{ id
             </div>
             <div className="rounded-lg border border-gray-200 p-3">
               <p className="text-xs text-gray-500">Investimento estimado</p>
-              <p className="text-2xl font-bold">{estimativa.total > 0 ? brl(estimativa.total) : "a definir"}</p>
-              <p className="text-xs text-gray-500">
-                {estimativa.semEstimativa > 0 ? `${estimativa.semEstimativa} serviço(s) a estimar` : "serviços e gestão da obra"}
-              </p>
+              <p className="text-2xl font-bold">{resumo.total > 0 ? brl(resumo.total) : "a definir"}</p>
+              <p className="text-xs text-gray-500">material, mão de obra e gestão</p>
             </div>
           </div>
         </section>
@@ -227,7 +221,72 @@ export default async function DiagnosticoPage({ params }: { params: Promise<{ id
           })}
         </section>
 
-        <PainelEstimativa projectId={project.id} est={estimativa} />
+        {/* Investimento estimado */}
+        <section className="mb-6 break-inside-avoid">
+          <div className="flex items-baseline justify-between mb-2">
+            <h2 className="text-base font-bold">Investimento estimado</h2>
+            <Link href={`/projetos/${id}/mao-de-obra`} className="text-xs text-brand-700 hover:underline print:hidden">
+              editar mão de obra e gestão
+            </Link>
+          </div>
+          <table className="w-full">
+            <tbody>
+              <tr className="border-b border-gray-200">
+                <td className="py-1.5 font-semibold">Materiais</td>
+                <td className="py-1.5 text-right font-semibold">{brl(resumo.materiais)}</td>
+              </tr>
+
+              <tr><td className="pt-3 pb-1 font-semibold" colSpan={2}>Mão de obra</td></tr>
+              {resumo.maoDeObra.length === 0 && (
+                <tr><td className="py-1 pl-4 text-gray-400" colSpan={2}>a definir</td></tr>
+              )}
+              {resumo.maoDeObra.map((l, i) => (
+                <tr key={l.label + i}>
+                  <td className="py-1 pl-4 text-gray-700">{l.label}</td>
+                  <td className="py-1 text-right text-gray-700">{brl(l.valor)}</td>
+                </tr>
+              ))}
+              <tr className="border-b border-gray-200">
+                <td className="py-1.5 pl-4 font-medium">Subtotal mão de obra</td>
+                <td className="py-1.5 text-right font-medium">{brl(resumo.totalMO)}</td>
+              </tr>
+
+              <tr><td className="pt-3 pb-1 font-semibold" colSpan={2}>Gestão da obra</td></tr>
+              {resumo.gestao.filter((g) => g.valor > 0).length === 0 && (
+                <tr><td className="py-1 pl-4 text-gray-400" colSpan={2}>a definir</td></tr>
+              )}
+              {resumo.gestao.filter((g) => g.valor > 0).map((g) => (
+                <tr key={g.key}>
+                  <td className="py-1 pl-4 text-gray-700">
+                    {g.label}{g.percent ? ` (${g.percent.toLocaleString("pt-BR")}%)` : ""}
+                  </td>
+                  <td className="py-1 text-right text-gray-700">{brl(g.valor)}</td>
+                </tr>
+              ))}
+              <tr className="border-b border-gray-200">
+                <td className="py-1.5 pl-4 font-medium">Subtotal gestão da obra</td>
+                <td className="py-1.5 text-right font-medium">{brl(resumo.totalGestao)}</td>
+              </tr>
+            </tbody>
+            <tfoot>
+              <tr className="border-t-2 border-gray-800">
+                <td className="pt-2 text-base font-bold">Total</td>
+                <td className="pt-2 text-right text-base font-bold">{brl(resumo.total)}</td>
+              </tr>
+            </tfoot>
+          </table>
+          {materialDesatualizado && (
+            <p className="mt-2 text-xs text-amber-700 print:hidden">
+              Com os serviços e preços atuais o material daria {brl(totalMaterial)}. Clique em Recalcular no
+              projeto para atualizar o orçamento.
+            </p>
+          )}
+          {semPreco > 0 && (
+            <p className="mt-2 text-xs text-amber-700 print:hidden">
+              {semPreco} material(is) sem preço no catálogo — o total de materiais está subestimado.
+            </p>
+          )}
+        </section>
 
         {/* Materiais — só na tela: o cliente recebe o valor fechado por serviço */}
         {linhasMaterial.length > 0 && (

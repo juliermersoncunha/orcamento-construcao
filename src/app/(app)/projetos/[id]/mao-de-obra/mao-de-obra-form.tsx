@@ -9,6 +9,7 @@ import {
   setLaborLineValue, updateLaborLineLabel, addLaborLineOutro, deleteLaborLine,
 } from "@/app/actions/labor-lines";
 import { setProjectCostLine } from "@/app/actions/renovation";
+import { calcularBdi } from "@/lib/cost-summary";
 
 type Linha = { id: string; role: string; label: string | null; value: number };
 
@@ -29,7 +30,9 @@ function brl(n: number) {
   return n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
-export function MaoDeObraForm({ projectId, linhas, gestao }: { projectId: string; linhas: Linha[]; gestao: GestaoLinha[] }) {
+export function MaoDeObraForm({
+  projectId, linhas, gestao, materiais,
+}: { projectId: string; linhas: Linha[]; gestao: GestaoLinha[]; materiais: number }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -46,11 +49,11 @@ export function MaoDeObraForm({ projectId, linhas, gestao }: { projectId: string
   }
 
   const totalMO = linhas.reduce((s, l) => s + l.value, 0);
-  // BDI incide sobre MO + itens fixos de gestão (praxe de orçamento).
+  // BDI incide sobre o custo direto: material + MO + itens fixos de gestão.
   const fixos = gestao.filter((g) => !g.percentual).reduce((s, g) => s + g.amount, 0);
-  const custoDireto = totalMO + fixos;
+  const custoDireto = materiais + totalMO + fixos;
   const bdiItem = gestao.find((g) => g.percentual);
-  const bdiValor = bdiItem?.percent ? (custoDireto * bdiItem.percent) / 100 : 0;
+  const bdiValor = calcularBdi(custoDireto, bdiItem?.percent);
   const totalGestao = fixos + bdiValor;
   const total = custoDireto + bdiValor;
 
@@ -119,6 +122,9 @@ export function MaoDeObraForm({ projectId, linhas, gestao }: { projectId: string
         </div>
 
         <div className="border-t border-gray-200 pt-3 flex flex-col gap-1 text-sm">
+          <div className="flex items-center justify-between text-gray-600">
+            <span>Materiais (orçamento)</span><span>{brl(materiais)}</span>
+          </div>
           <div className="flex items-center justify-between text-gray-600">
             <span>Mão de obra</span><span>{brl(totalMO)}</span>
           </div>

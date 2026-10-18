@@ -34,6 +34,13 @@ export default async function MaoDeObraPage({
   // Gestão da obra (Mobilização, Logística, Gestão, BDI). Vive em ProjectCostLine
   // e é compartilhada com o painel de estimativa do diagnóstico — preencher aqui
   // reflete lá e vice-versa.
+  // Material do orçamento — entra na base do BDI.
+  const itens = await prisma.budgetItem.findMany({
+    where: { projectId: id },
+    select: { quantity: true, unitPriceSnapshot: true },
+  });
+  const materiais = itens.reduce((s, i) => s + i.quantity * i.unitPriceSnapshot, 0);
+
   const gestaoLines = await prisma.projectCostLine.findMany({
     where: { projectId: id, kind: "GESTAO" },
     select: { key: true, amount: true, percent: true },
@@ -59,7 +66,7 @@ export default async function MaoDeObraPage({
         Informe o valor total previsto de cada função. Para funções que não têm aqui, use <strong>Outros</strong>.
       </p>
 
-      <MaoDeObraForm projectId={id} linhas={linhas} gestao={gestao} />
+      <MaoDeObraForm projectId={id} linhas={linhas} gestao={gestao} materiais={materiais} />
     </div>
   );
 }

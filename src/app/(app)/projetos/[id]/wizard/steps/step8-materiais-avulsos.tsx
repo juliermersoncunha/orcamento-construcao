@@ -380,6 +380,15 @@ function PainelServicosPendentes({
     l.push(s);
     porAmbiente.set(s.ambiente, l);
   }
+  // Começa recolhido: com todos os serviços listados o painel fica longo.
+  const [abertos, setAbertos] = useState<Set<string>>(new Set());
+  const todosAbertos = porAmbiente.size > 0 && [...porAmbiente.keys()].every((a) => abertos.has(a));
+  const alternar = (a: string) =>
+    setAbertos((prev) => {
+      const n = new Set(prev);
+      if (n.has(a)) n.delete(a); else n.add(a);
+      return n;
+    });
 
   return (
     <div className="mb-5 rounded-lg border border-brand-200 bg-brand-50/40 p-4">
@@ -391,6 +400,14 @@ function PainelServicosPendentes({
         <span className="text-xs text-gray-500">
           · {servicos.length} serviços · {servicos.filter((s) => !s.calculado).length} com material à mão
         </span>
+        <span className="ml-auto" />
+        <button
+          type="button"
+          onClick={() => setAbertos(todosAbertos ? new Set() : new Set(porAmbiente.keys()))}
+          className="text-xs font-medium text-brand-700 hover:underline"
+        >
+          {todosAbertos ? "Recolher todos" : "Expandir todos"}
+        </button>
       </div>
       <p className="text-xs text-gray-600 mb-3">
         Todos os serviços do diagnóstico, por ambiente. Os de material à mão precisam que você lance o
@@ -400,13 +417,25 @@ function PainelServicosPendentes({
       <div className="flex flex-col gap-3">
         {[...porAmbiente.entries()].map(([ambiente, lista]) => (
           <div key={ambiente} className="rounded-lg border border-gray-200 bg-white overflow-hidden">
-            <div className="flex items-center gap-2 border-b border-gray-200 bg-gray-50 px-3 py-2">
+            <button
+              type="button"
+              onClick={() => alternar(ambiente)}
+              aria-expanded={abertos.has(ambiente)}
+              className={`flex w-full items-center gap-2 bg-gray-50 px-3 py-2 text-left hover:bg-gray-100 ${abertos.has(ambiente) ? "border-b border-gray-200" : ""}`}
+            >
+              <ChevronRight className={`w-4 h-4 text-gray-400 transition-transform ${abertos.has(ambiente) ? "rotate-90" : ""}`} />
               <Home className="w-4 h-4 text-brand-700" />
               <h4 className="text-sm font-bold text-gray-900">{ambiente.trim()}</h4>
+              {lista.some((s) => !s.calculado) && (
+                <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[11px] font-medium text-amber-800">
+                  {lista.filter((s) => !s.calculado).length} à mão
+                </span>
+              )}
               <span className="ml-auto rounded-full bg-brand-100 px-2 py-0.5 text-[11px] font-medium text-brand-800">
                 {lista.length} {lista.length === 1 ? "serviço" : "serviços"}
               </span>
-            </div>
+            </button>
+            {abertos.has(ambiente) && (
             <ul className="divide-y divide-gray-100">
               {lista.map((s) => {
                 const nLanc = materiaisPorFase.get(s.faseSugerida) ?? 0;
@@ -453,6 +482,7 @@ function PainelServicosPendentes({
                 );
               })}
             </ul>
+            )}
           </div>
         ))}
       </div>

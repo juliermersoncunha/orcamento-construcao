@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import {
   RENOVATION_SERVICES, SERVICE_BY_KEY, SERVICE_GROUPS, ISSUE_CATEGORIES,
-  medidaSugerida, materiaisDosServicos,
+  medidaSugerida, materiaisDosServicos, SERVICOS_POR_PROBLEMA,
 } from "@/lib/renovation-services";
 import {
   addRenovationIssue, updateRenovationIssue, deleteRenovationIssue,
@@ -346,7 +346,7 @@ function ProblemaBloco({
       </div>
       <div className="px-3 py-2">
         <ListaServicos services={services} isPending={isPending} run={run} />
-        <NovoServico projectId={projectId} room={room} issueId={issue.id} isPending={isPending} run={run} />
+        <NovoServico projectId={projectId} room={room} issueId={issue.id} problema={issue.category} isPending={isPending} run={run} />
       </div>
     </div>
   );
@@ -417,10 +417,13 @@ function LinhaServico({ s, isPending, run }: { s: Service; isPending: boolean; r
 }
 
 function NovoServico({
-  projectId, room, issueId, isPending, run,
+  projectId, room, issueId, problema, isPending, run,
 }: {
-  projectId: string; room: Room | null; issueId: string | null; isPending: boolean; run: Run;
+  projectId: string; room: Room | null; issueId: string | null; problema?: string; isPending: boolean; run: Run;
 }) {
+  const sugeridos = (problema ? SERVICOS_POR_PROBLEMA[problema] ?? [] : [])
+    .map((k) => SERVICE_BY_KEY.get(k))
+    .filter((s): s is NonNullable<typeof s> => !!s);
   const [key, setKey] = useState("");
   const [qtd, setQtd] = useState("");
   const [label, setLabel] = useState("");
@@ -442,6 +445,11 @@ function NovoServico({
         className={`text-xs ${campo}`}
       >
         <option value="" disabled>+ serviço{issueId ? " para este problema" : ""}…</option>
+        {sugeridos.length > 0 && (
+          <optgroup label="Sugeridos para este problema">
+            {sugeridos.map((s) => <option key={`sug-${s.key}`} value={s.key}>{s.label}</option>)}
+          </optgroup>
+        )}
         {SERVICE_GROUPS.map((g) => (
           <optgroup key={g} label={g}>
             {RENOVATION_SERVICES.filter((s) => s.grupo === g).map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}

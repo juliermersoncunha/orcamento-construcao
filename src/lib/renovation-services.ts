@@ -249,21 +249,51 @@ export const MANAGEMENT_ITEMS = [
 ];
 
 // Categorias de problema da vistoria.
+// Cada grupo de serviço tem ao menos um tipo de problema correspondente, e
+// cada tipo sugere os serviços que costumam resolvê-lo (SERVICOS_POR_PROBLEMA).
+// Os nomes antigos continuam aqui: problemas já cadastrados seguem válidos.
 export const ISSUE_CATEGORIES = [
   "Trinca / fissura",
   "Infiltração / umidade",
   "Mofo / bolor",
+  "Estrutural",
+  "Alvenaria",
+  "Cobertura / telhado",
+  "Impermeabilização",
   "Piso danificado / solto",
   "Revestimento danificado",
+  "Reboco danificado",
   "Pintura descascando",
+  "Forro danificado",
   "Instalação elétrica",
   "Instalação hidráulica / vazamento",
+  "Louças e metais",
   "Esquadria / porta / janela",
-  "Cobertura / telhado",
-  "Alvenaria",
-  "Estrutural",
+  "Calçada / área externa",
+  "Benfeitoria / melhoria",
   "Outro",
 ] as const;
+
+export const SERVICOS_POR_PROBLEMA: Record<string, string[]> = {
+  "Trinca / fissura": ["reboco", "remover_reboco", "pintura_simples", "pintura_massa", "demolir_alvenaria", "alvenaria_tijolo"],
+  "Infiltração / umidade": ["impermeabilizacao", "impermeabilizar_laje", "reboco", "remover_reboco", "pintura_simples", "telhado_colonial", "calhas_rufos"],
+  "Mofo / bolor": ["impermeabilizacao", "pintura_simples", "pintura_massa", "pintura_teto"],
+  "Estrutural": ["demolir_alvenaria", "alvenaria_tijolo", "reboco", "outro"],
+  "Alvenaria": ["demolir_alvenaria", "alvenaria_tijolo", "reboco", "remover_reboco"],
+  "Cobertura / telhado": ["remover_telhado", "telhado_colonial", "telhado_fibrocimento", "madeiramento", "calhas_rufos", "impermeabilizar_laje"],
+  "Impermeabilização": ["impermeabilizacao", "impermeabilizar_laje"],
+  "Piso danificado / solto": ["remover_piso", "contrapiso", "piso_ceramico", "piso_porcelanato", "rejuntar"],
+  "Revestimento danificado": ["remover_revestimento_parede", "revestimento_parede", "rejuntar"],
+  "Reboco danificado": ["remover_reboco", "reboco", "pintura_simples"],
+  "Pintura descascando": ["pintura_simples", "pintura_massa", "pintura_teto", "pintura_cal", "textura_rolo", "gesso_liso"],
+  "Forro danificado": ["forro", "pintura_teto"],
+  "Instalação elétrica": ["eletrica"],
+  "Instalação hidráulica / vazamento": ["hidraulica", "loucas_metais"],
+  "Louças e metais": ["loucas_metais", "hidraulica"],
+  "Esquadria / porta / janela": ["esquadrias"],
+  "Calçada / área externa": ["calcada_concreto", "pintura_cal", "reboco"],
+  "Benfeitoria / melhoria": ["benf_churrasqueira", "benf_chuveiro", "benf_bancada", "benf_pia_tanque", "benf_pergolado", "benf_outra"],
+};
 
 /** Medida sugerida a partir das dimensões do ambiente. */
 export function medidaSugerida(

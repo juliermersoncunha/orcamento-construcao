@@ -103,6 +103,7 @@ export default async function WizardPage({
     "Hidráulica": "INSTALACOES_HIDROSSANITARIAS",
     "Louças e metais": "INSTALACOES_HIDROSSANITARIAS",
     "Esquadrias": "ESQUADRIAS",
+    "Cobertura": "COBERTURA",
     "Forro": "ACABAMENTO",
     "Outros": "OUTROS",
   };

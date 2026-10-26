@@ -17,6 +17,16 @@ type Regra = {
 
 const REGRAS: Regra[] = [
   { frase: "Demolição de alvenaria", chaves: ["demolir_alvenaria"] },
+  { frase: "Construção de alvenaria", chaves: ["alvenaria_tijolo"] },
+  {
+    frase: "Troca de telhas",
+    chaves: ["telhado_colonial", "telhado_fibrocimento", "remover_telhado"],
+    comRemocao: { chaves: ["remover_telhado"], frase: "Substituição do telhado" },
+  },
+  { frase: "Refazer madeiramento do telhado", chaves: ["madeiramento"] },
+  { frase: "Instalação de calhas e rufos", chaves: ["calhas_rufos"] },
+  { frase: "Impermeabilização de laje", chaves: ["impermeabilizar_laje"] },
+  { frase: "Calçada / piso de concreto", chaves: ["calcada_concreto"] },
   {
     frase: "Assentamento de piso cerâmico",
     chaves: ["piso_ceramico", "piso_porcelanato", "remover_piso"],

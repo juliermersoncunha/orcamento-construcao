@@ -26,7 +26,8 @@ export type ServiceDef = {
   categoria: string;  // ofício, para a estimativa de preço
   unit: "m²" | "m" | "un" | "vb";
   // De onde vem a medida sugerida a partir do ambiente.
-  medida?: "piso" | "parede" | "teto";
+  // "telhado" = área do ambiente × 1,20 (inclinação + beiral).
+  medida?: "piso" | "parede" | "teto" | "telhado";
   // Como os vãos de porta/janela saem da medida de parede sugerida.
   vaos?: RegraVaos;
   materiais?: (q: number) => ServiceMaterial[];
@@ -39,6 +40,11 @@ const entulho = (m3PorM2: number) => (q: number): ServiceMaterial[] => [
   { name: CACAMBA, unit: "un", quantity: (q * m3PorM2) / CACAMBA_M3, phase: "OUTROS", category: "OUTROS" },
 ];
 
+// Telhado: projeção × 1,20 cobre inclinação de ~30% e beiral.
+const FATOR_TELHADO = 1.2;
+// Concreto traço 1:2:3 por m³ (o mesmo do cálculo de casa nova).
+const TRACO_123 = { cimentoSc: 8, areiaM3: 0.56, britaM3: 0.84 };
+
 // Perdas e consumos: os mesmos de calcRevestimentos e calcPintura.
 const LOSS_PISO = 1.10;
 const LOSS_ARG = 1.06;
@@ -48,6 +54,7 @@ export const RENOVATION_SERVICES: ServiceDef[] = [
   { key: "remover_piso", categoria: "Demolição", label: "Remover piso", grupo: "Demolição e remoção", unit: "m²", medida: "piso", materiais: entulho(0.05) },
   { key: "remover_revestimento_parede", categoria: "Demolição", label: "Remover cerâmica / revestimento de parede", grupo: "Demolição e remoção", unit: "m²", medida: "parede", vaos: "cheio", materiais: entulho(0.04) },
   { key: "remover_reboco", categoria: "Demolição", label: "Remover reboco", grupo: "Demolição e remoção", unit: "m²", medida: "parede", vaos: "cheio", materiais: entulho(0.04) },
+  { key: "remover_telhado", categoria: "Demolição", label: "Remover telhado (telhas e madeiramento)", grupo: "Demolição e remoção", unit: "m²", medida: "telhado", materiais: entulho(0.05) },
   { key: "demolir_alvenaria", categoria: "Demolição", label: "Demolir alvenaria", grupo: "Demolição e remoção", unit: "m²", materiais: entulho(0.18) },
 
   // ── Base ──
@@ -75,6 +82,54 @@ export const RENOVATION_SERVICES: ServiceDef[] = [
       { name: "Argamassa polimérica (impermeabilização)", unit: "kg", quantity: q * 4 * 1.05, phase: "REVESTIMENTOS", category: "IMPERMEABILIZACAO" },
     ],
   },
+
+  // ── Alvenaria e concreto ──
+  {
+    key: "alvenaria_tijolo", categoria: "Alvenaria", label: "Levantar parede de tijolo (9x19x19)", grupo: "Alvenaria e concreto", unit: "m²",
+    // Coeficientes de calcAlvenaria: 25 tijolos/m² + 10%, argamassa de
+    // assentamento. Chapisco e reboco entram pelo serviço próprio.
+    materiais: (q) => [
+      { name: "Tijolo Cerâmico Furado 9x19x19", unit: "un", quantity: q * 25 * 1.10, phase: "ESTRUTURA_ALVENARIA", category: "ALVENARIA" },
+      { name: "Cimento CP-II (50kg)", unit: "sc", quantity: q * 0.07 * 1.05, phase: "ESTRUTURA_ALVENARIA", category: "ALVENARIA" },
+      { name: "Areia Média", unit: "m³", quantity: q * 0.01 * 1.05, phase: "ESTRUTURA_ALVENARIA", category: "ALVENARIA" },
+    ],
+  },
+  {
+    key: "calcada_concreto", categoria: "Alvenaria", label: "Calçada / piso de concreto (5 cm)", grupo: "Alvenaria e concreto", unit: "m²",
+    // 0,05 m³/m² de concreto 1:2:3, 5% de perda.
+    materiais: (q) => [
+      { name: "Cimento CP-II (50kg)", unit: "sc", quantity: q * 0.05 * TRACO_123.cimentoSc * 1.05, phase: "REVESTIMENTOS", category: "REVESTIMENTO" },
+      { name: "Areia Média", unit: "m³", quantity: q * 0.05 * TRACO_123.areiaM3 * 1.05, phase: "REVESTIMENTOS", category: "REVESTIMENTO" },
+      { name: "Brita 1", unit: "m³", quantity: q * 0.05 * TRACO_123.britaM3 * 1.05, phase: "REVESTIMENTOS", category: "REVESTIMENTO" },
+    ],
+  },
+
+  // ── Cobertura ──
+  {
+    key: "telhado_colonial", categoria: "Cobertura", label: "Trocar telhas cerâmicas (colonial)", grupo: "Cobertura", unit: "m²", medida: "telhado",
+    // 25 peças/m² + 10% de perda (o mesmo do cálculo de casa nova).
+    materiais: (q) => [
+      { name: "Telha colonial", unit: "un", quantity: q * 25 * 1.10, phase: "COBERTURA", category: "COBERTURA" },
+      { name: "Cumeeira", unit: "un", quantity: q * 0.15, phase: "COBERTURA", category: "COBERTURA" },
+    ],
+  },
+  {
+    key: "telhado_fibrocimento", categoria: "Cobertura", label: "Trocar telhas de fibrocimento (2,44 x 1,10)", grupo: "Cobertura", unit: "m²", medida: "telhado",
+    // Área útil por telha: (2,44 − 0,14) × (1,10 − 0,05) = 2,415 m²; +10%.
+    materiais: (q) => [
+      { name: "Telha de Fibrocimento 2,44 x 1,1", unit: "un", quantity: (q / ((2.44 - 0.14) * (1.10 - 0.05))) * 1.10, phase: "COBERTURA", category: "COBERTURA" },
+      { name: "Cumeeira", unit: "un", quantity: q * 0.15, phase: "COBERTURA", category: "COBERTURA" },
+    ],
+  },
+  {
+    key: "impermeabilizar_laje", categoria: "Cobertura", label: "Impermeabilizar laje", grupo: "Cobertura", unit: "m²", medida: "teto",
+    materiais: (q) => [
+      { name: "Impermeabilizante Acrílico", unit: "L", quantity: q * 0.5, phase: "COBERTURA", category: "COBERTURA" },
+    ],
+  },
+  // Madeiramento e calhas variam demais (bitola, vão, espaçamento): material à mão.
+  { key: "madeiramento", categoria: "Cobertura", label: "Refazer madeiramento do telhado", grupo: "Cobertura", unit: "m²", medida: "telhado" },
+  { key: "calhas_rufos", categoria: "Cobertura", label: "Calhas e rufos", grupo: "Cobertura", unit: "m" },
 
   // ── Revestimentos ──
   {
@@ -167,7 +222,7 @@ export const SERVICE_GROUPS = [...new Set(RENOVATION_SERVICES.map((s) => s.grupo
 
 // Ordem em que os ofícios aparecem na estimativa — segue a sequência da obra.
 export const SERVICE_CATEGORIES = [
-  "Demolição", "Alvenaria", "Impermeabilização", "Revestimentos", "Gesso",
+  "Demolição", "Alvenaria", "Cobertura", "Impermeabilização", "Revestimentos", "Gesso",
   "Pintura", "Elétrica", "Hidráulica", "Esquadrias", "Forro",
   "Louças e metais", "Outros",
 ];
@@ -213,6 +268,7 @@ export function medidaSugerida(
   if (!def.medida) return null;
   const piso = room.width * room.length;
   if (def.medida === "piso" || def.medida === "teto") return Math.round(piso * 100) / 100;
+  if (def.medida === "telhado") return Math.round(piso * FATOR_TELHADO * 100) / 100;
   const bruta = 2 * (room.width + room.length) * room.height;
   const liquida = Math.max(bruta - descontoVaos(room, def.vaos ?? "cheio"), 0);
   return Math.round(liquida * 100) / 100;

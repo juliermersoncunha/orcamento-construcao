@@ -163,7 +163,13 @@ export function WizardContainer({
       {/* Reforma não passa pela Etapa 5: os blocos de elétrica e hidráulica da
           casa toda (quantidade por material, salvos de uma vez) ficam aqui. */}
       {etapa === 8 && reforma && (
-        <div className="mb-6 flex flex-col gap-6">
+        // Fechado por padrão: a lista do catálogo é longa e empurrava a etapa
+        // para baixo. Abre só quando o usuário quer lançar a casa toda.
+        <details className="mb-6 rounded-xl border border-gray-200 bg-white">
+          <summary className="cursor-pointer select-none px-4 py-3 text-sm font-semibold text-gray-800 hover:bg-gray-50 rounded-xl">
+            Elétrica e hidráulica da casa toda — lançar em lista (ex.: 10 interruptores)
+          </summary>
+          <div className="flex flex-col gap-6 p-4 pt-2">
           <Step5ManualElectrical
             projectId={project.id}
             groups={electricalGroups}
@@ -176,7 +182,8 @@ export function WizardContainer({
             catalogo={catalogoCompleto}
             initialQuantities={manualPipeQuantities}
           />
-        </div>
+          </div>
+        </details>
       )}
       {etapa === 8 && (
         <Step8MateriaisAvulsos

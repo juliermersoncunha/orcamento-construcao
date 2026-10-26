@@ -15,6 +15,7 @@ import {
   finishRenovationDiagnosis,
 } from "@/app/actions/renovation";
 import { setPaintPrimer } from "@/app/actions/wizard";
+import { LancarEmVarios } from "./step3-lote";
 import { PAINT_PRIMERS } from "@/lib/paint-primer";
 
 type Room = {
@@ -114,6 +115,8 @@ export function Step3Diagnostico({ project }: { project: any }) {
       {error && (
         <div className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">{error}</div>
       )}
+
+      {rooms.length > 1 && <LancarEmVarios projectId={project.id} rooms={rooms} services={services} />}
 
       {grupos.length > 1 && (
         <div className="flex justify-end -mb-2">

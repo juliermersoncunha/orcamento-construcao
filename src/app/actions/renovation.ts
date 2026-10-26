@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
-import { ISSUE_CATEGORIES, SERVICE_BY_KEY, SEVERITIES } from "@/lib/renovation-services";
+import { ISSUE_CATEGORIES, SERVICE_BY_KEY, SEVERITIES, medidaSugerida } from "@/lib/renovation-services";
 
 async function assertOwnsProject(projectId: string) {
   const session = await getSession();
@@ -131,6 +131,52 @@ export async function addRenovationService(
   });
   touch(projectId);
   return {};
+}
+
+// Mesmo serviço em vários ambientes de uma vez (ex.: piso na casa toda). Cada
+// ambiente recebe a sua medida sugerida (com desconto de vãos); serviço sem
+// medida usa a quantidade informada. Ambiente que já tem o serviço é pulado.
+export async function addRenovationServiceBatch(
+  projectId: string,
+  input: { serviceKey: string; roomIds: string[]; quantity?: number; label?: string }
+): Promise<{ error?: string; criados?: number; pulados?: string[]; semMedida?: string[] }> {
+  await assertOwnsProject(projectId);
+  const def = SERVICE_BY_KEY.get(input.serviceKey);
+  if (!def) return { error: "Escolha o serviço." };
+  const label = input.label?.trim() || null;
+  if (input.serviceKey === "outro" && !label) return { error: "Descreva o serviço." };
+
+  const rooms = await prisma.room.findMany({
+    where: { projectId, id: { in: input.roomIds } },
+    orderBy: { order: "asc" },
+  });
+  if (rooms.length === 0) return { error: "Selecione ao menos um ambiente." };
+
+  const existentes = await prisma.renovationService.findMany({
+    where: { projectId, serviceKey: input.serviceKey, roomId: { in: rooms.map((r) => r.id) }, ...(label ? { label } : {}) },
+    select: { roomId: true },
+  });
+  const jaTem = new Set(existentes.map((e) => e.roomId));
+
+  const ultimo = await prisma.renovationService.findFirst({
+    where: { projectId }, orderBy: { order: "desc" }, select: { order: true },
+  });
+  let ordem = (ultimo?.order ?? -1) + 1;
+  const pulados: string[] = [];
+  const semMedida: string[] = [];
+  const data = [];
+  for (const room of rooms) {
+    if (jaTem.has(room.id)) { pulados.push(room.name.trim()); continue; }
+    const q = def.medida ? medidaSugerida(def, room) : Number(input.quantity);
+    if (!q || !(q > 0)) { semMedida.push(room.name.trim()); continue; }
+    data.push({
+      projectId, roomId: room.id, issueId: null, serviceKey: input.serviceKey,
+      label, quantity: q, notes: null, order: ordem++,
+    });
+  }
+  if (data.length > 0) await prisma.renovationService.createMany({ data });
+  touch(projectId);
+  return { criados: data.length, pulados, semMedida };
 }
 
 export async function updateRenovationService(

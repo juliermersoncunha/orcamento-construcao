@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
-import { ISSUE_CATEGORIES, SERVICE_BY_KEY, SEVERITIES, medidaSugerida } from "@/lib/renovation-services";
+import { ISSUE_CATEGORIES, SERVICE_BY_KEY, medidaSugerida } from "@/lib/renovation-services";
 
 async function assertOwnsProject(projectId: string) {
   const session = await getSession();
@@ -33,11 +33,10 @@ async function ambienteDoProjeto(projectId: string, roomId: string | null | unde
 
 export async function addRenovationIssue(
   projectId: string,
-  input: { roomId: string | null; category: string; severity: string; description?: string }
+  input: { roomId: string | null; category: string; description?: string }
 ) {
   await assertOwnsProject(projectId);
   if (!(ISSUE_CATEGORIES as readonly string[]).includes(input.category)) return { error: "Escolha o tipo de problema." };
-  if (!SEVERITIES.some((s) => s.value === input.severity)) return { error: "Gravidade inválida." };
 
   const ultimo = await prisma.renovationIssue.findFirst({
     where: { projectId }, orderBy: { order: "desc" }, select: { order: true },
@@ -47,7 +46,6 @@ export async function addRenovationIssue(
       projectId,
       roomId: await ambienteDoProjeto(projectId, input.roomId),
       category: input.category,
-      severity: input.severity,
       description: input.description?.trim() || null,
       order: (ultimo?.order ?? -1) + 1,
     },
@@ -58,17 +56,13 @@ export async function addRenovationIssue(
 
 export async function updateRenovationIssue(
   issueId: string,
-  input: { category?: string; severity?: string; description?: string | null }
+  input: { category?: string; description?: string | null }
 ) {
   const issue = await donoDoProblema(issueId);
   const data: Record<string, unknown> = {};
   if (input.category !== undefined) {
     if (!(ISSUE_CATEGORIES as readonly string[]).includes(input.category)) return { error: "Tipo inválido." };
     data.category = input.category;
-  }
-  if (input.severity !== undefined) {
-    if (!SEVERITIES.some((s) => s.value === input.severity)) return { error: "Gravidade inválida." };
-    data.severity = input.severity;
   }
   if (input.description !== undefined) data.description = input.description?.trim() || null;
   await prisma.renovationIssue.update({ where: { id: issueId }, data });

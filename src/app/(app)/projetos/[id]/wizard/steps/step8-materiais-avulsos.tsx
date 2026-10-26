@@ -70,7 +70,7 @@ function brl(n: number) {
 
 export type ServicoPendente = {
   id: string; label: string; unit: string; quantity: number;
-  ambiente: string; problema: string | null; gravidade: string | null;
+  ambiente: string; problema: string | null;
   descricao: string | null; faseSugerida: string;
 };
 
@@ -338,16 +338,6 @@ export function Step8MateriaisAvulsos({ projectId, materials, rows, servicosPend
   );
 }
 
-const GRAVIDADE_COR: Record<string, string> = {
-  URGENTE: "bg-red-100 text-red-700",
-  ALTA: "bg-orange-100 text-orange-800",
-  MEDIA: "bg-amber-100 text-amber-800",
-  BAIXA: "bg-gray-100 text-gray-700",
-};
-const GRAVIDADE_LABEL: Record<string, string> = {
-  URGENTE: "Urgente", ALTA: "Alta", MEDIA: "Média", BAIXA: "Baixa",
-};
-
 // Mostra os serviços da reforma que não geram material sozinhos. O usuário vê
 // problema → ambiente → serviço, e um botão pré-seleciona a fase do formulário
 // abaixo. O vínculo material ↔ serviço fica implícito pela fase, que é o que o
@@ -397,11 +387,6 @@ function PainelServicosPendentes({
                 const fase = PHASE_LABEL[s.faseSugerida] ?? s.faseSugerida;
                 return (
                   <li key={s.id} className="flex flex-wrap items-center gap-2 px-3 py-2 text-sm">
-                    {s.gravidade && (
-                      <span className={`shrink-0 rounded px-1.5 py-0.5 text-[11px] font-semibold ${GRAVIDADE_COR[s.gravidade] ?? ""}`}>
-                        {GRAVIDADE_LABEL[s.gravidade] ?? s.gravidade}
-                      </span>
-                    )}
                     {s.problema ? (
                       <span className="text-gray-800">
                         <strong>{s.problema}</strong>

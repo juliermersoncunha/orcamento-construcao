@@ -265,13 +265,6 @@ export const ISSUE_CATEGORIES = [
   "Outro",
 ] as const;
 
-export const SEVERITIES = [
-  { value: "BAIXA", label: "Baixa", cor: "bg-gray-100 text-gray-700" },
-  { value: "MEDIA", label: "Média", cor: "bg-amber-100 text-amber-800" },
-  { value: "ALTA", label: "Alta", cor: "bg-orange-100 text-orange-800" },
-  { value: "URGENTE", label: "Urgente", cor: "bg-red-100 text-red-700" },
-] as const;
-
 /** Medida sugerida a partir das dimensões do ambiente. */
 export function medidaSugerida(
   def: Pick<ServiceDef, "medida" | "vaos">,

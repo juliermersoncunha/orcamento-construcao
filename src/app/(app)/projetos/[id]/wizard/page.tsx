@@ -121,7 +121,6 @@ export default async function WizardPage({
         quantity: sv.quantity,
         ambiente: nomeAmbiente(sv.roomId),
         problema: issue ? issue.category : null,
-        gravidade: issue?.severity ?? null,
         descricao: issue?.description ?? null,
         faseSugerida: def.fase ?? CATEGORIA_PARA_FASE[def.categoria] ?? "OUTROS",
       };

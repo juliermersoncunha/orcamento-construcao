@@ -6,7 +6,7 @@ import { Stethoscope, Plus, Trash2, Pencil, Check, X, ChevronRight, AlertTriangl
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import {
-  RENOVATION_SERVICES, SERVICE_BY_KEY, SERVICE_GROUPS, ISSUE_CATEGORIES, SEVERITIES,
+  RENOVATION_SERVICES, SERVICE_BY_KEY, SERVICE_GROUPS, ISSUE_CATEGORIES,
   medidaSugerida, materiaisDosServicos,
 } from "@/lib/renovation-services";
 import {
@@ -23,7 +23,7 @@ type Room = {
   doors?: number; doorWidth?: number; doorHeight?: number;
   windows?: number; windowWidth?: number; windowHeight?: number;
 };
-type Issue = { id: string; roomId: string | null; category: string; severity: string; description: string | null };
+type Issue = { id: string; roomId: string | null; category: string; description: string | null };
 type Service = {
   id: string; roomId: string | null; issueId: string | null; serviceKey: string;
   label: string | null; quantity: number; notes: string | null;
@@ -189,7 +189,6 @@ function AmbienteCard({
   isPending: boolean; run: Run;
 }) {
   const [cat, setCat] = useState("");
-  const [sev, setSev] = useState("MEDIA");
   const [desc, setDesc] = useState("");
   const semProblema = services.filter((s) => !s.issueId || !issues.some((i) => i.id === s.issueId));
 
@@ -221,14 +220,11 @@ function AmbienteCard({
 
         {!aberto && issues.length > 0 && (
           <div className="flex flex-wrap gap-1 -mt-2">
-            {issues.map((i) => {
-              const g = SEVERITIES.find((x) => x.value === i.severity) ?? SEVERITIES[1];
-              return (
-                <span key={i.id} className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${g.cor}`}>
-                  {i.category}
-                </span>
-              );
-            })}
+            {issues.map((i) => (
+              <span key={i.id} className="rounded bg-gray-100 px-1.5 py-0.5 text-[11px] font-medium text-gray-700">
+                {i.category}
+              </span>
+            ))}
           </div>
         )}
 
@@ -255,9 +251,6 @@ function AmbienteCard({
               <option value="" disabled>tipo de problema…</option>
               {ISSUE_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
-            <select value={sev} onChange={(e) => setSev(e.target.value)} className={campo} title="Gravidade">
-              {SEVERITIES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
-            </select>
             <input
               value={desc}
               onChange={(e) => setDesc(e.target.value)}
@@ -268,8 +261,8 @@ function AmbienteCard({
               variant="outline" size="sm"
               disabled={isPending || !cat}
               onClick={() => run(async () => {
-                const r = await addRenovationIssue(projectId, { roomId: room?.id ?? null, category: cat, severity: sev, description: desc });
-                if (!r?.error) { setCat(""); setSev("MEDIA"); setDesc(""); }
+                const r = await addRenovationIssue(projectId, { roomId: room?.id ?? null, category: cat, description: desc });
+                if (!r?.error) { setCat(""); setDesc(""); }
                 return r;
               })}
             >
@@ -302,9 +295,7 @@ function ProblemaBloco({
 }) {
   const [editando, setEditando] = useState(false);
   const [cat, setCat] = useState(issue.category);
-  const [sev, setSev] = useState(issue.severity);
   const [desc, setDesc] = useState(issue.description ?? "");
-  const sevDef = SEVERITIES.find((s) => s.value === issue.severity) ?? SEVERITIES[1];
 
   return (
     <div className="rounded-md border border-gray-200">
@@ -314,14 +305,11 @@ function ProblemaBloco({
             <select value={cat} onChange={(e) => setCat(e.target.value)} className={campo}>
               {ISSUE_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
-            <select value={sev} onChange={(e) => setSev(e.target.value)} className={campo}>
-              {SEVERITIES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
-            </select>
             <input value={desc} onChange={(e) => setDesc(e.target.value)} className={`flex-1 min-w-[12rem] ${campo}`} />
             <button
               type="button" aria-label="Salvar problema" disabled={isPending}
               onClick={() => run(async () => {
-                const r = await updateRenovationIssue(issue.id, { category: cat, severity: sev, description: desc });
+                const r = await updateRenovationIssue(issue.id, { category: cat, description: desc });
                 if (!r?.error) setEditando(false);
                 return r;
               })}
@@ -335,7 +323,6 @@ function ProblemaBloco({
           </>
         ) : (
           <>
-            <span className={`rounded px-1.5 py-0.5 text-[11px] font-semibold ${sevDef.cor}`}>{sevDef.label}</span>
             <span className="text-sm font-medium text-gray-900">{issue.category}</span>
             {issue.description && <span className="text-sm text-gray-600">— {issue.description}</span>}
             <div className="flex-1" />

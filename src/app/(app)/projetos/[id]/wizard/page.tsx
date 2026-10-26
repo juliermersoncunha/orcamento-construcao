@@ -3,7 +3,7 @@ import { getSession } from "@/lib/session";
 import { redirect } from "next/navigation";
 import { WizardContainer } from "./wizard-container";
 import { buildManualGroups, MANUAL_BLOCK_CATEGORIES } from "@/lib/manual-catalog";
-import { SERVICE_BY_KEY } from "@/lib/renovation-services";
+import { SERVICE_BY_KEY, materiaisDosServicos } from "@/lib/renovation-services";
 import type { MaterialCategory } from "@prisma/client";
 
 export default async function WizardPage({
@@ -113,8 +113,16 @@ export default async function WizardPage({
   const servicosPendentes = project.renovationServices
     .map((sv) => {
       const def = SERVICE_BY_KEY.get(sv.serviceKey);
-      if (!def || def.materiais) return null;
+      if (!def) return null;
       const issue = sv.issueId ? project.renovationIssues.find((i) => i.id === sv.issueId) : null;
+      // Serviço com regra de material: mostra o que já é calculado e sugere a
+      // fase desse material, para o usuário complementar se precisar.
+      const gerados = def.materiais
+        ? materiaisDosServicos([{ serviceKey: sv.serviceKey, quantity: sv.quantity }], project.paintPrimer)
+        : [];
+      const calculado = gerados.length
+        ? gerados.map((m) => `${m.name} ${m.quantity.toLocaleString("pt-BR")} ${m.unit}`).join(" · ")
+        : null;
       return {
         id: sv.id,
         label: sv.label || def.label,
@@ -123,7 +131,8 @@ export default async function WizardPage({
         ambiente: nomeAmbiente(sv.roomId),
         problema: issue ? issue.category : null,
         descricao: issue?.description ?? null,
-        faseSugerida: def.fase ?? CATEGORIA_PARA_FASE[def.categoria] ?? "OUTROS",
+        faseSugerida: def.fase ?? gerados[0]?.phase ?? CATEGORIA_PARA_FASE[def.categoria] ?? "OUTROS",
+        calculado,
       };
     })
     .filter((x): x is NonNullable<typeof x> => x !== null);

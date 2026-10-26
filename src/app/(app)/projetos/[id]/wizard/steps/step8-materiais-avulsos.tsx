@@ -73,6 +73,8 @@ export type ServicoPendente = {
   id: string; label: string; unit: string; quantity: number;
   ambiente: string; problema: string | null;
   descricao: string | null; faseSugerida: string;
+  // Resumo do material que o sistema já calcula; nulo = material à mão.
+  calculado: string | null;
 };
 
 type Props = {
@@ -87,7 +89,9 @@ export function Step8MateriaisAvulsos({ projectId, materials, rows, servicosPend
   const router = useRouter();
   // Em reforma, a fase inicial e a do primeiro servico pendente — leva o
   // usuario direto ao caso mais comum.
-  const [phase, setPhase] = useState(servicosPendentes[0]?.faseSugerida ?? "LAJE");
+  const [phase, setPhase] = useState(
+    (servicosPendentes.find((s) => !s.calculado) ?? servicosPendentes[0])?.faseSugerida ?? "LAJE"
+  );
   const [search, setSearch] = useState("");
   const [materialId, setMaterialId] = useState("");
   const [quantity, setQuantity] = useState("");
@@ -382,13 +386,16 @@ function PainelServicosPendentes({
       <div className="flex items-center gap-2 mb-1">
         <Wrench className="w-4 h-4 text-brand-700" />
         <h3 className="text-sm font-semibold text-gray-800">
-          Serviços que precisam de material à mão
+          Serviços da reforma — material
         </h3>
-        <span className="text-xs text-gray-500">· {servicos.length}</span>
+        <span className="text-xs text-gray-500">
+          · {servicos.length} serviços · {servicos.filter((s) => !s.calculado).length} com material à mão
+        </span>
       </div>
       <p className="text-xs text-gray-600 mb-3">
-        Estes serviços da reforma não têm material calculado. Clique em um para o formulário abaixo
-        abrir já na fase certa, pronto para você escolher o produto no catálogo.
+        Todos os serviços do diagnóstico, por ambiente. Os de material à mão precisam que você lance o
+        produto; nos calculados, lance só o que faltar (ex.: tijolo extra, viga). O botão abre o
+        formulário abaixo já na fase certa e com o local preenchido.
       </p>
       <div className="flex flex-col gap-3">
         {[...porAmbiente.entries()].map(([ambiente, lista]) => (
@@ -405,7 +412,9 @@ function PainelServicosPendentes({
                 const nLanc = materiaisPorFase.get(s.faseSugerida) ?? 0;
                 const fase = PHASE_LABEL[s.faseSugerida] ?? s.faseSugerida;
                 return (
-                  <li key={s.id} className="flex flex-wrap items-center gap-2 px-3 py-2 text-sm">
+                  <li key={s.id} className="flex flex-wrap items-start gap-2 px-3 py-2 text-sm">
+                    <div className="flex min-w-[14rem] flex-1 flex-col gap-0.5">
+                    <div className="flex flex-wrap items-center gap-2">
                     {s.problema ? (
                       <span className="text-gray-800">
                         <strong>{s.problema}</strong>
@@ -422,7 +431,15 @@ function PainelServicosPendentes({
                     <span className="text-xs text-gray-400">
                       {s.quantity} {s.unit}
                     </span>
-                    <div className="flex-1" />
+                    </div>
+                    {s.calculado ? (
+                      <span className="text-xs text-gray-500">calculado: {s.calculado}</span>
+                    ) : (
+                      <span className="w-fit rounded bg-amber-100 px-1.5 py-0.5 text-[11px] font-medium text-amber-800">
+                        material à mão
+                      </span>
+                    )}
+                    </div>
                     <button
                       type="button"
                       onClick={() => onEscolher(s.faseSugerida, `${s.ambiente.trim()} — ${s.label}`)}

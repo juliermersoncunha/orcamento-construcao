@@ -107,7 +107,7 @@ export async function addRenovationService(
   if (!def) return { error: "Escolha o serviço." };
   const q = Number(input.quantity);
   if (!Number.isFinite(q) || q <= 0) return { error: "Informe a quantidade." };
-  if (input.serviceKey === "outro" && !input.label?.trim()) return { error: "Descreva o serviço." };
+  if (def.descricaoLivre && !input.label?.trim()) return { error: "Descreva o serviço." };
 
   let issueId: string | null = null;
   if (input.issueId) {
@@ -144,7 +144,7 @@ export async function addRenovationServiceBatch(
   const def = SERVICE_BY_KEY.get(input.serviceKey);
   if (!def) return { error: "Escolha o serviço." };
   const label = input.label?.trim() || null;
-  if (input.serviceKey === "outro" && !label) return { error: "Descreva o serviço." };
+  if (def.descricaoLivre && !label) return { error: "Descreva o serviço." };
 
   const rooms = await prisma.room.findMany({
     where: { projectId, id: { in: input.roomIds } },

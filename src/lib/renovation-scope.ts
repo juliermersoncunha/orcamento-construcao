@@ -55,6 +55,11 @@ const REGRAS: Regra[] = [
   { frase: "Revisão da instalação hidráulica", chaves: ["hidraulica"] },
   { frase: "Substituição de louças e metais", chaves: ["loucas_metais"] },
   { frase: "Substituição de esquadrias (portas e janelas)", chaves: ["esquadrias"] },
+  { frase: "Instalação de churrasqueira", chaves: ["benf_churrasqueira"] },
+  { frase: "Instalação de chuveiro / ducha", chaves: ["benf_chuveiro"] },
+  { frase: "Instalação de bancada", chaves: ["benf_bancada"] },
+  { frase: "Instalação de pia / tanque", chaves: ["benf_pia_tanque"] },
+  { frase: "Pergolado / cobertura de área de lazer", chaves: ["benf_pergolado"] },
 ];
 
 const EXTERNO = "área externa";
@@ -87,7 +92,7 @@ export function escopoAutomatico(servicos: Servico[], ambientes: Ambiente[]): st
   // "Outros": um item por nome dado pelo usuário.
   const outros = new Map<string, (string | null)[]>();
   for (const s of servicos) {
-    if (s.serviceKey !== "outro") continue;
+    if (s.serviceKey !== "outro" && s.serviceKey !== "benf_outra") continue;
     const nome = (s.label ?? "").trim() || "Serviço complementar";
     outros.set(nome, [...(outros.get(nome) ?? []), s.roomId]);
   }

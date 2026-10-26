@@ -463,7 +463,7 @@ function NovoServico({
       </select>
       {def && (
         <>
-          {key === "outro" && (
+          {def?.descricaoLivre && (
             <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="descreva o serviço" className={`text-xs ${campo}`} />
           )}
           <input value={qtd} onChange={(e) => setQtd(e.target.value)} inputMode="decimal" placeholder="qtd" className={`w-20 text-right text-xs ${campo}`} />
@@ -473,7 +473,7 @@ function NovoServico({
           )}
           <Button
             variant="outline" size="sm"
-            disabled={isPending || !(n > 0) || (key === "outro" && !label.trim())}
+            disabled={isPending || !(n > 0) || (def?.descricaoLivre && !label.trim())}
             onClick={() => run(async () => {
               const r = await addRenovationService(projectId, {
                 roomId: room?.id ?? null, issueId, serviceKey: key, quantity: n, label,

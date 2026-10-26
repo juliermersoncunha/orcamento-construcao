@@ -30,6 +30,10 @@ export type ServiceDef = {
   medida?: "piso" | "parede" | "teto" | "telhado";
   // Como os vãos de porta/janela saem da medida de parede sugerida.
   vaos?: RegraVaos;
+  // Serviço genérico: o usuário descreve o que é (o texto vira o nome).
+  descricaoLivre?: boolean;
+  // Fase sugerida na Etapa 8 para o material à mão, quando não segue a categoria.
+  fase?: string;
   materiais?: (q: number) => ServiceMaterial[];
 };
 
@@ -213,7 +217,15 @@ export const RENOVATION_SERVICES: ServiceDef[] = [
   { key: "hidraulica", categoria: "Hidráulica", label: "Revisão / troca de hidráulica", grupo: "Instalações e acabamentos", unit: "vb" },
   { key: "esquadrias", categoria: "Esquadrias", label: "Trocar porta ou janela", grupo: "Instalações e acabamentos", unit: "un" },
   { key: "forro", categoria: "Forro", label: "Forro", grupo: "Instalações e acabamentos", unit: "m²", medida: "teto" },
-  { key: "outro", categoria: "Outros", label: "Outro serviço", grupo: "Instalações e acabamentos", unit: "vb" },
+  { key: "outro", categoria: "Outros", label: "Outro serviço", grupo: "Instalações e acabamentos", unit: "vb", descricaoLivre: true },
+
+  // ── Benfeitorias: melhorias novas, material à mão na Etapa 8 ──
+  { key: "benf_churrasqueira", categoria: "Benfeitorias", label: "Instalar churrasqueira", grupo: "Benfeitorias", unit: "un", fase: "OUTROS" },
+  { key: "benf_chuveiro", categoria: "Benfeitorias", label: "Instalar chuveiro / ducha (área de lazer)", grupo: "Benfeitorias", unit: "un", fase: "INSTALACOES_HIDROSSANITARIAS" },
+  { key: "benf_bancada", categoria: "Benfeitorias", label: "Instalar bancada (granito / concreto)", grupo: "Benfeitorias", unit: "un", fase: "ACABAMENTO" },
+  { key: "benf_pia_tanque", categoria: "Benfeitorias", label: "Instalar pia ou tanque", grupo: "Benfeitorias", unit: "un", fase: "INSTALACOES_HIDROSSANITARIAS" },
+  { key: "benf_pergolado", categoria: "Benfeitorias", label: "Pergolado / cobertura de área de lazer", grupo: "Benfeitorias", unit: "m²", fase: "COBERTURA" },
+  { key: "benf_outra", categoria: "Benfeitorias", label: "Outra benfeitoria", grupo: "Benfeitorias", unit: "vb", fase: "OUTROS", descricaoLivre: true },
 ];
 
 export const SERVICE_BY_KEY = new Map(RENOVATION_SERVICES.map((s) => [s.key, s]));
@@ -224,7 +236,7 @@ export const SERVICE_GROUPS = [...new Set(RENOVATION_SERVICES.map((s) => s.grupo
 export const SERVICE_CATEGORIES = [
   "Demolição", "Alvenaria", "Cobertura", "Impermeabilização", "Revestimentos", "Gesso",
   "Pintura", "Elétrica", "Hidráulica", "Esquadrias", "Forro",
-  "Louças e metais", "Outros",
+  "Louças e metais", "Benfeitorias", "Outros",
 ];
 
 // Itens de gestão da obra. BDI é percentual sobre o custo direto; os demais

@@ -123,7 +123,7 @@ export default async function WizardPage({
         problema: issue ? issue.category : null,
         gravidade: issue?.severity ?? null,
         descricao: issue?.description ?? null,
-        faseSugerida: CATEGORIA_PARA_FASE[def.categoria] ?? "OUTROS",
+        faseSugerida: def.fase ?? CATEGORIA_PARA_FASE[def.categoria] ?? "OUTROS",
       };
     })
     .filter((x): x is NonNullable<typeof x> => x !== null);

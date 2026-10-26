@@ -36,7 +36,7 @@ export function LancarEmVarios({ projectId, rooms, services }: { projectId: stri
 
   const def = SERVICE_BY_KEY.get(key);
   const jaTem = (roomId: string) =>
-    services.some((s) => s.roomId === roomId && s.serviceKey === key && (key !== "outro" || (s.label ?? "") === label.trim()));
+    services.some((s) => s.roomId === roomId && s.serviceKey === key && (!SERVICE_BY_KEY.get(key)?.descricaoLivre || (s.label ?? "") === label.trim()));
   const disponiveis = rooms.filter((r) => !jaTem(r.id));
   const todos = disponiveis.length > 0 && disponiveis.every((r) => marcados.has(r.id));
   const selecionados = disponiveis.filter((r) => marcados.has(r.id));
@@ -100,7 +100,7 @@ export function LancarEmVarios({ projectId, rooms, services }: { projectId: stri
                   </optgroup>
                 ))}
               </select>
-              {key === "outro" && (
+              {def?.descricaoLivre && (
                 <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="descreva o serviço" className={`flex-1 min-w-[12rem] ${campo}`} />
               )}
               {def && !def.medida && (

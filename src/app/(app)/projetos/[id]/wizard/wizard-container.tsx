@@ -12,6 +12,7 @@ import { Step5Instalacoes } from "./steps/step5-instalacoes";
 import { Step6Revestimentos } from "./steps/step6-revestimentos";
 import { Step7Muros } from "./steps/step7-muros";
 import { Step7Revisao } from "./steps/step7-revisao";
+import { Step5ManualElectrical, Step5ManualPipes } from "./steps/step5-manual-pipes";
 import {
   Step8MateriaisAvulsos,
   type CatalogMaterial,
@@ -159,6 +160,24 @@ export function WizardContainer({
       )}
       {etapa === 6 && <Step6Revestimentos project={project} />}
       {etapa === 7 && <Step7Muros project={project} />}
+      {/* Reforma não passa pela Etapa 5: os blocos de elétrica e hidráulica da
+          casa toda (quantidade por material, salvos de uma vez) ficam aqui. */}
+      {etapa === 8 && reforma && (
+        <div className="mb-6 flex flex-col gap-6">
+          <Step5ManualElectrical
+            projectId={project.id}
+            groups={electricalGroups}
+            catalogo={catalogoCompleto}
+            initialQuantities={manualPipeQuantities}
+          />
+          <Step5ManualPipes
+            projectId={project.id}
+            groups={hydraulicGroups}
+            catalogo={catalogoCompleto}
+            initialQuantities={manualPipeQuantities}
+          />
+        </div>
+      )}
       {etapa === 8 && (
         <Step8MateriaisAvulsos
           projectId={project.id}

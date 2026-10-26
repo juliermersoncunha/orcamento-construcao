@@ -93,6 +93,7 @@ export default async function WizardPage({
       quantity: r.quantity,
       currentPrice: r.material.currentPrice,
       phase: r.phase as string,
+      usage: r.usage,
     }));
 
   // Serviços da reforma SEM regra de material (louças, elétrica, hidráulica,

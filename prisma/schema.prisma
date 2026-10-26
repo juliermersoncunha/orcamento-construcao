@@ -235,6 +235,8 @@ model ManualBudgetItem {
   // o item avulso lancado na hidraulica, porque cada bloco zera o que nao
   // reconhece como seu.
   block      String?
+  // Onde o material será usado (texto livre: ambiente, serviço, "casa toda").
+  usage      String?
 
   project  Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   material Material @relation(fields: [materialId], references: [id], onDelete: Cascade)

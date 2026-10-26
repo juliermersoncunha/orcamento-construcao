@@ -183,6 +183,7 @@ export function WizardContainer({
           projectId={project.id}
           materials={catalogMaterials}
           rows={manualPhaseRows}
+          ambientes={(project.rooms ?? []).map((r: { name: string }) => r.name.trim())}
           servicosPendentes={project.type === "REFORMA" ? servicosPendentes : []}
         />
       )}

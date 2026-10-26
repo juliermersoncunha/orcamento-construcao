@@ -22,7 +22,7 @@ async function assertOwnsProject(projectId: string) {
 // que já existe apenas move a linha, em vez de duplicá-la.
 export async function addManualPhaseItem(
   projectId: string,
-  input: { materialId: string; quantity: number; phase: string }
+  input: { materialId: string; quantity: number; phase: string; usage?: string }
 ) {
   await assertOwnsProject(projectId);
 
@@ -36,6 +36,19 @@ export async function addManualPhaseItem(
   });
   if (!material) return { error: "Material não encontrado." };
 
+  // O mesmo material lançado para outro lugar acumula o local ("Cozinha;
+  // Sala") — a linha é única por material, então o texto guarda todos.
+  const novo = input.usage?.trim() || null;
+  const atual = await prisma.manualBudgetItem.findUnique({
+    where: { projectId_materialId: { projectId, materialId: input.materialId } },
+    select: { usage: true },
+  });
+  const usage = !novo
+    ? atual?.usage ?? null
+    : atual?.usage && !atual.usage.split("; ").includes(novo)
+      ? `${atual.usage}; ${novo}`
+      : novo;
+
   await prisma.manualBudgetItem.upsert({
     where: { projectId_materialId: { projectId, materialId: input.materialId } },
     create: {
@@ -43,8 +56,9 @@ export async function addManualPhaseItem(
       materialId: input.materialId,
       quantity: qty,
       phase: input.phase as PhaseType,
+      usage,
     },
-    update: { quantity: qty, phase: input.phase as PhaseType },
+    update: { quantity: qty, phase: input.phase as PhaseType, usage },
   });
 
   revalidatePath(`/projetos/${projectId}/wizard`);
@@ -63,7 +77,7 @@ export async function removeManualPhaseItem(projectId: string, materialId: strin
 export async function updateManualPhaseItem(
   projectId: string,
   materialId: string,
-  input: { quantity?: number; phase?: string }
+  input: { quantity?: number; phase?: string; usage?: string | null }
 ) {
   await assertOwnsProject(projectId);
   const data: Record<string, unknown> = {};
@@ -72,6 +86,7 @@ export async function updateManualPhaseItem(
     if (!Number.isFinite(q) || q <= 0) return { error: "Quantidade inválida." };
     data.quantity = q;
   }
+  if (input.usage !== undefined) data.usage = input.usage?.trim() || null;
   if (input.phase !== undefined) {
     if (!input.phase) return { error: "Escolha a fase." };
     data.phase = input.phase as PhaseType;

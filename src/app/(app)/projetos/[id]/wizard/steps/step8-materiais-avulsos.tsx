@@ -22,6 +22,7 @@ export type ManualPhaseRow = {
   quantity: number;
   currentPrice: number;
   phase: string;
+  usage: string | null;
 };
 
 // Fases onde faz sentido lançar material avulso, na ordem da obra.
@@ -79,9 +80,10 @@ type Props = {
   materials: CatalogMaterial[];
   rows: ManualPhaseRow[];
   servicosPendentes?: ServicoPendente[];
+  ambientes?: string[];
 };
 
-export function Step8MateriaisAvulsos({ projectId, materials, rows, servicosPendentes = [] }: Props) {
+export function Step8MateriaisAvulsos({ projectId, materials, rows, servicosPendentes = [], ambientes = [] }: Props) {
   const router = useRouter();
   // Em reforma, a fase inicial e a do primeiro servico pendente — leva o
   // usuario direto ao caso mais comum.
@@ -89,6 +91,7 @@ export function Step8MateriaisAvulsos({ projectId, materials, rows, servicosPend
   const [search, setSearch] = useState("");
   const [materialId, setMaterialId] = useState("");
   const [quantity, setQuantity] = useState("");
+  const [usage, setUsage] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -117,7 +120,7 @@ export function Step8MateriaisAvulsos({ projectId, materials, rows, servicosPend
     if (!Number.isFinite(q) || q <= 0) { setError("Informe uma quantidade maior que zero."); return; }
 
     startTransition(async () => {
-      const res = await addManualPhaseItem(projectId, { materialId, quantity: q, phase });
+      const res = await addManualPhaseItem(projectId, { materialId, quantity: q, phase, usage });
       if (res?.error) { setError(res.error); return; }
       setMaterialId("");
       setSearch("");
@@ -170,7 +173,7 @@ export function Step8MateriaisAvulsos({ projectId, materials, rows, servicosPend
           <PainelServicosPendentes
             servicos={servicosPendentes}
             materiaisPorFase={new Map(rows.map((r) => [r.phase, (rows.filter((x) => x.phase === r.phase).length)]))}
-            onEscolher={(fase) => { setPhase(fase); document.getElementById("search")?.focus(); }}
+            onEscolher={(fase, onde) => { setPhase(fase); setUsage(onde); document.getElementById("search")?.focus(); }}
           />
         )}
 
@@ -253,6 +256,21 @@ export function Step8MateriaisAvulsos({ projectId, materials, rows, servicosPend
                 className={`w-32 bg-white ${inputClass}`}
               />
             </div>
+            <div className="flex flex-col gap-1">
+              <label htmlFor="usage" className="text-sm font-medium text-gray-700">Onde será usado</label>
+              <input
+                id="usage"
+                list="ambientes-etapa8"
+                value={usage}
+                onChange={(e) => setUsage(e.target.value)}
+                placeholder="ambiente, serviço ou casa toda"
+                className={`w-64 bg-white ${inputClass}`}
+              />
+              <datalist id="ambientes-etapa8">
+                <option value="Casa toda" />
+                {ambientes.map((a) => <option key={a} value={a} />)}
+              </datalist>
+            </div>
             <Button type="button" onClick={add} disabled={isPending || !chosen}>
               <Plus className="w-4 h-4 mr-1" />
               {isPending ? "Salvando…" : "Adicionar"}
@@ -288,6 +306,7 @@ export function Step8MateriaisAvulsos({ projectId, materials, rows, servicosPend
                         <thead className="bg-gray-50 text-gray-600">
                           <tr>
                             <th className="text-left py-2 px-3 font-medium">Material</th>
+                            <th className="text-left py-2 px-3 font-medium">Onde</th>
                             <th className="text-center py-2 px-3 font-medium w-20">Unid.</th>
                             <th className="text-right py-2 px-3 font-medium w-24">Qtd</th>
                             <th className="text-right py-2 px-3 font-medium w-28">Preço</th>
@@ -348,7 +367,7 @@ function PainelServicosPendentes({
 }: {
   servicos: ServicoPendente[];
   materiaisPorFase: Map<string, number>;
-  onEscolher: (fase: string) => void;
+  onEscolher: (fase: string, onde: string) => void;
 }) {
   // Agrupa por ambiente, mantendo a ordem em que o usuário vistoriou.
   const porAmbiente = new Map<string, ServicoPendente[]>();
@@ -406,7 +425,7 @@ function PainelServicosPendentes({
                     <div className="flex-1" />
                     <button
                       type="button"
-                      onClick={() => onEscolher(s.faseSugerida)}
+                      onClick={() => onEscolher(s.faseSugerida, `${s.ambiente.trim()} — ${s.label}`)}
                       className="shrink-0 rounded-md border border-brand-300 bg-white px-2 py-1 text-xs font-medium text-brand-700 hover:bg-brand-100"
                       title={`Pré-selecionar a fase "${fase}" no formulário abaixo`}
                     >
@@ -440,6 +459,7 @@ function LinhaManual({
   const [editando, setEditando] = useState(false);
   const [qtd, setQtd] = useState(String(r.quantity).replace(".", ","));
   const [fase, setFase] = useState(r.phase);
+  const [onde, setOnde] = useState(r.usage ?? "");
   const [salvando, iniciar] = useTransition();
   const campo = "rounded border border-gray-300 bg-white px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500";
 
@@ -447,7 +467,7 @@ function LinhaManual({
     const q = Number(qtd.replace(/\./g, "").replace(",", "."));
     if (!(q > 0)) { onErro("Quantidade inválida."); return; }
     iniciar(async () => {
-      const resp = await updateManualPhaseItem(projectId, r.materialId, { quantity: q, phase: fase });
+      const resp = await updateManualPhaseItem(projectId, r.materialId, { quantity: q, phase: fase, usage: onde });
       if (resp?.error) { onErro(resp.error); return; }
       setEditando(false);
       onEditado();
@@ -458,6 +478,7 @@ function LinhaManual({
     return (
       <tr className="border-t border-gray-200">
         <td className="py-2 px-3 text-gray-800">{r.name}</td>
+        <td className="py-2 px-3 text-xs text-gray-600">{r.usage ?? <span className="text-gray-300">—</span>}</td>
         <td className="py-2 px-3 text-center text-gray-600">{r.unit}</td>
         <td className="py-2 px-3 text-right text-gray-700">{r.quantity.toLocaleString("pt-BR")}</td>
         <td className="py-2 px-3 text-right text-gray-600">
@@ -500,6 +521,15 @@ function LinhaManual({
           {PHASE_OPTIONS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
         </select>
       </td>
+      <td className="py-2 px-3">
+        <input
+          value={onde}
+          onChange={(e) => setOnde(e.target.value)}
+          list="ambientes-etapa8"
+          placeholder="onde será usado"
+          className={`w-full min-w-[9rem] text-xs ${campo}`}
+        />
+      </td>
       <td className="py-2 px-3 text-center text-gray-600">{r.unit}</td>
       <td className="py-2 px-3 text-right">
         <input
@@ -525,7 +555,7 @@ function LinhaManual({
         </button>
         <button
           type="button"
-          onClick={() => { setQtd(String(r.quantity).replace(".", ",")); setFase(r.phase); setEditando(false); }}
+          onClick={() => { setQtd(String(r.quantity).replace(".", ",")); setFase(r.phase); setOnde(r.usage ?? ""); setEditando(false); }}
           className="p-1.5 rounded text-gray-400 hover:text-gray-700"
           title="Cancelar"
         >

@@ -17,7 +17,7 @@ type Regra = {
 
 const REGRAS: Regra[] = [
   { frase: "Demolição de alvenaria", chaves: ["demolir_alvenaria"] },
-  { frase: "Construção de alvenaria", chaves: ["alvenaria_tijolo"] },
+  { frase: "Assentamento de tijolos (alvenaria)", chaves: ["alvenaria_tijolo"] },
   {
     frase: "Troca de telhas",
     chaves: ["telhado_colonial", "telhado_fibrocimento", "remover_telhado"],

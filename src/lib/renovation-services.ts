@@ -85,7 +85,7 @@ export const RENOVATION_SERVICES: ServiceDef[] = [
 
   // ── Alvenaria e concreto ──
   {
-    key: "alvenaria_tijolo", categoria: "Alvenaria", label: "Levantar parede de tijolo (9x19x19)", grupo: "Alvenaria e concreto", unit: "m²",
+    key: "alvenaria_tijolo", categoria: "Alvenaria", label: "Assentar tijolo / levantar parede (9x19x19)", grupo: "Alvenaria e concreto", unit: "m²",
     // Coeficientes de calcAlvenaria: 25 tijolos/m² + 10%, argamassa de
     // assentamento. Chapisco e reboco entram pelo serviço próprio.
     materiais: (q) => [

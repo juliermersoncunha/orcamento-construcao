@@ -100,3 +100,16 @@ export function escopoAutomatico(servicos: Servico[], ambientes: Ambiente[]): st
 
   return linhas;
 }
+
+// Versão macro (apresentação a investidores): mesmo escopo, sem a lista de
+// ambientes — só quantos são, ou "toda a casa".
+export function escopoMacro(linhas: string[], totalAmbientes: number): string[] {
+  return linhas.map((l) => {
+    const [frase, onde] = l.split(" — ");
+    if (!onde) return l;
+    if (onde === "todos os ambientes") return `${frase} — toda a casa`;
+    const n = onde.split(/, | e /).length;
+    if (totalAmbientes > 1 && n >= totalAmbientes) return `${frase} — toda a casa`;
+    return n === 1 ? `${frase} — ${onde}` : `${frase} — ${n} ambientes`;
+  });
+}

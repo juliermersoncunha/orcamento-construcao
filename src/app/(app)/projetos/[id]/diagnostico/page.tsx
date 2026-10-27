@@ -6,7 +6,8 @@ import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PrintButton } from "../memorial/memorial-print";
 import { SERVICE_BY_KEY, materiaisDosServicos } from "@/lib/renovation-services";
-import { escopoAutomatico } from "@/lib/renovation-scope";
+import { escopoAutomatico, escopoMacro } from "@/lib/renovation-scope";
+import { RelatorioMacro } from "./relatorio-macro";
 import { montarResumoCustos } from "@/lib/cost-summary";
 import { EnviarFotos, GaleriaFotos } from "./fotos";
 import { EscopoReforma } from "./escopo";
@@ -22,8 +23,15 @@ function fmt(n: number) {
   return n.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
 }
 
-export default async function DiagnosticoPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function DiagnosticoPage({
+  params, searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ v?: string }>;
+}) {
   const { id } = await params;
+  // ?v=macro: versão resumida para investidores. Imprime o que está na tela.
+  const macro = (await searchParams).v === "macro";
   const session = await getSession();
   if (!session) redirect("/login");
 
@@ -103,14 +111,66 @@ export default async function DiagnosticoPage({ params }: { params: Promise<{ id
   const hoje = new Date().toLocaleDateString("pt-BR");
   const endereco = [project.address, project.city && `${project.city}${project.state ? `/${project.state}` : ""}`].filter(Boolean).join(" — ");
 
-  return (
-    <div className="p-8 max-w-4xl print:p-0 print:max-w-none">
-      <div className="flex items-center justify-between mb-6 print:hidden">
-        <Link href={`/projetos/${id}/orcamento`}>
-          <Button variant="ghost" size="sm"><ArrowLeft className="w-4 h-4" /> Voltar</Button>
-        </Link>
+  const barra = (
+    <div className="flex flex-wrap items-center justify-between gap-3 mb-6 print:hidden">
+      <Link href={`/projetos/${id}/orcamento`}>
+        <Button variant="ghost" size="sm"><ArrowLeft className="w-4 h-4" /> Voltar</Button>
+      </Link>
+      <div className="flex items-center gap-3">
+        <div className="inline-flex rounded-lg border border-gray-200 bg-white p-0.5 text-sm">
+          <Link
+            href={`/projetos/${id}/diagnostico`}
+            className={`rounded-md px-3 py-1.5 ${!macro ? "bg-brand-600 text-white" : "text-gray-700 hover:bg-gray-50"}`}
+          >
+            Completo
+          </Link>
+          <Link
+            href={`/projetos/${id}/diagnostico?v=macro`}
+            className={`rounded-md px-3 py-1.5 ${macro ? "bg-brand-600 text-white" : "text-gray-700 hover:bg-gray-50"}`}
+          >
+            Macro (investidores)
+          </Link>
+        </div>
         <PrintButton />
       </div>
+    </div>
+  );
+
+  if (macro) {
+    const linhasEscopo = project.scopeSummary ? project.scopeSummary.split("\n") : escopo;
+    const ambientesAtendidos = new Set(services.map((s) => s.roomId)).size;
+    const area = project.rooms.reduce((s, r) => s + r.width * r.length, 0);
+    const fmtData = (d: Date) => d.toLocaleDateString("pt-BR");
+    const prazo = project.scheduleStart && project.scheduleEnd
+      ? {
+          inicio: fmtData(project.scheduleStart),
+          fim: fmtData(project.scheduleEnd),
+          semanas: Math.max(1, Math.round((project.scheduleEnd.getTime() - project.scheduleStart.getTime()) / (7 * 86400000))),
+        }
+      : null;
+    return (
+      <div className="p-8 max-w-4xl print:p-0 print:max-w-none">
+        {barra}
+        <RelatorioMacro
+          nome={project.name}
+          cliente={project.clientName}
+          endereco={endereco}
+          hoje={hoje}
+          resumo={resumo}
+          area={area}
+          ambientes={ambientesAtendidos}
+          escopo={escopoMacro(linhasEscopo, project.rooms.length)}
+          fotos={fotos}
+          nomeAmbiente={(roomId) => project.rooms.find((r) => r.id === roomId)?.name.trim() ?? "Geral / área externa"}
+          prazo={prazo}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-8 max-w-4xl print:p-0 print:max-w-none">
+      {barra}
 
       <article className="bg-white text-gray-900 text-sm leading-relaxed">
         {/* Cabeçalho */}

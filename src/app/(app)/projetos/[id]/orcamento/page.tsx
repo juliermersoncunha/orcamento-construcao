@@ -3,9 +3,7 @@ import { montarResumoCustos } from "@/lib/cost-summary";
 import { getSession } from "@/lib/session";
 import { redirect } from "next/navigation";
 import { formatCurrency, formatNumber } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, CalendarDays, ClipboardList, Stethoscope, HardHat, TrendingUp, Receipt, BarChart3, FileText } from "lucide-react";
 import Link from "next/link";
 import { validateBudgetAgainstCaixa } from "@/lib/caixa-validation";
@@ -14,6 +12,7 @@ import { validateProject } from "@/lib/calculations/project-validation";
 import { ProjectValidationPanel } from "@/components/project-validation-panel";
 import { MissingMaterialsPanel } from "@/components/missing-materials-panel";
 import { MATERIAL_CATEGORIES } from "@/lib/material-categories";
+import { ItensPorFase } from "./itens-por-fase";
 
 const PHASE_LABELS: Record<string, string> = {
   TERRAPLENAGEM: "Terraplenagem",
@@ -339,86 +338,27 @@ export default async function OrcamentoPage({
         <MissingMaterialsPanel materials={missingMaterials} categoryLabels={categoryLabels} />
       </div>
 
-      {/* Items by phase */}
-      <div className="flex flex-col gap-6">
-        {[...orderedPhases, ...extraPhases].map((phase) => {
-          const items = byPhase.get(phase);
-          if (!items || items.length === 0) return null;
-
-          const matTotal = phaseMat.get(phase) ?? 0;
-          const moTotal = phaseMO.get(phase) ?? 0;
-          const phaseGrandTotal = matTotal + moTotal;
-
-          return (
-            <Card key={phase}>
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between flex-wrap gap-2">
-                  <CardTitle className="text-base">{PHASE_LABELS[phase] ?? phase}</CardTitle>
-                  <div className="flex items-center gap-4 text-sm">
-                    {hasMO && moTotal > 0 && (
-                      <span className="text-gray-500">
-                        Mat: {formatCurrency(matTotal)} · MO: {formatCurrency(moTotal)}
-                      </span>
-                    )}
-                    <span className="text-base font-bold text-amber-700">
-                      {formatCurrency(phaseGrandTotal)}
-                    </span>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-gray-100">
-                        <th className="text-left font-medium text-gray-500 py-2">Material</th>
-                        <th className="text-center font-medium text-gray-500 py-2">Qtd</th>
-                        <th className="text-center font-medium text-gray-500 py-2">Un</th>
-                        <th className="text-right font-medium text-gray-500 py-2">Preço Unit.</th>
-                        <th className="text-right font-medium text-gray-500 py-2">Total</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {items.map((item) => (
-                        <tr key={item.id} className="border-b border-gray-50 hover:bg-gray-50">
-                          <td className="py-2 pr-4 text-gray-800">{item.material.name}</td>
-                          <td className="py-2 px-2 text-center font-medium">
-                            {formatNumber(item.quantity)}
-                          </td>
-                          <td className="py-2 px-2 text-center text-gray-500">
-                            {item.material.unit}
-                          </td>
-                          <td className="py-2 px-2 text-right text-gray-600">
-                            {item.unitPriceSnapshot > 0
-                              ? formatCurrency(item.unitPriceSnapshot)
-                              : <Badge variant="warning">Sem preço</Badge>}
-                          </td>
-                          <td className="py-2 pl-2 text-right font-semibold text-gray-900">
-                            {item.unitPriceSnapshot > 0
-                              ? formatCurrency(item.quantity * item.unitPriceSnapshot)
-                              : "—"}
-                          </td>
-                        </tr>
-                      ))}
-                      {hasMO && moTotal > 0 && (
-                        <tr className="border-b border-amber-100 bg-amber-50/50">
-                          <td className="py-2 pr-4 text-amber-800 font-medium">
-                            Mão de Obra — {PHASE_LABELS[phase] ?? phase}
-                          </td>
-                          <td colSpan={3}></td>
-                          <td className="py-2 pl-2 text-right font-semibold text-amber-700">
-                            {formatCurrency(moTotal)}
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
+      {/* Items by phase — com seleção e cópia para mensagem / Excel */}
+      <ItensPorFase
+        projeto={project.name}
+        hasMO={hasMO}
+        fases={[...orderedPhases, ...extraPhases]
+          .filter((phase) => (byPhase.get(phase)?.length ?? 0) > 0)
+          .map((phase) => ({
+            phase,
+            label: PHASE_LABELS[phase] ?? phase,
+            matTotal: phaseMat.get(phase) ?? 0,
+            moTotal: phaseMO.get(phase) ?? 0,
+            items: byPhase.get(phase)!.map((item) => ({
+              id: item.id,
+              materialId: item.materialId,
+              name: item.material.name,
+              unit: item.material.unit,
+              quantity: item.quantity,
+              unitPrice: item.unitPriceSnapshot,
+            })),
+          }))}
+      />
 
       {/* Grand total footer */}
       <div className="mt-6 p-5 rounded-xl border-2 border-amber-200 bg-amber-50 flex justify-between items-center">

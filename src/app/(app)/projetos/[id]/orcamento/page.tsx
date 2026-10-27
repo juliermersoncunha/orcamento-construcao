@@ -46,6 +46,36 @@ const PHASE_ORDER: string[] = [
   "OUTROS",
 ];
 
+// O mesmo material entra em mais de uma linha da fase quando vem de serviços
+// diferentes (ex.: cimento do contrapiso e do reboco). Na tela, uma linha só
+// por material, com a quantidade somada e o preço médio ponderado.
+function unificarPorMaterial(
+  phase: string,
+  items: { materialId: string; quantity: number; unitPriceSnapshot: number; material: { name: string; unit: string } }[]
+) {
+  const porMaterial = new Map<string, { id: string; materialId: string; name: string; unit: string; quantity: number; total: number }>();
+  for (const item of items) {
+    const atual = porMaterial.get(item.materialId);
+    if (atual) {
+      atual.quantity += item.quantity;
+      atual.total += item.quantity * item.unitPriceSnapshot;
+    } else {
+      porMaterial.set(item.materialId, {
+        id: `${phase}:${item.materialId}`,
+        materialId: item.materialId,
+        name: item.material.name,
+        unit: item.material.unit,
+        quantity: item.quantity,
+        total: item.quantity * item.unitPriceSnapshot,
+      });
+    }
+  }
+  return [...porMaterial.values()].map(({ total, ...m }) => ({
+    ...m,
+    unitPrice: m.quantity > 0 ? total / m.quantity : 0,
+  }));
+}
+
 export default async function OrcamentoPage({
   params,
 }: {
@@ -349,14 +379,7 @@ export default async function OrcamentoPage({
             label: PHASE_LABELS[phase] ?? phase,
             matTotal: phaseMat.get(phase) ?? 0,
             moTotal: phaseMO.get(phase) ?? 0,
-            items: byPhase.get(phase)!.map((item) => ({
-              id: item.id,
-              materialId: item.materialId,
-              name: item.material.name,
-              unit: item.material.unit,
-              quantity: item.quantity,
-              unitPrice: item.unitPriceSnapshot,
-            })),
+            items: unificarPorMaterial(phase, byPhase.get(phase)!),
           }))}
       />
 

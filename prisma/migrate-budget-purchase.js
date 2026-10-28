@@ -17,6 +17,7 @@ async function main() {
     )`);
   await c.query(`CREATE UNIQUE INDEX IF NOT EXISTS "BudgetPurchase_projectId_phase_materialId_key"
     ON "BudgetPurchase"("projectId", "phase", "materialId")`);
+  await c.query(`ALTER TABLE "BudgetPurchase" ADD COLUMN IF NOT EXISTS "quantity" DOUBLE PRECISION`);
   console.log("BudgetPurchase OK");
   await c.end();
 }

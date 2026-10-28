@@ -17,12 +17,9 @@ async function assertOwnsProject(projectId: string) {
   return p;
 }
 
-// Marca ou desmarca linhas do orçamento como compradas. Cada linha é
-// "fase:materialId", o mesmo id que a tela do orçamento usa.
-export async function setBudgetPurchased(projectId: string, linhas: string[], comprado: boolean) {
-  await assertOwnsProject(projectId);
-
-  const chaves = linhas
+// Cada linha da tela do orçamento é "fase:materialId".
+function chavesDe(linhas: string[]) {
+  return linhas
     .map((l) => {
       const [phase, materialId] = l.split(":");
       return { phase, materialId };
@@ -30,16 +27,50 @@ export async function setBudgetPurchased(projectId: string, linhas: string[], co
     .filter((k): k is { phase: PhaseType; materialId: string } =>
       !!k.materialId && (Object.values(PhaseType) as string[]).includes(k.phase)
     );
+}
+
+// Marca ou desmarca linhas do orçamento como compradas por inteiro. Marcar
+// por inteiro também apaga uma compra parcial que existia.
+export async function setBudgetPurchased(projectId: string, linhas: string[], comprado: boolean) {
+  await assertOwnsProject(projectId);
+
+  const chaves = chavesDe(linhas);
   if (chaves.length === 0) return;
 
   if (comprado) {
-    await prisma.budgetPurchase.createMany({
-      data: chaves.map((k) => ({ projectId, ...k })),
-      skipDuplicates: true,
-    });
+    await prisma.$transaction(
+      chaves.map((k) =>
+        prisma.budgetPurchase.upsert({
+          where: { projectId_phase_materialId: { projectId, ...k } },
+          create: { projectId, ...k },
+          update: { quantity: null },
+        })
+      )
+    );
   } else {
     await prisma.budgetPurchase.deleteMany({
       where: { projectId, OR: chaves },
+    });
+  }
+  revalidatePath(`/projetos/${projectId}/orcamento`);
+}
+
+// Compra parcial: guarda quanto já foi comprado de uma linha. Zero ou vazio
+// volta a linha para "a comprar".
+export async function setBudgetPurchaseQuantity(projectId: string, linha: string, quantidade: number) {
+  await assertOwnsProject(projectId);
+
+  const [chave] = chavesDe([linha]);
+  if (!chave) return { error: "Linha inválida." };
+  if (!Number.isFinite(quantidade) || quantidade < 0) return { error: "Quantidade inválida." };
+
+  if (quantidade === 0) {
+    await prisma.budgetPurchase.deleteMany({ where: { projectId, ...chave } });
+  } else {
+    await prisma.budgetPurchase.upsert({
+      where: { projectId_phase_materialId: { projectId, ...chave } },
+      create: { projectId, ...chave, quantity: quantidade },
+      update: { quantity: quantidade },
     });
   }
   revalidatePath(`/projetos/${projectId}/orcamento`);

@@ -822,6 +822,9 @@ model BudgetPurchase {
   projectId  String
   phase      PhaseType
   materialId String
+  // Quanto já foi comprado, na unidade do material. Nulo = comprado todo;
+  // menor que a quantidade do orçamento = compra parcial.
+  quantity   Float?
   createdAt  DateTime  @default(now())
 
   project  Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)

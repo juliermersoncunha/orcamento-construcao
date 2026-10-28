@@ -5,7 +5,7 @@
 
 import { useState, useTransition } from "react";
 import { Check, FileSpreadsheet, MessageSquare, ShoppingCart } from "lucide-react";
-import { setBudgetPurchased } from "@/app/actions/budget-purchases";
+import { setBudgetPurchased, setBudgetPurchaseQuantity } from "@/app/actions/budget-purchases";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,7 +19,8 @@ export type ItemOrcamento = {
   unit: string;
   quantity: number;
   unitPrice: number;
-  comprado: boolean;
+  // Quanto já foi comprado: ausente = nada; null = tudo; número = parcial.
+  compra?: number | null;
 };
 
 export type FaseOrcamento = {
@@ -55,6 +56,21 @@ function juntar(linhas: (Linha & { materialId: string })[], porFase: boolean): L
   return [...mapa.values()];
 }
 
+// Compras marcadas: id da linha → quantidade comprada (null = tudo).
+type Compras = Map<string, number | null>;
+
+function qtdComprada(i: ItemOrcamento, compras: Compras) {
+  if (!compras.has(i.id)) return 0;
+  const q = compras.get(i.id);
+  return q == null ? i.quantity : Math.min(q, i.quantity);
+}
+function faltaComprar(i: ItemOrcamento, compras: Compras) {
+  return Math.max(0, i.quantity - qtdComprada(i, compras));
+}
+function compradoInteiro(i: ItemOrcamento, compras: Compras) {
+  return compras.has(i.id) && faltaComprar(i, compras) === 0;
+}
+
 async function copiar(texto: string) {
   try {
     await navigator.clipboard.writeText(texto);
@@ -86,43 +102,62 @@ export function ItensPorFase({
   const [copiado, setCopiado] = useState<"msg" | "excel" | null>(null);
   const [filtro, setFiltro] = useState<Filtro>("todos");
   // Estado otimista: a marca muda na hora e a ação grava em segundo plano.
-  const [comprados, setComprados] = useState<Set<string>>(
-    () => new Set(fases.flatMap((f) => f.items.filter((i) => i.comprado).map((i) => i.id)))
+  const [compras, setCompras] = useState<Compras>(
+    () => new Map(fases.flatMap((f) => f.items.filter((i) => i.compra !== undefined).map((i) => [i.id, i.compra ?? null])))
   );
+  const [editandoParcial, setEditandoParcial] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [, startTransition] = useTransition();
 
+  // "A comprar" inclui o parcial (ainda falta); "Comprados" inclui tudo que
+  // teve alguma compra.
   const visivel = (i: ItemOrcamento) =>
-    filtro === "todos" || (filtro === "comprados") === comprados.has(i.id);
+    filtro === "todos" ||
+    (filtro === "comprar" ? !compradoInteiro(i, compras) : compras.has(i.id));
   const todos = fases.flatMap((f) => f.items.filter(visivel).map((i) => i.id));
   const tudoMarcado = todos.length > 0 && todos.every((id) => sel.has(id));
 
   const itens = fases.flatMap((f) => f.items);
   const valor = (i: ItemOrcamento) => i.quantity * i.unitPrice;
-  const jaComprados = itens.filter((i) => comprados.has(i.id));
-  const totalComprado = jaComprados.reduce((s, i) => s + valor(i), 0);
+  const qtdAComprar = itens.filter((i) => !compradoInteiro(i, compras)).length;
+  const qtdComCompra = itens.filter((i) => compras.has(i.id)).length;
+  const totalComprado = itens.reduce((s, i) => s + qtdComprada(i, compras) * i.unitPrice, 0);
   const totalFalta = itens.reduce((s, i) => s + valor(i), 0) - totalComprado;
 
-  function marcarComprado(ids: string[], comprado: boolean) {
-    if (ids.length === 0) return;
-    const antes = comprados;
-    setComprados((c) => {
-      const n = new Set(c);
-      for (const id of ids) {
-        if (comprado) n.add(id);
-        else n.delete(id);
-      }
-      return n;
-    });
+  function gravar(alterar: (c: Compras) => void, acao: () => Promise<unknown>) {
+    const antes = compras;
+    const n = new Map(compras);
+    alterar(n);
+    setCompras(n);
     setErro(null);
     startTransition(async () => {
       try {
-        await setBudgetPurchased(projectId, ids, comprado);
+        const r = await acao();
+        if (r && typeof r === "object" && "error" in r) throw new Error();
       } catch {
-        setComprados(antes);
+        setCompras(antes);
         setErro("Não foi possível salvar a marcação de comprado. Tente de novo.");
       }
     });
+  }
+
+  function marcarComprado(ids: string[], comprado: boolean) {
+    if (ids.length === 0) return;
+    gravar(
+      (c) => { for (const id of ids) { if (comprado) c.set(id, null); else c.delete(id); } },
+      () => setBudgetPurchased(projectId, ids, comprado)
+    );
+  }
+
+  function salvarParcial(i: ItemOrcamento, q: number) {
+    setEditandoParcial(null);
+    gravar(
+      (c) => {
+        if (q <= 0) c.delete(i.id);
+        else c.set(i.id, q >= i.quantity ? null : q);
+      },
+      () => setBudgetPurchaseQuantity(projectId, i.id, q >= i.quantity ? i.quantity : q)
+    );
   }
 
   function alternar(ids: string[], marcar: boolean) {
@@ -136,11 +171,17 @@ export function ItensPorFase({
     });
   }
 
+  // No filtro "A comprar" a cópia leva só o que falta de cada item — é a lista
+  // para mandar ao fornecedor.
   function selecionadas() {
     const linhas = fases.flatMap((f) =>
       f.items
         .filter((i) => sel.has(i.id))
-        .map((i) => ({ fase: f.label, materialId: i.materialId, name: i.name, unit: i.unit, quantity: i.quantity, unitPrice: i.unitPrice }))
+        .map((i) => ({
+          fase: f.label, materialId: i.materialId, name: i.name, unit: i.unit,
+          quantity: filtro === "comprar" ? faltaComprar(i, compras) : i.quantity,
+          unitPrice: i.unitPrice,
+        }))
     );
     return juntar(linhas, !listaUnica);
   }
@@ -192,7 +233,7 @@ export function ItensPorFase({
 
   const nada = sel.size === 0;
   const selIds = [...sel];
-  const selTodaComprada = !nada && selIds.every((id) => comprados.has(id));
+  const selTodaComprada = !nada && itens.filter((i) => sel.has(i.id)).every((i) => compradoInteiro(i, compras));
 
   return (
     <div className="flex flex-col gap-6">
@@ -201,8 +242,8 @@ export function ItensPorFase({
         <div className="flex rounded-lg border border-gray-200 p-0.5 text-xs">
           {([
             ["todos", `Todos (${itens.length})`],
-            ["comprar", `A comprar (${itens.length - jaComprados.length})`],
-            ["comprados", `Comprados (${jaComprados.length})`],
+            ["comprar", `A comprar (${qtdAComprar})`],
+            ["comprados", `Comprados (${qtdComCompra})`],
           ] as [Filtro, string][]).map(([v, rotulo]) => (
             <button
               key={v}
@@ -219,6 +260,9 @@ export function ItensPorFase({
           {" · "}
           <span className="font-semibold text-amber-700">Falta comprar {formatCurrency(totalFalta)}</span>
         </span>
+        {filtro === "comprar" && (
+          <span className="text-xs text-gray-500">a cópia leva só a quantidade que falta</span>
+        )}
         {erro && <span className="text-xs text-red-600">{erro}</span>}
       </div>
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
@@ -276,7 +320,8 @@ export function ItensPorFase({
         if (visiveis.length === 0) return null;
         const ids = visiveis.map((i) => i.id);
         const marcados = ids.filter((id) => sel.has(id)).length;
-        const compradosFase = f.items.filter((i) => comprados.has(i.id)).length;
+        const compradosFase = f.items.filter((i) => compradoInteiro(i, compras)).length;
+        const parciaisFase = f.items.filter((i) => compras.has(i.id) && !compradoInteiro(i, compras)).length;
         return (
           <Card key={f.phase}>
             <CardHeader className="pb-3">
@@ -291,9 +336,11 @@ export function ItensPorFase({
                     onChange={(e) => alternar(ids, e.target.checked)}
                   />
                   <CardTitle className="text-base">{f.label}</CardTitle>
-                  {compradosFase > 0 && (
+                  {(compradosFase > 0 || parciaisFase > 0) && (
                     <span className={`text-xs font-medium ${compradosFase === f.items.length ? "text-green-700" : "text-gray-500"}`}>
-                      {compradosFase === f.items.length ? "tudo comprado" : `${compradosFase} de ${f.items.length} comprados`}
+                      {compradosFase === f.items.length
+                        ? "tudo comprado"
+                        : `${compradosFase} de ${f.items.length} comprados${parciaisFase ? ` · ${parciaisFase} parcial` : ""}`}
                     </span>
                   )}
                 </label>
@@ -320,13 +367,14 @@ export function ItensPorFase({
                       <th className="text-center font-medium text-gray-500 py-2">Un</th>
                       <th className="text-right font-medium text-gray-500 py-2">Preço Unit.</th>
                       <th className="text-right font-medium text-gray-500 py-2">Total</th>
-                      <th className="text-center font-medium text-gray-500 py-2 pl-3 w-28">Comprado</th>
+                      <th className="text-center font-medium text-gray-500 py-2 pl-3 w-40">Comprado</th>
                     </tr>
                   </thead>
                   <tbody>
                     {visiveis.map((item) => {
                       const marcado = sel.has(item.id);
-                      const comprado = comprados.has(item.id);
+                      const comprado = compradoInteiro(item, compras);
+                      const parcial = compras.has(item.id) && !comprado;
                       return (
                         <tr
                           key={item.id}
@@ -352,21 +400,53 @@ export function ItensPorFase({
                           <td className="py-2 pl-2 text-right font-semibold text-gray-900">
                             {item.unitPrice > 0 ? formatCurrency(item.quantity * item.unitPrice) : "—"}
                           </td>
-                          <td className="py-2 pl-3 text-center">
-                            <button
-                              type="button"
-                              aria-pressed={comprado}
-                              aria-label={`${item.name}: ${comprado ? "comprado" : "não comprado"}`}
-                              onClick={(e) => { e.stopPropagation(); marcarComprado([item.id], !comprado); }}
-                              className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium ${
-                                comprado
-                                  ? "border-green-300 bg-green-100 text-green-800"
-                                  : "border-gray-200 text-gray-400 hover:border-green-300 hover:text-green-700"
-                              }`}
-                            >
-                              {comprado ? <Check className="w-3 h-3" /> : <ShoppingCart className="w-3 h-3" />}
-                              {comprado ? "Comprado" : "Comprar"}
-                            </button>
+                          <td className="py-2 pl-3 text-center" onClick={(e) => e.stopPropagation()}>
+                            {editandoParcial === item.id ? (
+                              <FormParcial
+                                item={item}
+                                inicial={parcial ? qtdComprada(item, compras) : undefined}
+                                onSalvar={(q) => salvarParcial(item, q)}
+                                onCancelar={() => setEditandoParcial(null)}
+                              />
+                            ) : (
+                              <div className="flex flex-col items-center gap-0.5">
+                                <button
+                                  type="button"
+                                  aria-pressed={comprado}
+                                  aria-label={`${item.name}: ${comprado ? "comprado" : parcial ? "comprado em parte" : "não comprado"}`}
+                                  onClick={() => marcarComprado([item.id], !comprado)}
+                                  title={parcial ? "Marcar como comprado todo" : undefined}
+                                  className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium ${
+                                    comprado
+                                      ? "border-green-300 bg-green-100 text-green-800"
+                                      : parcial
+                                        ? "border-amber-300 bg-amber-100 text-amber-800"
+                                        : "border-gray-200 text-gray-400 hover:border-green-300 hover:text-green-700"
+                                  }`}
+                                >
+                                  {comprado ? <Check className="w-3 h-3" /> : <ShoppingCart className="w-3 h-3" />}
+                                  {comprado ? "Comprado" : parcial ? "Parcial" : "Comprar"}
+                                </button>
+                                {parcial ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => setEditandoParcial(item.id)}
+                                    className="text-[11px] leading-tight text-amber-800 hover:underline"
+                                    title="Editar a quantidade comprada"
+                                  >
+                                    comprei {qtd(qtdComprada(item, compras))} · falta {qtd(faltaComprar(item, compras))} {item.unit}
+                                  </button>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => setEditandoParcial(item.id)}
+                                    className="text-[11px] text-gray-400 hover:text-amber-700 hover:underline"
+                                  >
+                                    {comprado ? "foi só uma parte?" : "comprei só uma parte"}
+                                  </button>
+                                )}
+                              </div>
+                            )}
                           </td>
                         </tr>
                       );
@@ -388,5 +468,52 @@ export function ItensPorFase({
         );
       })}
     </div>
+  );
+}
+
+// Quantidade comprada de um item, quando não foi comprado todo.
+function FormParcial({
+  item, inicial, onSalvar, onCancelar,
+}: {
+  item: ItemOrcamento;
+  inicial?: number;
+  onSalvar: (q: number) => void;
+  onCancelar: () => void;
+}) {
+  const [valor, setValor] = useState(inicial !== undefined ? String(inicial).replace(".", ",") : "");
+  const q = Number(valor.replace(",", "."));
+  const valido = valor.trim() !== "" && Number.isFinite(q) && q >= 0;
+  const falta = valido ? Math.max(0, item.quantity - q) : null;
+
+  return (
+    <form
+      className="flex flex-col items-center gap-1"
+      onSubmit={(e) => { e.preventDefault(); if (valido) onSalvar(q); }}
+    >
+      <label className="flex items-center gap-1 text-[11px] text-gray-600">
+        comprei
+        <input
+          autoFocus
+          inputMode="decimal"
+          value={valor}
+          onChange={(e) => setValor(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Escape") onCancelar(); }}
+          aria-label={`Quantidade comprada de ${item.name}`}
+          className="w-16 rounded border border-gray-300 px-1 py-0.5 text-right text-xs"
+        />
+        {item.unit}
+      </label>
+      <span className="text-[11px] text-gray-500">
+        {falta === null ? `de ${qtd(item.quantity)} ${item.unit}` : `falta ${qtd(falta)} ${item.unit}`}
+      </span>
+      <div className="flex gap-2 text-[11px]">
+        <button type="submit" disabled={!valido} className="font-medium text-green-700 hover:underline disabled:opacity-40">
+          salvar
+        </button>
+        <button type="button" onClick={onCancelar} className="text-gray-500 hover:underline">
+          cancelar
+        </button>
+      </div>
+    </form>
   );
 }

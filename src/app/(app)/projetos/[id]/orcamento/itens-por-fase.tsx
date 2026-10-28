@@ -1,22 +1,25 @@
 "use client";
 
 // Tabelas de material por fase com seleção de itens e cópia para mensagem
-// (WhatsApp, e-mail) ou para colar no Excel.
+// (WhatsApp, e-mail) ou para colar no Excel, e marcação do que já foi comprado.
 
-import { useState } from "react";
-import { Check, FileSpreadsheet, MessageSquare } from "lucide-react";
+import { useState, useTransition } from "react";
+import { Check, FileSpreadsheet, MessageSquare, ShoppingCart } from "lucide-react";
+import { setBudgetPurchased } from "@/app/actions/budget-purchases";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export type ItemOrcamento = {
+  // "fase:materialId" — também é a chave da marcação de comprado.
   id: string;
   materialId: string;
   name: string;
   unit: string;
   quantity: number;
   unitPrice: number;
+  comprado: boolean;
 };
 
 export type FaseOrcamento = {
@@ -67,9 +70,12 @@ async function copiar(texto: string) {
   }
 }
 
+type Filtro = "todos" | "comprar" | "comprados";
+
 export function ItensPorFase({
-  projeto, fases, hasMO,
+  projectId, projeto, fases, hasMO,
 }: {
+  projectId: string;
   projeto: string;
   fases: FaseOrcamento[];
   hasMO: boolean;
@@ -78,9 +84,46 @@ export function ItensPorFase({
   const [comPreco, setComPreco] = useState(false);
   const [listaUnica, setListaUnica] = useState(false);
   const [copiado, setCopiado] = useState<"msg" | "excel" | null>(null);
+  const [filtro, setFiltro] = useState<Filtro>("todos");
+  // Estado otimista: a marca muda na hora e a ação grava em segundo plano.
+  const [comprados, setComprados] = useState<Set<string>>(
+    () => new Set(fases.flatMap((f) => f.items.filter((i) => i.comprado).map((i) => i.id)))
+  );
+  const [erro, setErro] = useState<string | null>(null);
+  const [, startTransition] = useTransition();
 
-  const todos = fases.flatMap((f) => f.items.map((i) => i.id));
-  const tudoMarcado = sel.size > 0 && sel.size === todos.length;
+  const visivel = (i: ItemOrcamento) =>
+    filtro === "todos" || (filtro === "comprados") === comprados.has(i.id);
+  const todos = fases.flatMap((f) => f.items.filter(visivel).map((i) => i.id));
+  const tudoMarcado = todos.length > 0 && todos.every((id) => sel.has(id));
+
+  const itens = fases.flatMap((f) => f.items);
+  const valor = (i: ItemOrcamento) => i.quantity * i.unitPrice;
+  const jaComprados = itens.filter((i) => comprados.has(i.id));
+  const totalComprado = jaComprados.reduce((s, i) => s + valor(i), 0);
+  const totalFalta = itens.reduce((s, i) => s + valor(i), 0) - totalComprado;
+
+  function marcarComprado(ids: string[], comprado: boolean) {
+    if (ids.length === 0) return;
+    const antes = comprados;
+    setComprados((c) => {
+      const n = new Set(c);
+      for (const id of ids) {
+        if (comprado) n.add(id);
+        else n.delete(id);
+      }
+      return n;
+    });
+    setErro(null);
+    startTransition(async () => {
+      try {
+        await setBudgetPurchased(projectId, ids, comprado);
+      } catch {
+        setComprados(antes);
+        setErro("Não foi possível salvar a marcação de comprado. Tente de novo.");
+      }
+    });
+  }
 
   function alternar(ids: string[], marcar: boolean) {
     setSel((s) => {
@@ -148,10 +191,37 @@ export function ItensPorFase({
   }
 
   const nada = sel.size === 0;
+  const selIds = [...sel];
+  const selTodaComprada = !nada && selIds.every((id) => comprados.has(id));
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="sticky top-0 z-10 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-gray-200 bg-white/95 px-4 py-3 shadow-sm backdrop-blur">
+      <div className="sticky top-0 z-10 flex flex-col gap-2 rounded-xl border border-gray-200 bg-white/95 px-4 py-3 shadow-sm backdrop-blur">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <div className="flex rounded-lg border border-gray-200 p-0.5 text-xs">
+          {([
+            ["todos", `Todos (${itens.length})`],
+            ["comprar", `A comprar (${itens.length - jaComprados.length})`],
+            ["comprados", `Comprados (${jaComprados.length})`],
+          ] as [Filtro, string][]).map(([v, rotulo]) => (
+            <button
+              key={v}
+              type="button"
+              onClick={() => { setFiltro(v); setSel(new Set()); }}
+              className={`rounded-md px-2.5 py-1 font-medium ${filtro === v ? "bg-brand-600 text-white" : "text-gray-600 hover:bg-gray-100"}`}
+            >
+              {rotulo}
+            </button>
+          ))}
+        </div>
+        <span className="text-xs text-gray-600">
+          <span className="font-semibold text-green-700">Comprado {formatCurrency(totalComprado)}</span>
+          {" · "}
+          <span className="font-semibold text-amber-700">Falta comprar {formatCurrency(totalFalta)}</span>
+        </span>
+        {erro && <span className="text-xs text-red-600">{erro}</span>}
+      </div>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         <label className="flex items-center gap-2 text-sm font-medium text-gray-800">
           <input
             type="checkbox"
@@ -163,7 +233,7 @@ export function ItensPorFase({
           Selecionar todos
         </label>
         <span className="text-xs text-gray-500">
-          {nada ? "marque os itens que quer copiar" : `${sel.size} de ${todos.length} itens`}
+          {nada ? "marque itens para copiar ou marcar como comprados" : `${sel.size} de ${todos.length} itens`}
         </span>
         <div className="flex-1" />
         <label className="flex items-center gap-1.5 text-xs text-gray-600">
@@ -182,16 +252,31 @@ export function ItensPorFase({
           {copiado === "excel" ? <Check className="w-4 h-4 mr-1 text-green-600" /> : <FileSpreadsheet className="w-4 h-4 mr-1" />}
           {copiado === "excel" ? "Copiado! Cole no Excel" : "Copiar p/ Excel"}
         </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          disabled={nada}
+          className="border-green-300 text-green-700 hover:bg-green-50"
+          onClick={() => { marcarComprado(selIds, !selTodaComprada); setSel(new Set()); }}
+        >
+          <ShoppingCart className="w-4 h-4 mr-1" />
+          {selTodaComprada ? "Desmarcar comprado" : "Marcar comprado"}
+        </Button>
         {!nada && (
           <button type="button" className="text-xs text-gray-500 underline" onClick={() => setSel(new Set())}>
             limpar
           </button>
         )}
       </div>
+      </div>
 
       {fases.map((f) => {
-        const ids = f.items.map((i) => i.id);
+        const visiveis = f.items.filter(visivel);
+        if (visiveis.length === 0) return null;
+        const ids = visiveis.map((i) => i.id);
         const marcados = ids.filter((id) => sel.has(id)).length;
+        const compradosFase = f.items.filter((i) => comprados.has(i.id)).length;
         return (
           <Card key={f.phase}>
             <CardHeader className="pb-3">
@@ -206,6 +291,11 @@ export function ItensPorFase({
                     onChange={(e) => alternar(ids, e.target.checked)}
                   />
                   <CardTitle className="text-base">{f.label}</CardTitle>
+                  {compradosFase > 0 && (
+                    <span className={`text-xs font-medium ${compradosFase === f.items.length ? "text-green-700" : "text-gray-500"}`}>
+                      {compradosFase === f.items.length ? "tudo comprado" : `${compradosFase} de ${f.items.length} comprados`}
+                    </span>
+                  )}
                 </label>
                 <div className="flex items-center gap-4 text-sm">
                   {hasMO && f.moTotal > 0 && (
@@ -230,11 +320,13 @@ export function ItensPorFase({
                       <th className="text-center font-medium text-gray-500 py-2">Un</th>
                       <th className="text-right font-medium text-gray-500 py-2">Preço Unit.</th>
                       <th className="text-right font-medium text-gray-500 py-2">Total</th>
+                      <th className="text-center font-medium text-gray-500 py-2 pl-3 w-28">Comprado</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {f.items.map((item) => {
+                    {visiveis.map((item) => {
                       const marcado = sel.has(item.id);
+                      const comprado = comprados.has(item.id);
                       return (
                         <tr
                           key={item.id}
@@ -251,7 +343,7 @@ export function ItensPorFase({
                               onChange={(e) => alternar([item.id], e.target.checked)}
                             />
                           </td>
-                          <td className="py-2 pr-4 text-gray-800">{item.name}</td>
+                          <td className={`py-2 pr-4 ${comprado ? "text-gray-400 line-through" : "text-gray-800"}`}>{item.name}</td>
                           <td className="py-2 px-2 text-center font-medium">{formatNumber(item.quantity)}</td>
                           <td className="py-2 px-2 text-center text-gray-500">{item.unit}</td>
                           <td className="py-2 px-2 text-right text-gray-600">
@@ -259,6 +351,22 @@ export function ItensPorFase({
                           </td>
                           <td className="py-2 pl-2 text-right font-semibold text-gray-900">
                             {item.unitPrice > 0 ? formatCurrency(item.quantity * item.unitPrice) : "—"}
+                          </td>
+                          <td className="py-2 pl-3 text-center">
+                            <button
+                              type="button"
+                              aria-pressed={comprado}
+                              aria-label={`${item.name}: ${comprado ? "comprado" : "não comprado"}`}
+                              onClick={(e) => { e.stopPropagation(); marcarComprado([item.id], !comprado); }}
+                              className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium ${
+                                comprado
+                                  ? "border-green-300 bg-green-100 text-green-800"
+                                  : "border-gray-200 text-gray-400 hover:border-green-300 hover:text-green-700"
+                              }`}
+                            >
+                              {comprado ? <Check className="w-3 h-3" /> : <ShoppingCart className="w-3 h-3" />}
+                              {comprado ? "Comprado" : "Comprar"}
+                            </button>
                           </td>
                         </tr>
                       );
@@ -269,6 +377,7 @@ export function ItensPorFase({
                         <td className="py-2 pr-4 text-amber-800 font-medium">Mão de Obra — {f.label}</td>
                         <td colSpan={3}></td>
                         <td className="py-2 pl-2 text-right font-semibold text-amber-700">{formatCurrency(f.moTotal)}</td>
+                        <td />
                       </tr>
                     )}
                   </tbody>

@@ -103,6 +103,7 @@ export default async function OrcamentoPage({
       },
       laborLines: { select: { role: true, label: true, value: true } },
       costLines: { where: { kind: "GESTAO" } },
+      budgetPurchases: { select: { phase: true, materialId: true } },
       installations: { include: { electricalPoints: true, hydraulicPoints: true } },
     },
   });
@@ -227,6 +228,9 @@ export default async function OrcamentoPage({
     premises: premiseRows,
     zeroPriceMaterials,
   });
+
+  // Linhas já marcadas como compradas, na mesma chave da tela (fase:material).
+  const compradas = new Set(project.budgetPurchases.map((b) => `${b.phase}:${b.materialId}`));
 
   // Ordered phases present in budget
   const orderedPhases = PHASE_ORDER.filter((p) => byPhase.has(p));
@@ -370,6 +374,7 @@ export default async function OrcamentoPage({
 
       {/* Items by phase — com seleção e cópia para mensagem / Excel */}
       <ItensPorFase
+        projectId={id}
         projeto={project.name}
         hasMO={hasMO}
         fases={[...orderedPhases, ...extraPhases]
@@ -379,7 +384,10 @@ export default async function OrcamentoPage({
             label: PHASE_LABELS[phase] ?? phase,
             matTotal: phaseMat.get(phase) ?? 0,
             moTotal: phaseMO.get(phase) ?? 0,
-            items: unificarPorMaterial(phase, byPhase.get(phase)!),
+            items: unificarPorMaterial(phase, byPhase.get(phase)!).map((i) => ({
+              ...i,
+              comprado: compradas.has(i.id),
+            })),
           }))}
       />
 

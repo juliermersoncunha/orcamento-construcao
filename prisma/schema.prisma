@@ -211,6 +211,7 @@ model Project {
   weekStages        ScheduleWeekStage[]
   weekMaterials     ScheduleWeekMaterial[]
   weekPurchases     ScheduleWeekPurchase[]
+  budgetPurchases   BudgetPurchase[]
   renovationIssues   RenovationIssue[]
   renovationServices RenovationService[]
   costLines          ProjectCostLine[]
@@ -555,6 +556,7 @@ model Material {
   scheduleStageMaterials ScheduleStageMaterial[]
   weekMaterials          ScheduleWeekMaterial[]
   weekPurchases          ScheduleWeekPurchase[]
+  budgetPurchases        BudgetPurchase[]
   usages                 MaterialUsage[]
 }
 
@@ -810,6 +812,22 @@ model ScheduleWeekMaterial {
   stage    ScheduleStage? @relation(fields: [stageId], references: [id], onDelete: SetNull)
 
   @@unique([projectId, weekStart, materialId])
+}
+
+// Material do orcamento ja comprado, marcado na tela do orcamento. Fica fora
+// de BudgetItem porque recalcular apaga e recria os itens; a chave e a linha
+// que a tela mostra (fase + material).
+model BudgetPurchase {
+  id         String    @id @default(cuid())
+  projectId  String
+  phase      PhaseType
+  materialId String
+  createdAt  DateTime  @default(now())
+
+  project  Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  material Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, phase, materialId])
 }
 
 // Material da semana ja comprado. A compra e feita para a semana, e a linha

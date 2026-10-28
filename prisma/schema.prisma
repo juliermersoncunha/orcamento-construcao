@@ -212,6 +212,7 @@ model Project {
   weekMaterials     ScheduleWeekMaterial[]
   weekPurchases     ScheduleWeekPurchase[]
   budgetPurchases   BudgetPurchase[]
+  excludedItems     ExcludedBudgetItem[]
   renovationIssues   RenovationIssue[]
   renovationServices RenovationService[]
   costLines          ProjectCostLine[]
@@ -557,6 +558,7 @@ model Material {
   weekMaterials          ScheduleWeekMaterial[]
   weekPurchases          ScheduleWeekPurchase[]
   budgetPurchases        BudgetPurchase[]
+  excludedItems          ExcludedBudgetItem[]
   usages                 MaterialUsage[]
 }
 
@@ -826,6 +828,24 @@ model BudgetPurchase {
   // menor que a quantidade do orçamento = compra parcial.
   quantity   Float?
   createdAt  DateTime  @default(now())
+
+  project  Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  material Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, phase, materialId])
+}
+
+// Item calculado que o usuario tirou do orcamento para lancar a mao (ex.: os
+// 35 L de tinta calculados viram 15 L de uma cor + 20 L de outra na Etapa 8).
+// O recalculo pula o que estiver aqui; calcQuantity guarda quanto o calculo
+// daria, para a tela mostrar a referencia e para "voltar ao calculado".
+model ExcludedBudgetItem {
+  id           String    @id @default(cuid())
+  projectId    String
+  phase        PhaseType
+  materialId   String
+  calcQuantity Float     @default(0)
+  createdAt    DateTime  @default(now())
 
   project  Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   material Material @relation(fields: [materialId], references: [id], onDelete: Cascade)

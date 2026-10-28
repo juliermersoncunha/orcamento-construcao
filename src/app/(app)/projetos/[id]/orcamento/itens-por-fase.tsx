@@ -4,8 +4,10 @@
 // (WhatsApp, e-mail) ou para colar no Excel, e marcação do que já foi comprado.
 
 import { useState, useTransition } from "react";
-import { Check, FileSpreadsheet, MessageSquare, ShoppingCart } from "lucide-react";
+import Link from "next/link";
+import { ArrowLeftRight, Check, FileSpreadsheet, MessageSquare, ShoppingCart, Undo2 } from "lucide-react";
 import { setBudgetPurchased, setBudgetPurchaseQuantity } from "@/app/actions/budget-purchases";
+import { substituirPorManual, voltarAoCalculado } from "@/app/actions/excluded-items";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -21,12 +23,18 @@ export type ItemOrcamento = {
   unitPrice: number;
   // Quanto já foi comprado: ausente = nada; null = tudo; número = parcial.
   compra?: number | null;
+  // Tem parte calculada pelo sistema — pode ser substituída por lançamento manual.
+  calculado: boolean;
 };
+
+// Item calculado que saiu do orçamento para ser lançado à mão.
+export type ItemSubstituido = { id: string; name: string; unit: string; calcQuantity: number };
 
 export type FaseOrcamento = {
   phase: string;
   label: string;
   items: ItemOrcamento[];
+  substituidos: ItemSubstituido[];
   matTotal: number;
   moTotal: number;
 };
@@ -108,6 +116,30 @@ export function ItensPorFase({
   const [editandoParcial, setEditandoParcial] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [, startTransition] = useTransition();
+  const [ocupado, startSubstituicao] = useTransition();
+
+  // Substituir mexe no total do orçamento, então espera o servidor e a página
+  // recarrega com os números novos (revalidatePath), sem estado otimista.
+  function substituir(i: ItemOrcamento) {
+    const ok = window.confirm(
+      `Tirar "${i.name}" (${qtd(i.quantity)} ${i.unit}) do cálculo?\n\n` +
+      "Ele deixa de entrar no orçamento, inclusive ao recalcular. Lance as quantidades que " +
+      "você quer (ex.: cada cor de tinta) na Etapa 8 — Materiais. Dá para voltar ao calculado depois."
+    );
+    if (!ok) return;
+    setErro(null);
+    startSubstituicao(async () => {
+      const r = await substituirPorManual(projectId, i.id);
+      if (r?.error) setErro(r.error);
+    });
+  }
+  function voltar(s: ItemSubstituido) {
+    setErro(null);
+    startSubstituicao(async () => {
+      const r = await voltarAoCalculado(projectId, s.id);
+      if (r?.error) setErro(r.error);
+    });
+  }
 
   // "A comprar" inclui o parcial (ainda falta); "Comprados" inclui tudo que
   // teve alguma compra.
@@ -317,7 +349,8 @@ export function ItensPorFase({
 
       {fases.map((f) => {
         const visiveis = f.items.filter(visivel);
-        if (visiveis.length === 0) return null;
+        const substituidos = filtro === "todos" ? f.substituidos : [];
+        if (visiveis.length === 0 && substituidos.length === 0) return null;
         const ids = visiveis.map((i) => i.id);
         const marcados = ids.filter((id) => sel.has(id)).length;
         const compradosFase = f.items.filter((i) => compradoInteiro(i, compras)).length;
@@ -331,7 +364,7 @@ export function ItensPorFase({
                     type="checkbox"
                     className="h-4 w-4 accent-brand-600"
                     aria-label={`Selecionar todos de ${f.label}`}
-                    checked={marcados === ids.length}
+                    checked={ids.length > 0 && marcados === ids.length}
                     ref={(el) => { if (el) el.indeterminate = marcados > 0 && marcados < ids.length; }}
                     onChange={(e) => alternar(ids, e.target.checked)}
                   />
@@ -391,7 +424,21 @@ export function ItensPorFase({
                               onChange={(e) => alternar([item.id], e.target.checked)}
                             />
                           </td>
-                          <td className={`py-2 pr-4 ${comprado ? "text-gray-400 line-through" : "text-gray-800"}`}>{item.name}</td>
+                          <td className="py-2 pr-4">
+                            <span className={comprado ? "text-gray-400 line-through" : "text-gray-800"}>{item.name}</span>
+                            {item.calculado && (
+                              <button
+                                type="button"
+                                disabled={ocupado}
+                                onClick={(e) => { e.stopPropagation(); substituir(item); }}
+                                title="Tirar a quantidade calculada e lançar à mão na Etapa 8 (ex.: tinta dividida por cor)"
+                                aria-label={`Substituir ${item.name} por lançamento manual`}
+                                className="ml-1.5 inline-flex align-middle text-gray-300 hover:text-brand-600 disabled:opacity-40"
+                              >
+                                <ArrowLeftRight className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </td>
                           <td className="py-2 px-2 text-center font-medium">{formatNumber(item.quantity)}</td>
                           <td className="py-2 px-2 text-center text-gray-500">{item.unit}</td>
                           <td className="py-2 px-2 text-right text-gray-600">
@@ -451,6 +498,30 @@ export function ItensPorFase({
                         </tr>
                       );
                     })}
+                    {substituidos.map((s) => (
+                      <tr key={s.id} className="border-b border-gray-50 bg-gray-50/60 text-xs text-gray-500">
+                        <td className="py-2 text-center"><ArrowLeftRight className="inline w-3.5 h-3.5 text-gray-400" /></td>
+                        <td className="py-2 pr-4" colSpan={5}>
+                          <span className="text-gray-700">{s.name}</span> — calculado{" "}
+                          <strong className="text-gray-700">{qtd(s.calcQuantity)} {s.unit}</strong>, substituído por itens
+                          lançados à mão.{" "}
+                          <Link href={`/projetos/${projectId}/wizard?etapa=8`} className="text-brand-700 hover:underline">
+                            Lançar na Etapa 8
+                          </Link>
+                        </td>
+                        <td className="py-2 pl-3 text-center">
+                          <button
+                            type="button"
+                            disabled={ocupado}
+                            onClick={() => voltar(s)}
+                            className="inline-flex items-center gap-1 text-[11px] text-gray-500 hover:text-brand-700 hover:underline disabled:opacity-40"
+                          >
+                            <Undo2 className="w-3 h-3" />
+                            voltar ao calculado
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
                     {hasMO && f.moTotal > 0 && (
                       <tr className="border-b border-amber-100 bg-amber-50/50">
                         <td />

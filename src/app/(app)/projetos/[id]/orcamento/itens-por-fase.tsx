@@ -433,9 +433,10 @@ export function ItensPorFase({
                                 onClick={(e) => { e.stopPropagation(); substituir(item); }}
                                 title="Tirar a quantidade calculada e lançar à mão na Etapa 8 (ex.: tinta dividida por cor)"
                                 aria-label={`Substituir ${item.name} por lançamento manual`}
-                                className="ml-1.5 inline-flex align-middle text-gray-300 hover:text-brand-600 disabled:opacity-40"
+                                className="mt-0.5 flex items-center gap-1 text-[11px] text-gray-400 hover:text-brand-700 hover:underline disabled:opacity-40"
                               >
-                                <ArrowLeftRight className="w-3.5 h-3.5" />
+                                <ArrowLeftRight className="w-3 h-3" />
+                                trocar por lançamento manual
                               </button>
                             )}
                           </td>

@@ -65,7 +65,7 @@ export default async function FluxoCaixaPage({
   // rateadas na proporção do material de cada fase, para o total do fluxo
   // bater com o Total Geral do orçamento.
   const totalMat = [...phaseMat.values()].reduce((a, b) => a + b, 0);
-  const resumo = montarResumoCustos(totalMat, project.laborLines, project.costLines);
+  const resumo = montarResumoCustos(totalMat, project.laborLines, project.costLines, project.type);
   const fator = totalMat > 0 ? resumo.total / totalMat : 1;
 
   // Phase total (mat + MO + gestão rateadas)

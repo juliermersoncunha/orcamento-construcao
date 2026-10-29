@@ -31,8 +31,8 @@ function brl(n: number) {
 }
 
 export function MaoDeObraForm({
-  projectId, linhas, gestao, materiais,
-}: { projectId: string; linhas: Linha[]; gestao: GestaoLinha[]; materiais: number }) {
+  projectId, linhas, gestao, materiais, adicionalPct = 0,
+}: { projectId: string; linhas: Linha[]; gestao: GestaoLinha[]; materiais: number; adicionalPct?: number }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -51,7 +51,9 @@ export function MaoDeObraForm({
   const totalMO = linhas.reduce((s, l) => s + l.value, 0);
   // BDI incide sobre o custo direto: material + MO + itens fixos de gestão.
   const fixos = gestao.filter((g) => !g.percentual).reduce((s, g) => s + g.amount, 0);
-  const custoDireto = materiais + totalMO + fixos;
+  // Reforma: adicional sobre o material, que também é base do BDI.
+  const adicional = (materiais * adicionalPct) / 100;
+  const custoDireto = materiais + adicional + totalMO + fixos;
   const bdiItem = gestao.find((g) => g.percentual);
   const bdiValor = calcularBdi(custoDireto, bdiItem?.percent);
   const totalGestao = fixos + bdiValor;
@@ -125,6 +127,11 @@ export function MaoDeObraForm({
           <div className="flex items-center justify-between text-gray-600">
             <span>Materiais (orçamento)</span><span>{brl(materiais)}</span>
           </div>
+          {adicional > 0 && (
+            <div className="flex items-center justify-between text-gray-600">
+              <span>Adicional de material ({adicionalPct}%)</span><span>{brl(adicional)}</span>
+            </div>
+          )}
           <div className="flex items-center justify-between text-gray-600">
             <span>Mão de obra</span><span>{brl(totalMO)}</span>
           </div>

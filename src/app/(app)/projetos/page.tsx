@@ -86,7 +86,7 @@ export default async function ProjetosPage() {
               (sum, item) => sum + item.quantity * item.unitPriceSnapshot,
               0
             );
-            const total = montarResumoCustos(materiais, project.laborLines, project.costLines).total;
+            const total = montarResumoCustos(materiais, project.laborLines, project.costLines, project.type).total;
             const hasOrçamento = project.budgetItems.length > 0;
 
             return (

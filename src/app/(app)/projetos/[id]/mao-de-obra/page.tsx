@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, HardHat } from "lucide-react";
 import Link from "next/link";
 import { MaoDeObraForm } from "./mao-de-obra-form";
+import { adicionalMaterialPct } from "@/lib/cost-summary";
 import { ensureFixedLaborLines } from "@/app/actions/labor-lines";
 import { MANAGEMENT_ITEMS } from "@/lib/renovation-services";
 
@@ -19,7 +20,7 @@ export default async function MaoDeObraPage({
 
   const project = await prisma.project.findFirst({
     where: { id, userId: session.userId },
-    select: { id: true, name: true },
+    select: { id: true, name: true, type: true },
   });
   if (!project) redirect("/projetos");
 
@@ -66,7 +67,13 @@ export default async function MaoDeObraPage({
         Informe o valor total previsto de cada função. Para funções que não têm aqui, use <strong>Outros</strong>.
       </p>
 
-      <MaoDeObraForm projectId={id} linhas={linhas} gestao={gestao} materiais={materiais} />
+      <MaoDeObraForm
+        projectId={id}
+        linhas={linhas}
+        gestao={gestao}
+        materiais={materiais}
+        adicionalPct={adicionalMaterialPct(project.type)}
+      />
     </div>
   );
 }

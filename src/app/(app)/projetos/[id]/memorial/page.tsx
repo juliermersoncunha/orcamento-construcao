@@ -153,7 +153,7 @@ export default async function MemorialPage({
   // MO só aparece como linha única no quadro geral.
   const phaseMO = new Map<string, number>();
   const totalMat = Array.from(phaseMat.values()).reduce((a, b) => a + b, 0);
-  const resumo = montarResumoCustos(totalMat, project.laborLines, project.costLines);
+  const resumo = montarResumoCustos(totalMat, project.laborLines, project.costLines, project.type);
   const totalMO = resumo.totalMO;
   const totalGestao = resumo.totalGestao;
   const totalGeral = resumo.total;
@@ -759,6 +759,16 @@ export default async function MemorialPage({
                   {formatCurrency(totalMat)}
                 </td>
               </tr>
+              {resumo.adicionalMaterial > 0 && (
+                <tr>
+                  <td className="py-1 font-semibold text-gray-700">
+                    Adicional de material ({resumo.adicionalMaterialPct}%)
+                  </td>
+                  <td className="py-1 text-right font-bold text-gray-900">
+                    {formatCurrency(resumo.adicionalMaterial)}
+                  </td>
+                </tr>
+              )}
               {hasMO && (
                 <tr>
                   <td className="py-1 font-semibold text-gray-700">Total Mão de Obra</td>

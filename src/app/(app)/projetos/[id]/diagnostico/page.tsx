@@ -93,6 +93,7 @@ export default async function DiagnosticoPage({
     temOrcamento ? materialOrcamento : totalMaterial,
     project.laborLines,
     project.costLines.filter((l) => l.kind === "GESTAO"),
+    project.type,
   );
 
   const ambientes = [...project.rooms.map((r) => ({ id: r.id as string | null, nome: r.name })), { id: null, nome: "Geral / área externa" }]
@@ -226,10 +227,16 @@ export default async function DiagnosticoPage({
           </div>
           <table className="w-full">
             <tbody>
-              <tr className="border-b border-gray-200">
+              <tr className={resumo.adicionalMaterial > 0 ? "" : "border-b border-gray-200"}>
                 <td className="py-1.5 font-semibold">Materiais</td>
                 <td className="py-1.5 text-right font-semibold">{brl(resumo.materiais)}</td>
               </tr>
+              {resumo.adicionalMaterial > 0 && (
+                <tr className="border-b border-gray-200">
+                  <td className="py-1 pl-4 text-gray-700">Adicional de material ({resumo.adicionalMaterialPct}%)</td>
+                  <td className="py-1 text-right">{brl(resumo.adicionalMaterial)}</td>
+                </tr>
+              )}
 
               <tr><td className="pt-3 pb-1 font-semibold" colSpan={2}>Mão de obra</td></tr>
               {resumo.maoDeObra.length === 0 && (

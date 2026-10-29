@@ -29,7 +29,7 @@ export function RelatorioMacro({
   prazo: { inicio: string; fim: string; semanas: number } | null;
 }) {
   const composicao = [
-    { label: "Materiais", valor: resumo.materiais, cor: "bg-brand-600" },
+    { label: "Materiais", valor: resumo.materiais + resumo.adicionalMaterial, cor: "bg-brand-600" },
     { label: "Mão de obra", valor: resumo.totalMO, cor: "bg-amber-500" },
     { label: "Gestão da obra e BDI", valor: resumo.totalGestao, cor: "bg-gray-500" },
   ].filter((c) => c.valor > 0);

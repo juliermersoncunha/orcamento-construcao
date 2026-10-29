@@ -145,7 +145,7 @@ export default async function OrcamentoPage({
 
   const totalMat = Array.from(phaseMat.values()).reduce((a, b) => a + b, 0);
   // Total = material + mão de obra + gestão da obra (BDI sobre o custo direto).
-  const resumo = montarResumoCustos(totalMat, project.laborLines, project.costLines);
+  const resumo = montarResumoCustos(totalMat, project.laborLines, project.costLines, project.type);
   const totalMO = resumo.totalMO;
   const totalGestao = resumo.totalGestao;
   const totalGeral = resumo.total;
@@ -345,7 +345,12 @@ export default async function OrcamentoPage({
         </div>
         <div className="p-4 rounded-xl border border-gray-200 bg-white">
           <p className="text-xs text-gray-500">Materiais</p>
-          <p className="text-xl font-bold text-gray-900 mt-1">{formatCurrency(totalMat)}</p>
+          <p className="text-xl font-bold text-gray-900 mt-1">{formatCurrency(totalMat + resumo.adicionalMaterial)}</p>
+          {resumo.adicionalMaterial > 0 && (
+            <p className="text-xs text-gray-400 mt-0.5">
+              inclui adicional de {resumo.adicionalMaterialPct}% ({formatCurrency(resumo.adicionalMaterial)})
+            </p>
+          )}
         </div>
         <div className="p-4 rounded-xl border border-gray-200 bg-white">
           <p className="text-xs text-gray-500">Mão de Obra</p>
@@ -414,9 +419,13 @@ export default async function OrcamentoPage({
       <div className="mt-6 p-5 rounded-xl border-2 border-amber-200 bg-amber-50 flex justify-between items-center">
         <div>
           <p className="text-sm text-amber-800 font-medium">Total Geral do Orçamento</p>
-          {(hasMO || totalGestao > 0) && (
+          {(hasMO || totalGestao > 0 || resumo.adicionalMaterial > 0) && (
             <p className="text-xs text-amber-600 mt-0.5">
-              Materiais: {formatCurrency(totalMat)} + Mão de Obra: {formatCurrency(totalMO)}
+              Materiais: {formatCurrency(totalMat)}
+              {resumo.adicionalMaterial > 0 && (
+                <> + Adicional de material ({resumo.adicionalMaterialPct}%): {formatCurrency(resumo.adicionalMaterial)}</>
+              )}
+              {" "}+ Mão de Obra: {formatCurrency(totalMO)}
               {totalGestao > 0 && <> + Gestão da obra: {formatCurrency(totalGestao)}</>}
             </p>
           )}

@@ -11,7 +11,9 @@ import {
 
 type Props = {
   projectId: string;
+  // Já com o adicional de material (reforma).
   totalMaterials: number;
+  adicionalMaterialPct?: number;
   totalLabor: number;
   // Gestão da obra (mobilização, logística, gestão e BDI) da tela de Mão de Obra.
   totalGestao: number;
@@ -90,7 +92,7 @@ function NumInput({
 
 export function ViabilidadeForm(props: Props) {
   const {
-    projectId, totalMaterials, totalLabor, totalGestao, bdiGestao, totalIndirect, floorArea,
+    projectId, totalMaterials, adicionalMaterialPct = 0, totalLabor, totalGestao, bdiGestao, totalIndirect, floorArea,
   } = props;
   // BDI já lançado na gestão da obra: o campo daqui fica travado, senão conta duas vezes.
   const bdiTravado = !!bdiGestao;
@@ -240,7 +242,11 @@ export function ViabilidadeForm(props: Props) {
 
       {/* ═══ SEÇÃO 2: CONSTRUÇÃO ═════════════════════════════════════════════ */}
       <FieldGroup label="2 — Construção">
-        <Row label="Materiais" value={totalMaterials} />
+        <Row
+          label="Materiais"
+          value={totalMaterials}
+          sub={adicionalMaterialPct > 0 ? `inclui adicional de ${adicionalMaterialPct}%` : undefined}
+        />
         <Row label="Mão de obra" value={totalLabor} />
         {totalGestao > 0 && (
           <Row

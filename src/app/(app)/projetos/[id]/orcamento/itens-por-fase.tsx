@@ -308,6 +308,20 @@ export function ItensPorFase({
           />
           Selecionar todos
         </label>
+        {/* Atalho para a lista de compra: vai para "A comprar" (a cópia passa a
+            levar só o que falta) e marca tudo o que ainda não foi comprado. */}
+        <button
+          type="button"
+          disabled={qtdAComprar === 0}
+          onClick={() => {
+            setFiltro("comprar");
+            setSel(new Set(itens.filter((i) => !compradoInteiro(i, compras)).map((i) => i.id)));
+          }}
+          className="inline-flex items-center gap-1 rounded-md border border-amber-300 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-800 hover:bg-amber-100 disabled:opacity-40"
+        >
+          <ShoppingCart className="w-3.5 h-3.5" />
+          Selecionar o que falta comprar ({qtdAComprar})
+        </button>
         <span className="text-xs text-gray-500">
           {nada ? "marque itens para copiar ou marcar como comprados" : `${sel.size} de ${todos.length} itens`}
         </span>

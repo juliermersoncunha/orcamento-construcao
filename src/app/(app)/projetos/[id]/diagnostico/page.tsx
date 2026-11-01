@@ -9,6 +9,7 @@ import { SERVICE_BY_KEY, materiaisDosServicos } from "@/lib/renovation-services"
 import { escopoAutomatico, escopoMacro } from "@/lib/renovation-scope";
 import { RelatorioMacro } from "./relatorio-macro";
 import { montarResumoCustos } from "@/lib/cost-summary";
+import { RelatorioLogo } from "@/components/relatorio-logo";
 import { EnviarFotos, GaleriaFotos } from "./fotos";
 import { EscopoReforma } from "./escopo";
 
@@ -176,8 +177,13 @@ export default async function DiagnosticoPage({
       <article className="bg-white text-gray-900 text-sm leading-relaxed">
         {/* Cabeçalho */}
         <header className="border-b-2 border-brand-700 pb-4 mb-6">
-          <p className="text-xs uppercase tracking-widest text-brand-700 font-semibold">JCunha Construtora</p>
-          <h1 className="text-2xl font-bold mt-1">Diagnóstico de Reforma</h1>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-xs uppercase tracking-widest text-brand-700 font-semibold">JCunha Construtora</p>
+              <h1 className="text-2xl font-bold mt-1">Diagnóstico de Reforma</h1>
+            </div>
+            <RelatorioLogo />
+          </div>
           <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-1 text-sm">
             <p><span className="text-gray-500">Obra:</span> {project.name}</p>
             <p><span className="text-gray-500">Data:</span> {hoje}</p>

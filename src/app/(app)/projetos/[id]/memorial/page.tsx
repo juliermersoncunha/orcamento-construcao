@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { montarResumoCustos } from "@/lib/cost-summary";
+import { RelatorioLogo } from "@/components/relatorio-logo";
 import { getSession } from "@/lib/session";
 import { redirect } from "next/navigation";
 import { formatCurrency, formatNumber } from "@/lib/utils";
@@ -379,11 +380,14 @@ export default async function MemorialPage({
 
       <div className="print:p-0">
         {/* ═══ 1. HEADER ═══ */}
-        <div className="text-center mb-8 border-b-2 border-gray-800 pb-4">
-          <h1 className="text-2xl font-bold text-gray-900 uppercase tracking-wide">
-            Memorial Descritivo de Materiais
-          </h1>
-          <p className="text-sm text-gray-600 mt-1">Orçamento de Construção — Memória de Cálculo</p>
+        <div className="mb-8 border-b-2 border-gray-800 pb-4 flex items-center justify-between gap-4">
+          <RelatorioLogo />
+          <div className="text-right">
+            <h1 className="text-2xl font-bold text-gray-900 uppercase tracking-wide">
+              Memorial Descritivo de Materiais
+            </h1>
+            <p className="text-sm text-gray-600 mt-1">Orçamento de Construção — Memória de Cálculo</p>
+          </div>
         </div>
 
         {/* ═══ 2. DADOS DO PROJETO ═══ */}

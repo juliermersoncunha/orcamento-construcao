@@ -3,6 +3,7 @@
 // do investimento e algumas fotos. Cabe em 1–2 páginas.
 
 import type { ResumoCustos } from "@/lib/cost-summary";
+import { RelatorioLogo } from "@/components/relatorio-logo";
 
 type Foto = { id: string; roomId: string | null; caption: string | null; width: number; height: number };
 
@@ -45,8 +46,13 @@ export function RelatorioMacro({
   return (
     <article className="bg-white text-gray-900 text-sm leading-relaxed">
       <header className="border-b-2 border-brand-700 pb-4 mb-6">
-        <p className="text-xs uppercase tracking-widest text-brand-700 font-semibold">JCunha Construtora</p>
-        <h1 className="text-2xl font-bold mt-1">Reforma — Resumo executivo</h1>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs uppercase tracking-widest text-brand-700 font-semibold">JCunha Construtora</p>
+            <h1 className="text-2xl font-bold mt-1">Reforma — Resumo executivo</h1>
+          </div>
+          <RelatorioLogo />
+        </div>
         <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-1 text-sm">
           <p><span className="text-gray-500">Obra:</span> {nome}</p>
           <p><span className="text-gray-500">Data:</span> {hoje}</p>

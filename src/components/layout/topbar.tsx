@@ -40,31 +40,40 @@ export function TopBar({ userName, userRole }: TopBarProps) {
   return (
     <div className="print:hidden">
       <div className="w-full px-4 pt-2 sm:px-8">
-        <div className="flex items-center justify-between gap-3 rounded-card bg-white p-1.5 pl-3 shadow-card">
-          <Link href="/projetos" className="flex min-w-0 items-center gap-3">
-            {/* eslint-disable-next-line @next/next/no-img-element -- arquivo estático em /public */}
-            <img
-              src="/logo-jcunha.webp"
-              alt="JCunha Construtora"
-              className="h-10 w-10 shrink-0 rounded-lg object-contain"
-            />
+        {/* Faixa azul com a logo grande: é o que diz, de relance, qual dos
+            sistemas está aberto. A logo vai sobre um quadro branco porque foi
+            desenhada sobre branco e sumiria contra o azul. */}
+        <div className="flex items-center justify-between gap-3 rounded-card grad-brand px-3 py-3 shadow-card sm:px-5 sm:py-4">
+          <Link href="/projetos" className="flex min-w-0 items-center gap-3 sm:gap-4">
+            <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-white p-1 sm:h-16 sm:w-16">
+              {/* eslint-disable-next-line @next/next/no-img-element -- arquivo estático em /public */}
+              <img
+                src="/logo-jcunha.webp"
+                alt="JCunha Construtora"
+                className="h-full w-full object-contain"
+              />
+            </span>
             <div className="min-w-0">
-              <p className="truncate text-sm font-bold leading-tight text-ink">JCunha Construtora</p>
-              <p className="truncate text-[11px] text-ink-3">Sistema de Orçamento</p>
+              <p className="truncate text-lg font-bold leading-tight text-white sm:text-2xl">
+                JCunha Construtora
+              </p>
+              <p className="truncate text-xs text-white/75 sm:text-sm">
+                Sistema de Orçamento de Obras
+              </p>
             </div>
           </Link>
 
           <div className="flex shrink-0 items-center gap-1">
             <div className="hidden pr-2 text-right sm:block">
-              <p className="text-xs font-semibold leading-tight text-ink">{userName}</p>
-              <p className="text-[11px] text-ink-3">
+              <p className="text-xs font-semibold leading-tight text-white">{userName}</p>
+              <p className="text-[11px] text-white/70">
                 {userRole === "ADMIN" ? "Administrador" : "Membro"}
               </p>
             </div>
             <form action={logout}>
               <button
                 type="submit"
-                className="inline-flex h-10 items-center gap-1.5 rounded-full px-3 text-xs font-semibold text-ink-2 transition-colors hover:bg-surface hover:text-ink"
+                className="inline-flex h-10 items-center gap-1.5 rounded-full px-3 text-xs font-semibold text-white/90 transition-colors hover:bg-white/15 hover:text-white"
               >
                 <LogOut className="h-4 w-4 shrink-0" />
                 <span className="hidden sm:inline">Sair</span>

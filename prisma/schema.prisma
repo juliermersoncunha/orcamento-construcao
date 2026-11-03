@@ -207,6 +207,8 @@ model Project {
   scheduleEnd       DateTime?
   // Quando a linha de base foi congelada pela ultima vez.
   scheduleBaselineAt DateTime?
+  // Projeto arquivado: sai da lista sem perder nada. Nulo = ativo.
+  archivedAt         DateTime?
   scheduleStages    ScheduleStage[]
   weekStages        ScheduleWeekStage[]
   weekMaterials     ScheduleWeekMaterial[]

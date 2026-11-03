@@ -71,3 +71,17 @@ export async function deleteProject(projectId: string) {
 
   revalidatePath("/projetos");
 }
+
+// Arquivar tira o projeto da lista sem apagar nada: ele continua inteiro
+// (orçamento, fotos, cronograma) e volta pelo filtro "Arquivados".
+export async function setProjectArchived(projectId: string, arquivar: boolean) {
+  const session = await getSession();
+  if (!session) redirect("/login");
+
+  await prisma.project.update({
+    where: { id: projectId, userId: session.userId },
+    data: { archivedAt: arquivar ? new Date() : null },
+  });
+
+  revalidatePath("/projetos");
+}

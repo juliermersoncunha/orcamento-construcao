@@ -108,8 +108,27 @@ export default async function WizardPage({
     "Forro": "ACABAMENTO",
     "Outros": "OUTROS",
   };
+  // Dois cômodos podem ter o mesmo nome ("Quarto"), então o rótulo de quem
+  // repete ganha a ordem do cômodo no projeto — "Quarto 1", "Quarto 2".
+  const nomesRepetidos = new Set(
+    project.rooms
+      .map((r) => r.name.trim())
+      .filter((nome, i, todos) => todos.indexOf(nome) !== i)
+  );
+  const vistos = new Map<string, number>();
+  const rotuloPorRoom = new Map<string, string>();
+  for (const r of project.rooms) {
+    const nome = r.name.trim();
+    if (!nomesRepetidos.has(nome)) {
+      rotuloPorRoom.set(r.id, nome);
+      continue;
+    }
+    const n = (vistos.get(nome) ?? 0) + 1;
+    vistos.set(nome, n);
+    rotuloPorRoom.set(r.id, `${nome} ${n}`);
+  }
   const nomeAmbiente = (roomId: string | null) =>
-    project.rooms.find((r) => r.id === roomId)?.name ?? "Geral / área externa";
+    (roomId ? rotuloPorRoom.get(roomId) : null) ?? "Geral / área externa";
   const servicosPendentes = project.renovationServices
     .map((sv) => {
       const def = SERVICE_BY_KEY.get(sv.serviceKey);
@@ -128,6 +147,7 @@ export default async function WizardPage({
         label: sv.label || def.label,
         unit: def.unit,
         quantity: sv.quantity,
+        roomId: sv.roomId,
         ambiente: nomeAmbiente(sv.roomId),
         problema: issue ? issue.category : null,
         descricao: issue?.description ?? null,

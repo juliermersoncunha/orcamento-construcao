@@ -71,7 +71,8 @@ function brl(n: number) {
 
 export type ServicoPendente = {
   id: string; label: string; unit: string; quantity: number;
-  ambiente: string; problema: string | null;
+  // roomId identifica o cômodo; `ambiente` é só o rótulo (pode repetir).
+  roomId: string | null; ambiente: string; problema: string | null;
   descricao: string | null; faseSugerida: string;
   // Resumo do material que o sistema já calcula; nulo = material à mão.
   calculado: string | null;
@@ -272,7 +273,7 @@ export function Step8MateriaisAvulsos({ projectId, materials, rows, servicosPend
               />
               <datalist id="ambientes-etapa8">
                 <option value="Casa toda" />
-                {ambientes.map((a) => <option key={a} value={a} />)}
+                {[...new Set(ambientes)].map((a) => <option key={a} value={a} />)}
               </datalist>
             </div>
             <Button type="button" onClick={add} disabled={isPending || !chosen}>
@@ -373,12 +374,14 @@ function PainelServicosPendentes({
   materiaisPorFase: Map<string, number>;
   onEscolher: (fase: string, onde: string) => void;
 }) {
-  // Agrupa por ambiente, mantendo a ordem em que o usuário vistoriou.
-  const porAmbiente = new Map<string, ServicoPendente[]>();
+  // Agrupa pelo cômodo, não pelo nome: dois podem se chamar "Quarto". Mantém
+  // a ordem em que o usuário vistoriou.
+  const porAmbiente = new Map<string, { rotulo: string; lista: ServicoPendente[] }>();
   for (const s of servicos) {
-    const l = porAmbiente.get(s.ambiente) ?? [];
-    l.push(s);
-    porAmbiente.set(s.ambiente, l);
+    const chave = s.roomId ?? "__geral__";
+    const grupo = porAmbiente.get(chave) ?? { rotulo: s.ambiente.trim(), lista: [] };
+    grupo.lista.push(s);
+    porAmbiente.set(chave, grupo);
   }
   // Começa recolhido: com todos os serviços listados o painel fica longo.
   const [abertos, setAbertos] = useState<Set<string>>(new Set());
@@ -415,17 +418,17 @@ function PainelServicosPendentes({
         formulário abaixo já na fase certa e com o local preenchido.
       </p>
       <div className="flex flex-col gap-3">
-        {[...porAmbiente.entries()].map(([ambiente, lista]) => (
-          <div key={ambiente} className="rounded-lg border border-gray-200 bg-white overflow-hidden">
+        {[...porAmbiente.entries()].map(([chave, { rotulo, lista }]) => (
+          <div key={chave} className="rounded-lg border border-gray-200 bg-white overflow-hidden">
             <button
               type="button"
-              onClick={() => alternar(ambiente)}
-              aria-expanded={abertos.has(ambiente)}
-              className={`flex w-full items-center gap-2 bg-gray-50 px-3 py-2 text-left hover:bg-gray-100 ${abertos.has(ambiente) ? "border-b border-gray-200" : ""}`}
+              onClick={() => alternar(chave)}
+              aria-expanded={abertos.has(chave)}
+              className={`flex w-full items-center gap-2 bg-gray-50 px-3 py-2 text-left hover:bg-gray-100 ${abertos.has(chave) ? "border-b border-gray-200" : ""}`}
             >
-              <ChevronRight className={`w-4 h-4 text-gray-400 transition-transform ${abertos.has(ambiente) ? "rotate-90" : ""}`} />
+              <ChevronRight className={`w-4 h-4 text-gray-400 transition-transform ${abertos.has(chave) ? "rotate-90" : ""}`} />
               <Home className="w-4 h-4 text-brand-700" />
-              <h4 className="text-sm font-bold text-gray-900">{ambiente.trim()}</h4>
+              <h4 className="text-sm font-bold text-gray-900">{rotulo}</h4>
               {lista.some((s) => !s.calculado) && (
                 <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[11px] font-medium text-amber-800">
                   {lista.filter((s) => !s.calculado).length} à mão
@@ -435,7 +438,7 @@ function PainelServicosPendentes({
                 {lista.length} {lista.length === 1 ? "serviço" : "serviços"}
               </span>
             </button>
-            {abertos.has(ambiente) && (
+            {abertos.has(chave) && (
             <ul className="divide-y divide-gray-100">
               {lista.map((s) => {
                 const nLanc = materiaisPorFase.get(s.faseSugerida) ?? 0;

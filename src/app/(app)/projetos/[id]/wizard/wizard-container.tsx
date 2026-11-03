@@ -56,7 +56,7 @@ type WizardContainerProps = {
   manualPhaseRows: ManualPhaseRow[];
   servicosPendentes: {
     id: string; label: string; unit: string; quantity: number;
-    ambiente: string; problema: string | null;
+    roomId: string | null; ambiente: string; problema: string | null;
     descricao: string | null; faseSugerida: string; calculado: string | null;
   }[];
 };

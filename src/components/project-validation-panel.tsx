@@ -43,7 +43,7 @@ export function ProjectValidationPanel({ issues }: Props) {
   );
 
   return (
-    <div className={`rounded-xl border ${tone.border} ${tone.bg} overflow-hidden`}>
+    <div className={`rounded-card ${tone.bg} shadow-card overflow-hidden`}>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -64,7 +64,7 @@ export function ProjectValidationPanel({ issues }: Props) {
       </button>
 
       {open && issues.length > 0 && (
-        <div className="border-t border-gray-200 bg-white">
+        <div className="border-t border-line bg-white">
           <div className="p-3 flex flex-col gap-2">
             {sorted.map((issue, idx) => {
               const cfg = SEVERITY_CONFIG[issue.severity];

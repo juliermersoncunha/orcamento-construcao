@@ -46,11 +46,11 @@ export default async function ProjetosPage() {
   });
 
   return (
-    <div className="p-8">
-      <div className="flex items-center justify-between mb-8">
+    <div className="p-4 sm:p-8">
+      <div className="flex items-center justify-between gap-3 mb-6 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Projetos</h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <h1 className="text-2xl font-bold text-ink">Projetos</h1>
+          <p className="text-sm text-ink-3 mt-1">
             {projects.length} projeto{projects.length !== 1 ? "s" : ""} encontrado
             {projects.length !== 1 ? "s" : ""}
           </p>
@@ -90,7 +90,7 @@ export default async function ProjetosPage() {
             const hasOrçamento = project.budgetItems.length > 0;
 
             return (
-              <Card key={project.id} className="hover:shadow-md transition-shadow">
+              <Card key={project.id} className="hover:shadow-card-strong transition-shadow">
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between gap-2">
                     <CardTitle className="text-base leading-snug">{project.name}</CardTitle>
@@ -98,7 +98,7 @@ export default async function ProjetosPage() {
                       {statusLabel[project.status]}
                     </Badge>
                   </div>
-                  <span className="inline-block text-xs font-medium text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full w-fit">
+                  <span className="inline-block text-[11px] font-bold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-full w-fit">
                     {typeLabel[project.type]}
                   </span>
                 </CardHeader>
@@ -120,9 +120,9 @@ export default async function ProjetosPage() {
                   </div>
 
                   {hasOrçamento && (
-                    <div className="mb-4 p-3 rounded-lg bg-amber-50 border border-amber-100">
-                      <p className="text-xs text-amber-700 font-medium">Total do orçamento</p>
-                      <p className="text-lg font-bold text-amber-900">{formatCurrency(total)}</p>
+                    <div className="mb-4 p-3 rounded-xl bg-surface">
+                      <p className="text-[10px] font-bold uppercase tracking-wide text-ink-3">Total do orçamento</p>
+                      <p className="text-lg font-bold text-ink">{formatCurrency(total)}</p>
                     </div>
                   )}
 

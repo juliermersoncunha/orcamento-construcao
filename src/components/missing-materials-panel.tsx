@@ -50,7 +50,7 @@ export function MissingMaterialsPanel({ materials, categoryLabels }: Props) {
 
   if (materials.length === 0) {
     return (
-      <div className="rounded-xl border border-green-200 bg-green-50 p-4 flex items-center gap-3">
+      <div className="rounded-card bg-green-50 shadow-card p-4 flex items-center gap-3">
         <CheckCircle2 className="w-5 h-5 shrink-0 text-green-600" />
         <div>
           <p className="font-semibold text-sm text-green-800">
@@ -65,7 +65,7 @@ export function MissingMaterialsPanel({ materials, categoryLabels }: Props) {
   }
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-gray-50 overflow-hidden">
+    <div className="rounded-card bg-white shadow-card overflow-hidden">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -89,7 +89,7 @@ export function MissingMaterialsPanel({ materials, categoryLabels }: Props) {
       </button>
 
       {open && (
-        <div className="border-t border-gray-200 bg-white">
+        <div className="border-t border-line bg-white">
           <p className="px-4 py-2 text-xs text-gray-500 bg-gray-50 border-b border-gray-100">
             A maior parte do catálogo não se aplica a um projeto — isto não é lista de erros.
             Itens manuais (tubos, cabos, madeiramento, esquadrias) são os que costumam faltar.

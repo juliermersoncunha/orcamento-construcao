@@ -378,7 +378,7 @@ export default async function MemorialPage({
         <PrintButton />
       </div>
 
-      <div className="print:p-0">
+      <div className="rounded-card bg-white p-6 shadow-card print:rounded-none print:bg-transparent print:p-0 print:shadow-none">
         {/* ═══ 1. HEADER ═══ */}
         <div className="mb-8 border-b-2 border-gray-800 pb-4 flex items-center justify-between gap-4">
           <RelatorioLogo />

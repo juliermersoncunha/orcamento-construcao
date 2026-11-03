@@ -174,7 +174,7 @@ export default async function DiagnosticoPage({
     <div className="p-8 max-w-4xl print:p-0 print:max-w-none">
       {barra}
 
-      <article className="bg-white text-gray-900 text-sm leading-relaxed">
+      <article className="bg-white text-gray-900 text-sm leading-relaxed rounded-card p-6 shadow-card print:rounded-none print:p-0 print:shadow-none">
         {/* Cabeçalho */}
         <header className="border-b-2 border-brand-700 pb-4 mb-6">
           <div className="flex items-start justify-between gap-4">

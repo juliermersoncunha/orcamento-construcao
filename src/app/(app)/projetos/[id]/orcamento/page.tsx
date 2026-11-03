@@ -330,7 +330,7 @@ export default async function OrcamentoPage({
       </div>
 
       {hasZeroPrice && (
-        <div className="mb-6 p-4 rounded-lg bg-amber-50 border border-amber-200 text-sm text-amber-800">
+        <div className="mb-6 p-4 rounded-2xl bg-amber-50 text-sm text-amber-800 shadow-card">
           <strong>Atenção:</strong> Alguns materiais estão com preço R$ 0,00. Configure a tabela de preços em{" "}
           <Link href="/admin/materiais" className="underline font-medium">Administração → Materiais</Link>{" "}
           para obter o total correto.
@@ -338,38 +338,38 @@ export default async function OrcamentoPage({
       )}
 
       {/* Summary cards */}
-      <div className="mb-6 grid grid-cols-2 sm:grid-cols-5 gap-4">
-        <div className="col-span-2 sm:col-span-1 p-5 rounded-xl bg-brand-600 text-white">
-          <p className="text-xs font-medium opacity-80">Total Geral</p>
+      <div className="mb-6 grid grid-cols-2 sm:grid-cols-5 gap-3 items-start">
+        <div className="col-span-2 sm:col-span-1 p-4 rounded-2xl grad-brand text-white shadow-card">
+          <p className="text-[10px] font-bold uppercase tracking-wide opacity-80">Total Geral</p>
           <p className="text-2xl font-bold mt-1">{formatCurrency(totalGeral)}</p>
         </div>
-        <div className="p-4 rounded-xl border border-gray-200 bg-white">
-          <p className="text-xs text-gray-500">Materiais</p>
-          <p className="text-xl font-bold text-gray-900 mt-1">{formatCurrency(totalMat + resumo.adicionalMaterial)}</p>
+        <div className="p-4 rounded-2xl bg-white shadow-card">
+          <p className="text-[10px] font-bold uppercase tracking-wide text-ink-3">Materiais</p>
+          <p className="text-xl font-bold text-ink mt-1">{formatCurrency(totalMat + resumo.adicionalMaterial)}</p>
           {resumo.adicionalMaterial > 0 && (
             <p className="text-xs text-gray-400 mt-0.5">
               inclui adicional de {resumo.adicionalMaterialPct}% ({formatCurrency(resumo.adicionalMaterial)})
             </p>
           )}
         </div>
-        <div className="p-4 rounded-xl border border-gray-200 bg-white">
-          <p className="text-xs text-gray-500">Mão de Obra</p>
-          <p className="text-xl font-bold text-gray-900 mt-1">
+        <div className="p-4 rounded-2xl bg-white shadow-card">
+          <p className="text-[10px] font-bold uppercase tracking-wide text-ink-3">Mão de Obra</p>
+          <p className="text-xl font-bold text-ink mt-1">
             {hasMO ? formatCurrency(totalMO) : <span className="text-sm text-gray-400">Não config.</span>}
           </p>
         </div>
-        <div className="p-4 rounded-xl border border-gray-200 bg-white">
-          <p className="text-xs text-gray-500">Gestão da obra</p>
-          <p className="text-xl font-bold text-gray-900 mt-1">
+        <div className="p-4 rounded-2xl bg-white shadow-card">
+          <p className="text-[10px] font-bold uppercase tracking-wide text-ink-3">Gestão da obra</p>
+          <p className="text-xl font-bold text-ink mt-1">
             {totalGestao > 0 ? formatCurrency(totalGestao) : <span className="text-sm text-gray-400">Não config.</span>}
           </p>
           {resumo.gestao.find((g) => g.percent) && (
             <p className="text-xs text-gray-400 mt-0.5">inclui BDI de {resumo.gestao.find((g) => g.percent)!.percent!.toLocaleString("pt-BR")}%</p>
           )}
         </div>
-        <div className="p-4 rounded-xl border border-gray-200 bg-white">
-          <p className="text-xs text-gray-500">Custo por m²</p>
-          <p className="text-xl font-bold text-gray-900 mt-1">
+        <div className="p-4 rounded-2xl bg-white shadow-card">
+          <p className="text-[10px] font-bold uppercase tracking-wide text-ink-3">Custo por m²</p>
+          <p className="text-xl font-bold text-ink mt-1">
             {totalFloorArea > 0 ? formatCurrency(custoM2) : "—"}
           </p>
           {totalFloorArea > 0 && (
@@ -416,7 +416,7 @@ export default async function OrcamentoPage({
       />
 
       {/* Grand total footer */}
-      <div className="mt-6 p-5 rounded-xl border-2 border-amber-200 bg-amber-50 flex justify-between items-center">
+      <div className="mt-6 p-5 rounded-card bg-amber-50 shadow-card flex justify-between items-center">
         <div>
           <p className="text-sm text-amber-800 font-medium">Total Geral do Orçamento</p>
           {(hasMO || totalGestao > 0 || resumo.adicionalMaterial > 0) && (

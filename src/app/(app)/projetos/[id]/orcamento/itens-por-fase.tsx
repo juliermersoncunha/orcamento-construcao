@@ -269,9 +269,9 @@ export function ItensPorFase({
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="sticky top-0 z-10 flex flex-col gap-2 rounded-xl border border-gray-200 bg-white/95 px-4 py-3 shadow-sm backdrop-blur">
+      <div className="sticky top-[52px] z-10 flex flex-col gap-2 rounded-card bg-white/95 px-4 py-3 shadow-card backdrop-blur">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-        <div className="flex rounded-lg border border-gray-200 p-0.5 text-xs">
+        <div className="flex rounded-full bg-surface p-0.5 text-xs">
           {([
             ["todos", `Todos (${itens.length})`],
             ["comprar", `A comprar (${qtdAComprar})`],
@@ -281,7 +281,7 @@ export function ItensPorFase({
               key={v}
               type="button"
               onClick={() => { setFiltro(v); setSel(new Set()); }}
-              className={`rounded-md px-2.5 py-1 font-medium ${filtro === v ? "bg-brand-600 text-white" : "text-gray-600 hover:bg-gray-100"}`}
+              className={`rounded-full px-3 py-1 font-semibold ${filtro === v ? "grad-brand text-white" : "text-ink-2 hover:bg-surface"}`}
             >
               {rotulo}
             </button>

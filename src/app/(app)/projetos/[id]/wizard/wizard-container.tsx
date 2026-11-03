@@ -165,8 +165,8 @@ export function WizardContainer({
       {etapa === 8 && reforma && (
         // Fechado por padrão: a lista do catálogo é longa e empurrava a etapa
         // para baixo. Abre só quando o usuário quer lançar a casa toda.
-        <details className="mb-6 rounded-xl border border-gray-200 bg-white">
-          <summary className="cursor-pointer select-none px-4 py-3 text-sm font-semibold text-gray-800 hover:bg-gray-50 rounded-xl">
+        <details className="mb-6 rounded-card bg-white shadow-card">
+          <summary className="cursor-pointer select-none px-4 py-3 text-sm font-semibold text-ink hover:bg-surface rounded-card">
             Elétrica e hidráulica da casa toda — lançar em lista (ex.: 10 interruptores)
           </summary>
           <div className="flex flex-col gap-6 p-4 pt-2">

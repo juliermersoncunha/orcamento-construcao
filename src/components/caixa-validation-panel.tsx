@@ -26,7 +26,7 @@ export function CaixaValidationPanel({ results, totalMat }: Props) {
   const hasIssues = issues.length > 0;
 
   return (
-    <div className={`rounded-xl border ${hasIssues ? "border-amber-200 bg-amber-50" : "border-green-200 bg-green-50"} overflow-hidden`}>
+    <div className={`rounded-card ${hasIssues ? "bg-amber-50" : "bg-green-50"} shadow-card overflow-hidden`}>
       {/* Header — sempre visível */}
       <button
         type="button"
@@ -59,7 +59,7 @@ export function CaixaValidationPanel({ results, totalMat }: Props) {
 
       {/* Detalhe expandível */}
       {open && (
-        <div className="border-t border-gray-200 bg-white">
+        <div className="border-t border-line bg-white">
           <div className="p-3">
             <p className="text-xs text-gray-400 mb-3">
               Faixas de referência do mercado residencial (fonte: PLS). Valores calculados sobre o custo de materiais ({formatCurrency(totalMat)}).

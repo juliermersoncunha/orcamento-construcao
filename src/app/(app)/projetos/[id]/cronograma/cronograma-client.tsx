@@ -3,8 +3,20 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
-  CalendarDays, Plus, Trash2, ChevronUp, ChevronDown, ChevronRight, Sparkles, Package,
-  ListChecks, CalendarRange, List, GanttChart, Clock,
+  CalendarDays,
+  Plus,
+  Trash2,
+  ChevronUp,
+  ChevronDown,
+  ChevronRight,
+  Sparkles,
+  Package,
+  ListChecks,
+  CalendarRange,
+  List,
+  GanttChart,
+  Clock,
+  TrendingUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -19,6 +31,7 @@ import { dataBR, diasUteisEntre } from "@/lib/schedule-weeks";
 import { semanasPorEtapa, semanasDoPeriodo } from "@/lib/schedule-plan";
 import { semanasPausadas, type Pausa } from "@/lib/schedule-pauses";
 import { Paradas } from "./paradas";
+import { CurvaS } from "./curva-s";
 import { Programacao } from "./programacao";
 import { Gantt } from "./gantt";
 
@@ -67,7 +80,7 @@ export function CronogramaClient({
   const [isPending, startTransition] = useTransition();
   const [newStage, setNewStage] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [vista, setVista] = useState<"lista" | "semanas" | "gantt">("lista");
+  const [vista, setVista] = useState<"lista" | "semanas" | "gantt" | "curva">("lista");
 
   // Etapas no formato das funções de planejamento (programação e Gantt).
   const planStages = useMemo(
@@ -206,6 +219,16 @@ export function CronogramaClient({
               <GanttChart className="w-4 h-4" />
               Cronograma
             </button>
+            <button
+              type="button"
+              onClick={() => setVista("curva")}
+              className={`px-3 py-1.5 text-sm flex items-center gap-1.5 border-l border-gray-300 ${
+                vista === "curva" ? "bg-brand-600 text-white" : "bg-white text-gray-700 hover:bg-gray-50"
+              }`}
+            >
+              <TrendingUp className="w-4 h-4" />
+              Curva S
+            </button>
           </div>
 
           <label className="flex items-center gap-2 text-sm text-gray-600">
@@ -258,6 +281,20 @@ export function CronogramaClient({
           catalogo={materials}
           isPending={isPending}
           run={run}
+        />
+      )}
+
+      {vista === "curva" && (
+        <CurvaS
+          hoje={new Date().toISOString().slice(0, 10)}
+          pausas={pausas}
+          semanasDaEtapa={semanasDaEtapa}
+          stages={stages.map((s) => ({
+            id: s.id, name: s.name, days: s.days, status: s.status,
+            baselineStart: s.baselineStart, baselineEnd: s.baselineEnd,
+            realStart: s.realStart, realEnd: s.realEnd,
+            tarefas: { total: s.tasks.length, feitas: s.tasks.filter((t) => t.done).length },
+          }))}
         />
       )}
 

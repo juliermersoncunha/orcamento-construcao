@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { SCHEDULE_TEMPLATE } from "@/lib/schedule-template";
 import { semanasPorEtapa, previstoPorEtapa, sugestaoDeSemanas, type PlanStage } from "@/lib/schedule-plan";
-import { semanasDaPausa } from "@/lib/schedule-pauses";
+import { periodoBR, semanasDaPausa } from "@/lib/schedule-pauses";
 import { somarDias } from "@/lib/schedule-weeks";
 
 async function assertOwnsProject(projectId: string) {
@@ -656,6 +656,11 @@ export async function addSchedulePause(
   // Tudo que estava marcado da primeira semana parada em diante anda junto.
   await moverProgramacao(projectId, semanas[0], semanas.length);
   await moverFimPrevisto(projectId, semanas.length);
+  // A parada muda o plano: fica registrada como revisão, com o motivo.
+  await fotografarRevisao(
+    projectId,
+    `Parada: ${input.reason?.trim() || "sem motivo"} (${periodoBR(startDate, endDate)})`
+  );
 
   touch(projectId);
   return {};
@@ -677,8 +682,64 @@ export async function deleteSchedulePause(pauseId: string) {
   if (semanas.length > 0 && n > 0) {
     await moverProgramacao(pausa.projectId, somarDias(semanas[0], n * 7), -n);
     await moverFimPrevisto(pausa.projectId, -n);
+    await fotografarRevisao(
+      pausa.projectId,
+      `Parada removida: ${pausa.reason || "sem motivo"} (${periodoBR(iso(pausa.startDate), iso(pausa.endDate))})`
+    );
   }
 
   touch(pausa.projectId);
+  return {};
+}
+
+// ── Revisões do cronograma ──────────────────────────────────────────────────
+
+/**
+ * Fotografa a programação de agora como a próxima revisão (R1, R2…). O plano
+ * de cada etapa é o mesmo do Gantt: da segunda da primeira semana marcada à
+ * sexta da última. Etapa sem semana fica fora da foto.
+ */
+async function fotografarRevisao(projectId: string, motivo: string | null) {
+  const { stages, assign } = await carregarPlano(projectId);
+  const previsto = previstoPorEtapa(stages, semanasPorEtapa(assign));
+  if (previsto.size === 0) return null;
+
+  const ultima = await prisma.scheduleRevision.findFirst({
+    where: { projectId },
+    orderBy: { number: "desc" },
+    select: { number: true },
+  });
+  return prisma.scheduleRevision.create({
+    data: {
+      projectId,
+      number: (ultima?.number ?? 0) + 1,
+      reason: motivo?.trim() || null,
+      stages: {
+        create: [...previsto.entries()].map(([stageId, p]) => ({
+          stageId, start: meioDia(p.inicio), end: meioDia(p.fim),
+        })),
+      },
+    },
+  });
+}
+
+export async function saveScheduleRevision(projectId: string, motivo: string) {
+  await assertOwnsProject(projectId);
+  const r = await fotografarRevisao(projectId, motivo);
+  if (!r) return { error: "Marque as semanas das etapas antes de salvar uma revisão." };
+  touch(projectId);
+  return {};
+}
+
+export async function deleteScheduleRevision(revisionId: string) {
+  const session = await getSession();
+  if (!session) redirect("/login");
+  const rev = await prisma.scheduleRevision.findFirst({
+    where: { id: revisionId, project: { userId: session.userId } },
+    select: { id: true, projectId: true },
+  });
+  if (!rev) redirect("/projetos");
+  await prisma.scheduleRevision.delete({ where: { id: rev.id } });
+  touch(rev.projectId);
   return {};
 }

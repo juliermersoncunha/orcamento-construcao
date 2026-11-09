@@ -33,7 +33,7 @@ import { semanasPausadas, type Pausa } from "@/lib/schedule-pauses";
 import { Paradas } from "./paradas";
 import { CurvaS } from "./curva-s";
 import { Programacao } from "./programacao";
-import { Gantt } from "./gantt";
+import { Gantt, type Revisao } from "./gantt";
 
 export type CatalogMaterial = {
   id: string; name: string; unit: string; category: string;
@@ -66,11 +66,12 @@ const STATUS_STYLE: Record<string, string> = {
 };
 
 export function CronogramaClient({
-  projectId, scheduleStart, scheduleEnd, baselineAt, pausas, weekStages, weekMaterials, weekPurchases, stages, materials,
+  projectId, scheduleStart, scheduleEnd, baselineAt, pausas, revisoes, weekStages, weekMaterials, weekPurchases, stages, materials,
 }: {
   projectId: string; scheduleStart: string | null; scheduleEnd: string | null;
   baselineAt: string | null;
   pausas: Pausa[];
+  revisoes: Revisao[];
   weekStages: { stageId: string; weekStart: string }[];
   weekMaterials: { weekStart: string; materialId: string; name: string; unit: string; quantity: number; stageId: string | null }[];
   weekPurchases: string[]; // "semana|materialId" já comprados
@@ -307,6 +308,7 @@ export function CronogramaClient({
           weekStages={weekStages}
           baselineAt={baselineAt}
           pausas={pausas}
+          revisoes={revisoes}
           isPending={isPending}
           run={run}
         />

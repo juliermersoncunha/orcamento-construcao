@@ -216,6 +216,7 @@ model Project {
   budgetPurchases   BudgetPurchase[]
   excludedItems     ExcludedBudgetItem[]
   pauses            SchedulePause[]
+  revisions         ScheduleRevision[]
   renovationIssues   RenovationIssue[]
   renovationServices RenovationService[]
   costLines          ProjectCostLine[]
@@ -714,6 +715,7 @@ model ScheduleStage {
   materials ScheduleStageMaterial[]
   tasks     ScheduleTask[]
   usages    MaterialUsage[]
+  revisionStages ScheduleRevisionStage[]
 
   @@index([projectId, order])
 }
@@ -875,6 +877,37 @@ model SchedulePause {
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@index([projectId, startDate])
+}
+
+// Revisao do cronograma (R1, R2...): foto do plano num momento. O plano
+// inicial e a linha de base das etapas (baselineStart/End), congelada uma vez;
+// as revisoes guardam o que veio depois — uma a cada parada registrada e as
+// que o usuario salva a mao. Servem para a analise de tempos: o que mudou,
+// quando e por que.
+model ScheduleRevision {
+  id        String   @id @default(cuid())
+  projectId String
+  number    Int
+  reason    String?
+  createdAt DateTime @default(now())
+
+  project Project                 @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  stages  ScheduleRevisionStage[]
+
+  @@unique([projectId, number])
+}
+
+model ScheduleRevisionStage {
+  id         String   @id @default(cuid())
+  revisionId String
+  stageId    String
+  start      DateTime
+  end        DateTime
+
+  revision ScheduleRevision @relation(fields: [revisionId], references: [id], onDelete: Cascade)
+  stage    ScheduleStage    @relation(fields: [stageId], references: [id], onDelete: Cascade)
+
+  @@unique([revisionId, stageId])
 }
 
 // Material da semana ja comprado. A compra e feita para a semana, e a linha

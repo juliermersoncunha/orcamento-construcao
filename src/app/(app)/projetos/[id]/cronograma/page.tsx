@@ -32,7 +32,7 @@ export default async function CronogramaPage({
     },
   });
 
-  const [weekStages, weekMaterials, weekPurchases, pauses] = await Promise.all([
+  const [weekStages, weekMaterials, weekPurchases, pauses, revisions] = await Promise.all([
     prisma.scheduleWeekStage.findMany({ where: { projectId: id }, select: { stageId: true, weekStart: true } }),
     prisma.scheduleWeekMaterial.findMany({
       where: { projectId: id },
@@ -45,6 +45,11 @@ export default async function CronogramaPage({
     prisma.schedulePause.findMany({
       where: { projectId: id },
       orderBy: { startDate: "asc" },
+    }),
+    prisma.scheduleRevision.findMany({
+      where: { projectId: id },
+      orderBy: { number: "asc" },
+      include: { stages: { select: { stageId: true, start: true, end: true } } },
     }),
   ]);
   const isoOrNull = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : null);
@@ -78,6 +83,16 @@ export default async function CronogramaPage({
         scheduleStart={project.scheduleStart ? project.scheduleStart.toISOString().slice(0, 10) : null}
         scheduleEnd={project.scheduleEnd ? project.scheduleEnd.toISOString().slice(0, 10) : null}
         baselineAt={project.scheduleBaselineAt ? project.scheduleBaselineAt.toISOString() : null}
+        revisoes={revisions.map((r) => ({
+          id: r.id,
+          numero: r.number,
+          motivo: r.reason,
+          criadaEm: r.createdAt.toISOString(),
+          etapas: Object.fromEntries(r.stages.map((s) => [
+            s.stageId,
+            { inicio: s.start.toISOString().slice(0, 10), fim: s.end.toISOString().slice(0, 10) },
+          ])),
+        }))}
         pausas={pauses.map((p) => ({
           id: p.id,
           startDate: p.startDate.toISOString().slice(0, 10),

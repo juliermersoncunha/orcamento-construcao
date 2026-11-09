@@ -57,7 +57,7 @@ export function CurvaS({
       <div className="flex flex-wrap items-center gap-3 text-sm">
         <Indicador rotulo="Previsto até hoje" valor={curva.previstoHoje} cor="text-ink" />
         {curva.replanejadoHoje !== null && (
-          <Indicador rotulo="Replanejado" valor={curva.replanejadoHoje} cor="text-amber-700" />
+          <Indicador rotulo="Última revisão" valor={curva.replanejadoHoje} cor="text-amber-700" />
         )}
         <Indicador rotulo="Realizado" valor={curva.realizadoHoje} cor="text-brand-700" />
         <span
@@ -73,8 +73,8 @@ export function CurvaS({
         </span>
         <div className="flex-1" />
         <div className="flex items-center gap-3 text-xs text-ink-3">
-          <Chave cor="#9aa3ad" rotulo="previsto (linha de base)" />
-          {curva.temReplanejado && <Chave cor="#d97706" tracejada rotulo="replanejado" />}
+          <Chave cor="#9aa3ad" rotulo="plano inicial" />
+          {curva.temReplanejado && <Chave cor="#d97706" tracejada rotulo="última revisão" />}
           <Chave cor="#1f49a8" rotulo="realizado" />
         </div>
       </div>

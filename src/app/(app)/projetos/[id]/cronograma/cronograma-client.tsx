@@ -17,6 +17,8 @@ import {
 } from "@/app/actions/schedule";
 import { dataBR, diasUteisEntre } from "@/lib/schedule-weeks";
 import { semanasPorEtapa, semanasDoPeriodo } from "@/lib/schedule-plan";
+import { semanasPausadas, type Pausa } from "@/lib/schedule-pauses";
+import { Paradas } from "./paradas";
 import { Programacao } from "./programacao";
 import { Gantt } from "./gantt";
 
@@ -51,10 +53,11 @@ const STATUS_STYLE: Record<string, string> = {
 };
 
 export function CronogramaClient({
-  projectId, scheduleStart, scheduleEnd, baselineAt, weekStages, weekMaterials, weekPurchases, stages, materials,
+  projectId, scheduleStart, scheduleEnd, baselineAt, pausas, weekStages, weekMaterials, weekPurchases, stages, materials,
 }: {
   projectId: string; scheduleStart: string | null; scheduleEnd: string | null;
   baselineAt: string | null;
+  pausas: Pausa[];
   weekStages: { stageId: string; weekStart: string }[];
   weekMaterials: { weekStart: string; materialId: string; name: string; unit: string; quantity: number; stageId: string | null }[];
   weekPurchases: string[]; // "semana|materialId" já comprados
@@ -79,6 +82,9 @@ export function CronogramaClient({
 
   // Grade de semanas do início ao fim previsto, e em quais semanas cada etapa está.
   const gradeSemanas = useMemo(() => semanasDoPeriodo(scheduleStart, scheduleEnd), [scheduleStart, scheduleEnd]);
+  // Semanas em que a obra está parada: aparecem marcadas na grade, para não
+  // programar etapa justo nelas sem perceber.
+  const paradas = useMemo(() => semanasPausadas(pausas), [pausas]);
   const semanasDaEtapa = useMemo(() => semanasPorEtapa(weekStages), [weekStages]);
   const semSemana = stages.filter((s) => (semanasDaEtapa.get(s.id) ?? []).length === 0).length;
   const programou = semSemana < stages.length;
@@ -206,6 +212,9 @@ export function CronogramaClient({
             Início da obra
             <input
               type="date"
+              // A parada mexe nesta data pelo servidor; a key remonta o campo
+              // para ele mostrar o valor novo em vez do que ficou digitado.
+              key={scheduleStart ?? ""}
               defaultValue={scheduleStart ?? ""}
               onChange={(e) => run(() => setScheduleStart(projectId, e.target.value || null))}
               className="rounded-md border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
@@ -216,6 +225,9 @@ export function CronogramaClient({
             Fim previsto
             <input
               type="date"
+              // A parada mexe nesta data pelo servidor; a key remonta o campo
+              // para ele mostrar o valor novo em vez do que ficou digitado.
+              key={scheduleEnd ?? ""}
               defaultValue={scheduleEnd ?? ""}
               onChange={(e) => run(() => setScheduleEnd(projectId, e.target.value || null))}
               className="rounded-md border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
@@ -228,6 +240,10 @@ export function CronogramaClient({
             </span>
           )}
         </div>
+      )}
+
+      {stages.length > 0 && (
+        <Paradas projectId={projectId} pausas={pausas} isPending={isPending} run={run} />
       )}
 
       {vista === "semanas" && (
@@ -253,6 +269,7 @@ export function CronogramaClient({
           stages={planStages}
           weekStages={weekStages}
           baselineAt={baselineAt}
+          pausas={pausas}
           isPending={isPending}
           run={run}
         />
@@ -271,6 +288,7 @@ export function CronogramaClient({
           projectId={projectId}
           gradeSemanas={gradeSemanas}
           semanasDaEtapa={semanasDaEtapa.get(stage.id) ?? []}
+          paradas={paradas}
         />
       ))}
 
@@ -311,11 +329,12 @@ export function CronogramaClient({
 
 function StageCard({
   stage, index, isFirst, isLast, materials, isPending, run,
-  projectId, gradeSemanas, semanasDaEtapa,
+  projectId, gradeSemanas, semanasDaEtapa, paradas,
 }: {
   projectId: string;
   gradeSemanas: string[];
   semanasDaEtapa: string[];
+  paradas: Map<string, Pausa>;
   stage: Stage; index: number; isFirst: boolean; isLast: boolean;
   materials: CatalogMaterial[]; isPending: boolean;
   run: (fn: () => Promise<{ error?: string } | void>) => void;
@@ -444,6 +463,7 @@ function StageCard({
                   marcadas={semanasDaEtapa}
                   isPending={isPending}
                   run={run}
+                  paradas={paradas}
                 />
               </div>
               <Field label="Início real">
@@ -758,12 +778,13 @@ function MaterialPicker({
 // o mesmo que incluir a etapa na semana pela aba Programação — os dois lados
 // gravam no mesmo lugar.
 function SemanasDaEtapa({
-  projectId, stageId, grade, marcadas, isPending, run,
+  projectId, stageId, grade, marcadas, paradas, isPending, run,
 }: {
   projectId: string;
   stageId: string;
   grade: string[];
   marcadas: string[];
+  paradas: Map<string, Pausa>;
   isPending: boolean;
   run: (fn: () => Promise<{ error?: string } | void>) => void;
 }) {
@@ -806,11 +827,17 @@ function SemanasDaEtapa({
                 type="button"
                 disabled={isPending && otim[w] !== undefined}
                 onClick={() => alternar(w)}
-                title={`Semana ${i + 1}: ${dataBR(w)} a ${dataBR(sexta(w))}`}
+                title={
+                  paradas.get(w)
+                    ? `Semana ${i + 1} — obra parada: ${paradas.get(w)!.reason || "sem motivo informado"}`
+                    : `Semana ${i + 1}: ${dataBR(w)} a ${dataBR(sexta(w))}`
+                }
                 className={`min-w-[2.25rem] rounded px-1.5 py-1 text-xs font-medium border ${
                   marcada(w)
                     ? "bg-brand-600 border-brand-600 text-white"
-                    : "bg-white border-gray-300 text-gray-600 hover:border-brand-400"
+                    : paradas.has(w)
+                      ? "border-dashed border-amber-300 bg-amber-50 text-amber-700"
+                      : "bg-white border-gray-300 text-gray-600 hover:border-brand-400"
                 }`}
               >
                 S{i + 1}

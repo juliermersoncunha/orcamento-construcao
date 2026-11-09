@@ -215,6 +215,7 @@ model Project {
   weekPurchases     ScheduleWeekPurchase[]
   budgetPurchases   BudgetPurchase[]
   excludedItems     ExcludedBudgetItem[]
+  pauses            SchedulePause[]
   renovationIssues   RenovationIssue[]
   renovationServices RenovationService[]
   costLines          ProjectCostLine[]
@@ -853,6 +854,27 @@ model ExcludedBudgetItem {
   material Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
 
   @@unique([projectId, phase, materialId])
+}
+
+// Obra suspensa por um periodo (ex.: o pedreiro saiu para outro servico). Nao
+// apaga nada: as semanas programadas a partir dela andam para a frente, e a
+// linha de base congelada fica como estava — e dela que sai a analise do
+// impacto depois.
+model SchedulePause {
+  id        String   @id @default(cuid())
+  projectId String
+  startDate DateTime
+  endDate   DateTime
+  reason    String?
+  // Quantas semanas a parada empurrou quando foi registrada. Guardado porque e
+  // o que o "remover" devolve, mesmo que o periodo seja recontado de outro
+  // jeito depois.
+  weeksShifted Int   @default(0)
+  createdAt DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, startDate])
 }
 
 // Material da semana ja comprado. A compra e feita para a semana, e a linha

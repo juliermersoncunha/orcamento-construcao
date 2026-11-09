@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { dataBR, segundaISO, somarDias, diasUteisEntre } from "@/lib/schedule-weeks";
 import { semanasPorEtapa, previstoPorEtapa, type PlanStage } from "@/lib/schedule-plan";
+import { periodoBR, type Pausa } from "@/lib/schedule-pauses";
 import { freezeBaseline } from "@/app/actions/schedule";
 
 type Run = (fn: () => Promise<{ error?: string } | void>) => void;
@@ -31,7 +32,7 @@ function diasCorridos(de: string, ate: string) {
 }
 
 export function Gantt({
-  projectId, inicio, fim, stages, weekStages, baselineAt, isPending, run,
+  projectId, inicio, fim, stages, weekStages, baselineAt, pausas, isPending, run,
 }: {
   projectId: string;
   inicio: string | null;
@@ -39,6 +40,7 @@ export function Gantt({
   stages: GanttStage[];
   weekStages: { stageId: string; weekStart: string }[];
   baselineAt: string | null;
+  pausas: Pausa[];
   isPending: boolean;
   run: Run;
 }) {
@@ -53,15 +55,29 @@ export function Gantt({
   // deixando claro que ainda não é um compromisso.
   const linhas = stages.map((s) => {
     const congelada = s.baselineStart && s.baselineEnd ? { inicio: s.baselineStart, fim: s.baselineEnd } : null;
-    const base = congelada ?? previsto.get(s.id) ?? null;
+    const atual = previsto.get(s.id) ?? null;
+    const base = congelada ?? atual;
     const realFim = s.realEnd ?? (s.realStart ? hoje : null);
-    return { s, base, congelada: !!congelada, real: s.realStart ? { inicio: s.realStart, fim: realFim! } : null };
+    // Replanejado: o previsto de hoje, quando já saiu de cima da linha de base
+    // (é o que uma parada faz). Sem ele o Gantt esconderia o plano novo.
+    const replanejado =
+      congelada && atual && (atual.inicio !== congelada.inicio || atual.fim !== congelada.fim)
+        ? atual
+        : null;
+    return {
+      s, base, replanejado, congelada: !!congelada,
+      real: s.realStart ? { inicio: s.realStart, fim: realFim! } : null,
+    };
   });
 
   // Janela do gráfico: do primeiro ao último dia que aparece em qualquer barra.
   const datas = [
     inicio, fim,
-    ...linhas.flatMap((l) => [l.base?.inicio, l.base?.fim, l.real?.inicio, l.real?.fim]),
+    ...pausas.flatMap((p) => [p.startDate, p.endDate]),
+    ...linhas.flatMap((l) => [
+      l.base?.inicio, l.base?.fim, l.replanejado?.inicio, l.replanejado?.fim,
+      l.real?.inicio, l.real?.fim,
+    ]),
   ].filter((d): d is string => !!d).sort();
 
   if (datas.length === 0) {
@@ -133,12 +149,45 @@ export function Gantt({
                 </div>
               </div>
 
-              {linhas.map(({ s, base, congelada, real }) => {
+              {/* Faixa das paradas, por trás das barras: é o buraco que empurrou
+                  tudo para a frente. */}
+              {pausas.length > 0 && (
+                <div className="relative" style={{ marginLeft: 220, width: largura, height: 0 }}>
+                  {pausas
+                    .filter((p) => p.endDate >= ini && p.startDate <= fimJanela)
+                    .map((p) => (
+                      <div
+                        key={p.id}
+                        className="absolute bg-amber-100/70 border-x border-amber-300 pointer-events-none"
+                        style={{
+                          left: x(p.startDate),
+                          width: w(p.startDate, p.endDate),
+                          top: 0,
+                          height: linhas.length * 31,
+                        }}
+                        title={`Obra parada: ${periodoBR(p.startDate, p.endDate)}${p.reason ? ` — ${p.reason}` : ""}`}
+                      />
+                    ))}
+                </div>
+              )}
+
+              {linhas.map(({ s, base, replanejado, congelada, real }) => {
                 const desvio = real?.fim && base && s.realEnd ? diasUteisEntre(base.fim, s.realEnd) : null;
+                // Sem realizado ainda, o que interessa é o quanto o replanejamento
+                // já afastou a etapa do plano inicial.
+                const empurrada = desvio === null && base && replanejado
+                  ? diasUteisEntre(base.fim, replanejado.fim)
+                  : null;
                 return (
                   <div key={s.id} className="flex items-center border-b border-gray-50 hover:bg-gray-50/60">
                     <div className="w-[220px] shrink-0 pr-2 py-1.5">
                       <p className="text-sm text-gray-800 truncate" title={s.name}>{s.name}</p>
+                      {empurrada !== null && empurrada !== 0 && (
+                        <p className={`text-[11px] ${empurrada > 0 ? "text-amber-700" : "text-green-700"}`}>
+                          {empurrada > 0 ? "+" : "−"}
+                          {Math.abs(empurrada)} {Math.abs(empurrada) === 1 ? "dia útil" : "dias úteis"} no replanejamento
+                        </p>
+                      )}
                       {desvio !== null && desvio !== 0 && (
                         <p className={`text-[11px] ${desvio > 0 ? "text-red-600" : "text-green-700"}`}>
                           {(() => {
@@ -152,16 +201,23 @@ export function Gantt({
                     <div className="relative" style={{ width: largura, height: 30 }}>
                       {base && (
                         <div
-                          className={`absolute top-[5px] h-[9px] rounded-sm ${
+                          className={`absolute top-[3px] h-[8px] rounded-sm ${
                             congelada ? "bg-gray-300" : "border border-dashed border-gray-400 bg-transparent"
                           }`}
                           style={{ left: x(base.inicio), width: w(base.inicio, base.fim) }}
                           title={`Previsto: ${dataBR(base.inicio)} a ${dataBR(base.fim)}`}
                         />
                       )}
+                      {replanejado && (
+                        <div
+                          className="absolute top-[13px] h-[6px] rounded-sm border border-dashed border-amber-500 bg-amber-100"
+                          style={{ left: x(replanejado.inicio), width: w(replanejado.inicio, replanejado.fim) }}
+                          title={`Replanejado: ${dataBR(replanejado.inicio)} a ${dataBR(replanejado.fim)}`}
+                        />
+                      )}
                       {real && (
                         <div
-                          className={`absolute top-[16px] h-[9px] rounded-sm ${
+                          className={`absolute top-[20px] h-[8px] rounded-sm ${
                             !s.realEnd ? "bg-brand-500"
                               : base && s.realEnd > base.fim ? "bg-red-500" : "bg-green-500"
                           }`}
@@ -211,6 +267,8 @@ function Legenda() {
       <span className="flex items-center gap-1"><span className="inline-block w-4 h-2 rounded-sm border border-dashed border-gray-400" /> previsto não congelado</span>
       <span className="flex items-center gap-1"><span className="inline-block w-4 h-2 rounded-sm bg-green-500" /> no prazo</span>
       <span className="flex items-center gap-1"><span className="inline-block w-4 h-2 rounded-sm bg-red-500" /> atrasada</span>
+      <span className="flex items-center gap-1"><span className="inline-block w-4 h-2 rounded-sm border border-dashed border-amber-500 bg-amber-100" /> replanejado</span>
+      <span className="flex items-center gap-1"><span className="inline-block w-4 h-2 rounded-sm bg-amber-100 border-x border-amber-300" /> obra parada</span>
       <span className="flex items-center gap-1"><span className="inline-block w-4 h-2 rounded-sm bg-brand-500" /> em andamento</span>
     </div>
   );

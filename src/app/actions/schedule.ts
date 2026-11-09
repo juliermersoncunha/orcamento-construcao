@@ -6,6 +6,8 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { SCHEDULE_TEMPLATE } from "@/lib/schedule-template";
 import { semanasPorEtapa, previstoPorEtapa, sugestaoDeSemanas, type PlanStage } from "@/lib/schedule-plan";
+import { semanasDaPausa } from "@/lib/schedule-pauses";
+import { somarDias } from "@/lib/schedule-weeks";
 
 async function assertOwnsProject(projectId: string) {
   const session = await getSession();
@@ -570,5 +572,113 @@ export async function setWeekMaterialOrigin(
     }
   }
   touch(projectId);
+  return {};
+}
+
+// ── Paradas da obra ─────────────────────────────────────────────────────────
+
+/**
+ * Empurra (semanas > 0) ou puxa de volta (semanas < 0) tudo que está
+ * programado a partir da semana `apartirDe`: etapas marcadas, revisões de
+ * material da semana e as compras ligadas a elas.
+ *
+ * Apaga e recria em vez de somar numa linha só: a semana faz parte da chave
+ * única dessas tabelas, e um UPDATE em massa esbarraria nela no meio do
+ * caminho, quando duas linhas disputam a mesma semana de destino.
+ */
+async function moverProgramacao(projectId: string, apartirDe: string, semanas: number) {
+  if (semanas === 0) return;
+  // Começo do dia em UTC, e não meio-dia: a hora gravada em `weekStart` variou
+  // conforme o fuso de quem gravou, e um limite ao meio-dia deixaria de fora a
+  // própria semana do corte.
+  const corte = { gte: new Date(`${apartirDe}T00:00:00.000Z`) };
+  const [etapas, materiais, compras] = await Promise.all([
+    prisma.scheduleWeekStage.findMany({ where: { projectId, weekStart: corte } }),
+    prisma.scheduleWeekMaterial.findMany({ where: { projectId, weekStart: corte } }),
+    prisma.scheduleWeekPurchase.findMany({ where: { projectId, weekStart: corte } }),
+  ]);
+  const nova = (d: Date) => meioDia(somarDias(iso(d), semanas * 7));
+
+  await prisma.$transaction([
+    prisma.scheduleWeekStage.deleteMany({ where: { projectId, weekStart: corte } }),
+    prisma.scheduleWeekMaterial.deleteMany({ where: { projectId, weekStart: corte } }),
+    prisma.scheduleWeekPurchase.deleteMany({ where: { projectId, weekStart: corte } }),
+    prisma.scheduleWeekStage.createMany({
+      data: etapas.map((r) => ({ projectId, stageId: r.stageId, weekStart: nova(r.weekStart) })),
+    }),
+    prisma.scheduleWeekMaterial.createMany({
+      data: materiais.map((r) => ({
+        projectId, materialId: r.materialId, quantity: r.quantity, stageId: r.stageId,
+        weekStart: nova(r.weekStart),
+      })),
+    }),
+    prisma.scheduleWeekPurchase.createMany({
+      data: compras.map((r) => ({
+        projectId, materialId: r.materialId, quantity: r.quantity, weekStart: nova(r.weekStart),
+      })),
+    }),
+  ]);
+}
+
+/** Estica (ou encurta) o prazo da obra, para a grade cobrir as semanas movidas. */
+async function moverFimPrevisto(projectId: string, semanas: number) {
+  const p = await prisma.project.findUnique({
+    where: { id: projectId },
+    select: { scheduleEnd: true },
+  });
+  if (!p?.scheduleEnd) return null;
+  const novo = somarDias(iso(p.scheduleEnd), semanas * 7);
+  await prisma.project.update({ where: { id: projectId }, data: { scheduleEnd: meioDia(novo) } });
+  return novo;
+}
+
+export async function addSchedulePause(
+  projectId: string,
+  input: { startDate: string; endDate: string; reason?: string }
+) {
+  await assertOwnsProject(projectId);
+  const { startDate, endDate } = input;
+  if (!startDate || !endDate) return { error: "Informe o início e o fim da parada." };
+  if (endDate < startDate) return { error: "O fim da parada não pode ser antes do início." };
+
+  const semanas = semanasDaPausa(startDate, endDate);
+  if (semanas.length === 0) return { error: "Período inválido." };
+
+  await prisma.schedulePause.create({
+    data: {
+      projectId,
+      startDate: meioDia(startDate),
+      endDate: meioDia(endDate),
+      reason: input.reason?.trim() || null,
+      weeksShifted: semanas.length,
+    },
+  });
+  // Tudo que estava marcado da primeira semana parada em diante anda junto.
+  await moverProgramacao(projectId, semanas[0], semanas.length);
+  await moverFimPrevisto(projectId, semanas.length);
+
+  touch(projectId);
+  return {};
+}
+
+export async function deleteSchedulePause(pauseId: string) {
+  const session = await getSession();
+  if (!session) redirect("/login");
+  const pausa = await prisma.schedulePause.findFirst({
+    where: { id: pauseId, project: { userId: session.userId } },
+  });
+  if (!pausa) redirect("/projetos");
+
+  const semanas = semanasDaPausa(iso(pausa.startDate), iso(pausa.endDate));
+  const n = pausa.weeksShifted || semanas.length;
+
+  await prisma.schedulePause.delete({ where: { id: pauseId } });
+  // Devolve as semanas: o corte agora é onde elas foram parar.
+  if (semanas.length > 0 && n > 0) {
+    await moverProgramacao(pausa.projectId, somarDias(semanas[0], n * 7), -n);
+    await moverFimPrevisto(pausa.projectId, -n);
+  }
+
+  touch(pausa.projectId);
   return {};
 }

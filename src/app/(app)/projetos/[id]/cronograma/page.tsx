@@ -32,7 +32,7 @@ export default async function CronogramaPage({
     },
   });
 
-  const [weekStages, weekMaterials, weekPurchases] = await Promise.all([
+  const [weekStages, weekMaterials, weekPurchases, pauses] = await Promise.all([
     prisma.scheduleWeekStage.findMany({ where: { projectId: id }, select: { stageId: true, weekStart: true } }),
     prisma.scheduleWeekMaterial.findMany({
       where: { projectId: id },
@@ -41,6 +41,10 @@ export default async function CronogramaPage({
     prisma.scheduleWeekPurchase.findMany({
       where: { projectId: id },
       select: { weekStart: true, materialId: true },
+    }),
+    prisma.schedulePause.findMany({
+      where: { projectId: id },
+      orderBy: { startDate: "asc" },
     }),
   ]);
   const isoOrNull = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : null);
@@ -74,6 +78,13 @@ export default async function CronogramaPage({
         scheduleStart={project.scheduleStart ? project.scheduleStart.toISOString().slice(0, 10) : null}
         scheduleEnd={project.scheduleEnd ? project.scheduleEnd.toISOString().slice(0, 10) : null}
         baselineAt={project.scheduleBaselineAt ? project.scheduleBaselineAt.toISOString() : null}
+        pausas={pauses.map((p) => ({
+          id: p.id,
+          startDate: p.startDate.toISOString().slice(0, 10),
+          endDate: p.endDate.toISOString().slice(0, 10),
+          reason: p.reason,
+          weeksShifted: p.weeksShifted,
+        }))}
         weekStages={weekStages.map((w) => ({ stageId: w.stageId, weekStart: w.weekStart.toISOString().slice(0, 10) }))}
         weekPurchases={weekPurchases.map((w) => `${w.weekStart.toISOString().slice(0, 10)}|${w.materialId}`)}
         weekMaterials={weekMaterials.map((w) => ({

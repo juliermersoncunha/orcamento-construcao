@@ -7,7 +7,7 @@
 // sem mexer no médio. É o padrão de almoxarifado e o que faz o material que
 // sai do depósito chegar à obra pelo valor certo.
 
-export type TipoMovimento = "ENTRADA" | "ENVIO" | "DEVOLUCAO" | "AJUSTE";
+export type TipoMovimento = "ENTRADA" | "ENVIO" | "DEVOLUCAO" | "AJUSTE" | "VENDA";
 
 export type Movimento = {
   id: string;
@@ -44,7 +44,8 @@ export function saldosDoDeposito(movs: Movimento[]): Map<string, SaldoMaterial> 
       s.quantidade += q;
     };
     if (m.kind === "ENTRADA" || m.kind === "DEVOLUCAO") entra(m.quantity, m.unitCost);
-    else if (m.kind === "ENVIO") s.quantidade -= m.quantity;
+    // Envio e venda tiram do depósito sem mexer no custo médio.
+    else if (m.kind === "ENVIO" || m.kind === "VENDA") s.quantidade -= m.quantity;
     else if (m.kind === "AJUSTE") {
       // Sobra na contagem entra pelo médio de agora; falta só tira.
       if (m.quantity > 0) entra(m.quantity, m.unitCost || s.custoMedio);

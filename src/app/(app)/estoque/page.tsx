@@ -3,6 +3,7 @@ import { getSession } from "@/lib/session";
 import { redirect } from "next/navigation";
 import { Warehouse } from "lucide-react";
 import { saldosDoDeposito, ondeEstaoAsFerramentas } from "@/lib/stock";
+import { revendaDe } from "@/lib/resale";
 import { EstoqueClient } from "./estoque-client";
 
 export default async function EstoquePage() {
@@ -15,7 +16,7 @@ export default async function EstoquePage() {
     prisma.material.findMany({
       where: { active: true },
       orderBy: { name: "asc" },
-      select: { id: true, name: true, unit: true, currentPrice: true },
+      select: { id: true, name: true, unit: true, currentPrice: true, resalePrice: true, markupPercent: true },
     }),
     prisma.supplier.findMany({ where: { active: true }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
     prisma.project.findMany({
@@ -66,7 +67,11 @@ export default async function EstoquePage() {
       </p>
 
       <EstoqueClient
-        materiais={materiais.map((m) => ({ id: m.id, name: m.name, unit: m.unit, preco: m.currentPrice }))}
+        materiais={materiais.map((m) => ({
+          id: m.id, name: m.name, unit: m.unit, preco: m.currentPrice,
+          // Sugestão de preço na venda: a revenda definida no catálogo.
+          revenda: revendaDe(m.currentPrice, m.resalePrice, m.markupPercent).preco,
+        }))}
         fornecedores={fornecedores}
         obras={obras}
         saldos={[...saldos.values()].map((s) => {
@@ -91,6 +96,8 @@ export default async function EstoquePage() {
           obraId: m.projectId,
           obra: m.project?.name ?? null,
           fornecedor: m.supplier?.name ?? null,
+          salePrice: m.salePrice,
+          buyer: m.buyer,
           date: iso(m.date),
           notes: m.notes,
         }))}

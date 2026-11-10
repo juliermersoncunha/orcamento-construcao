@@ -4,22 +4,23 @@ import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowDownToLine, ArrowUpFromLine, ClipboardCheck, PackagePlus, Trash2, Wrench, Archive, ArchiveRestore,
-  Pencil, Check, X,
+  Pencil, Check, X, HandCoins,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/utils";
 import {
-  registrarEntrada, enviarParaObra, devolverDaObra, registrarContagem, excluirMovimento,
+  registrarEntrada, enviarParaObra, devolverDaObra, registrarContagem, excluirMovimento, registrarVenda,
   cadastrarFerramenta, moverFerramenta, excluirMovimentoFerramenta, arquivarFerramenta, editarFerramenta,
 } from "@/app/actions/stock";
 
-type Material = { id: string; name: string; unit: string; preco: number };
+type Material = { id: string; name: string; unit: string; preco: number; revenda: number | null };
 type Opcao = { id: string; name: string };
 type Saldo = { materialId: string; name: string; unit: string; quantidade: number; custoMedio: number; valor: number };
 type MovMaterial = {
   id: string; kind: string; materialId: string; material: string; unit: string; quantity: number; unitCost: number;
   obraId: string | null; obra: string | null; fornecedor: string | null; date: string; notes: string | null;
+  salePrice: number | null; buyer: string | null;
 };
 type MovFerramenta = { id: string; kind: string; quantity: number; obra: string | null; date: string; notes: string | null };
 type Ferramenta = {
@@ -41,6 +42,7 @@ const TIPO_MAT: Record<string, { rotulo: string; cor: string }> = {
   ENVIO: { rotulo: "Envio p/ obra", cor: "bg-brand-50 text-brand-700" },
   DEVOLUCAO: { rotulo: "Devolução", cor: "bg-amber-50 text-amber-800" },
   AJUSTE: { rotulo: "Ajuste", cor: "bg-surface text-ink-2" },
+  VENDA: { rotulo: "Venda", cor: "bg-emerald-50 text-emerald-700" },
 };
 const TIPO_FER: Record<string, string> = {
   AQUISICAO: "Aquisição", ENVIO: "Envio p/ obra", DEVOLUCAO: "Devolução", BAIXA: "Baixa",
@@ -127,11 +129,12 @@ function Indicador({ rotulo, valor, destaque }: { rotulo: string; valor: string;
 
 // ── Materiais ───────────────────────────────────────────────────────────────
 
-type Modo = "entrada" | "envio" | "devolucao" | "contagem";
+type Modo = "entrada" | "envio" | "devolucao" | "venda" | "contagem";
 const MODOS: { v: Modo; rotulo: string; icone: typeof PackagePlus }[] = [
   { v: "entrada", rotulo: "Entrada", icone: PackagePlus },
   { v: "envio", rotulo: "Enviar para obra", icone: ArrowUpFromLine },
   { v: "devolucao", rotulo: "Devolver da obra", icone: ArrowDownToLine },
+  { v: "venda", rotulo: "Venda", icone: HandCoins },
   { v: "contagem", rotulo: "Contagem", icone: ClipboardCheck },
 ];
 
@@ -243,6 +246,7 @@ function FormMovimento({
   const [quantidade, setQuantidade] = useState("");
   const [preco, setPreco] = useState("");
   const [fornecedor, setFornecedor] = useState("");
+  const [comprador, setComprador] = useState("");
   const [obra, setObra] = useState(obras[0]?.id ?? "");
   const [data, setData] = useState(hoje());
   const [obs, setObs] = useState("");
@@ -257,6 +261,11 @@ function FormMovimento({
     if (modo === "entrada") return run(() => registrarEntrada({ ...base, quantity: q, unitCost: num(preco || String(m.preco)), supplierId: fornecedor || null }), aoSalvar);
     if (modo === "envio") return run(() => enviarParaObra({ ...base, quantity: q, projectId: obra }), aoSalvar);
     if (modo === "devolucao") return run(() => devolverDaObra({ ...base, quantity: q, projectId: obra }), aoSalvar);
+    if (modo === "venda") {
+      const pv = num(preco || String(m.revenda ?? ""));
+      if (!(pv >= 0) || (preco === "" && m.revenda == null)) return run(async () => ({ error: "Informe o preço de venda." }));
+      return run(() => registrarVenda({ ...base, quantity: q, salePrice: pv, buyer: comprador }), aoSalvar);
+    }
     return run(() => registrarContagem({ ...base, contado: q }), aoSalvar);
   }
 
@@ -264,6 +273,7 @@ function FormMovimento({
     entrada: "Entrada no depósito",
     envio: "Enviar do depósito para uma obra",
     devolucao: "Devolver de uma obra para o depósito",
+    venda: "Venda de material do depósito",
     contagem: "Contagem do depósito",
   }[modo];
 
@@ -299,6 +309,25 @@ function FormMovimento({
             {modo === "contagem" ? "Quantidade contada" : "Quantidade"}
             <input inputMode="decimal" value={quantidade} onChange={(e) => setQuantidade(e.target.value)} placeholder="0" className={campo} />
           </label>
+
+          {modo === "venda" && (
+            <>
+              <label className={`${rotulo} w-36`}>
+                Preço de venda (R$)
+                <input
+                  inputMode="decimal"
+                  value={preco}
+                  onChange={(e) => setPreco(e.target.value)}
+                  placeholder={mat.escolhido?.revenda != null ? String(mat.escolhido.revenda).replace(".", ",") : "0,00"}
+                  className={campo}
+                />
+              </label>
+              <label className={`${rotulo} w-44`}>
+                Comprador
+                <input value={comprador} onChange={(e) => setComprador(e.target.value)} placeholder="opcional" className={campo} />
+              </label>
+            </>
+          )}
 
           {modo === "entrada" && (
             <>
@@ -342,9 +371,29 @@ function FormMovimento({
             {modo === "envio" && saldo && q > 0 && (
               <> · vai para a obra valendo <strong className="text-ink">{formatCurrency(q * saldo.custoMedio)}</strong></>
             )}
-            {modo === "envio" && q > (saldo?.quantidade ?? 0) && (
+            {(modo === "envio" || modo === "venda") && q > (saldo?.quantidade ?? 0) && (
               <span className="text-amber-700"> · mais do que há no depósito</span>
             )}
+            {modo === "venda" && q > 0 && (() => {
+              const pv = num(preco || String(mat.escolhido!.revenda ?? ""));
+              if (!Number.isFinite(pv) || (preco === "" && mat.escolhido!.revenda == null)) {
+                return <span> · sem preço de revenda no catálogo — informe o preço</span>;
+              }
+              const custo = (saldo?.custoMedio ?? 0) * q;
+              const venda = pv * q;
+              const lucro = venda - custo;
+              return (
+                <>
+                  {preco === "" && <span> · preço sugerido pela revenda do catálogo</span>}
+                  {" · "}venda <strong className="text-ink">{formatCurrency(venda)}</strong>
+                  {" · "}lucro{" "}
+                  <strong className={lucro < 0 ? "text-red-600" : "text-green-700"}>
+                    {formatCurrency(lucro)}
+                    {custo > 0 && ` (${Math.round((lucro / custo) * 1000) / 10}%)`}
+                  </strong>
+                </>
+              );
+            })()}
             {modo === "contagem" && quantidade !== "" && (
               <> · diferença <strong className="text-ink">{qtd(q - (saldo?.quantidade ?? 0))} {mat.escolhido.unit}</strong></>
             )}
@@ -642,30 +691,35 @@ function AbaMovimentos({
 }: {
   movimentos: MovMaterial[]; ferramentas: Ferramenta[]; ocupado: boolean; run: Run;
 }) {
-  const [filtro, setFiltro] = useState<"todos" | "materiais" | "ferramentas">("todos");
+  const [filtro, setFiltro] = useState<"todos" | "materiais" | "ferramentas" | "vendas">("todos");
 
   const linhas = [
     ...movimentos.map((m) => ({
       id: m.id, tipo: "material" as const, kind: m.kind, date: m.date,
       item: m.material,
       qtd: `${m.kind === "AJUSTE" && m.quantity > 0 ? "+" : ""}${qtd(m.quantity)} ${m.unit}`,
-      onde: m.obra ?? (m.fornecedor ? `de ${m.fornecedor}` : null),
-      valor: Math.abs(m.quantity) * m.unitCost,
+      onde: m.obra ?? (m.kind === "VENDA" ? (m.buyer ? `para ${m.buyer}` : null) : m.fornecedor ? `de ${m.fornecedor}` : null),
+      // Na venda o que interessa é quanto entrou; o lucro vai ao lado.
+      valor: m.kind === "VENDA" ? m.quantity * (m.salePrice ?? 0) : Math.abs(m.quantity) * m.unitCost,
+      lucro: m.kind === "VENDA" ? m.quantity * ((m.salePrice ?? 0) - m.unitCost) : null,
       notes: m.notes,
     })),
     ...ferramentas.flatMap((f) => f.movimentos.map((m) => ({
       id: m.id, tipo: "ferramenta" as const, kind: m.kind, date: m.date,
-      item: f.name, qtd: `${m.quantity} un`, onde: m.obra, valor: null as number | null, notes: m.notes,
+      item: f.name, qtd: `${m.quantity} un`, onde: m.obra, valor: null as number | null, lucro: null as number | null, notes: m.notes,
     }))),
   ]
-    .filter((l) => filtro === "todos" || (filtro === "materiais") === (l.tipo === "material"))
+    .filter((l) =>
+      filtro === "todos" ? true
+      : filtro === "vendas" ? l.tipo === "material" && l.kind === "VENDA"
+      : (filtro === "materiais") === (l.tipo === "material"))
     .sort((a, b) => b.date.localeCompare(a.date));
 
   return (
     <Card>
       <CardContent className="py-4">
         <div className="mb-3 flex w-fit rounded-full bg-surface p-0.5 text-xs">
-          {([["todos", "Todos"], ["materiais", "Materiais"], ["ferramentas", "Ferramentas"]] as const).map(([v, r]) => (
+          {([["todos", "Todos"], ["materiais", "Materiais"], ["ferramentas", "Ferramentas"], ["vendas", "Vendas"]] as const).map(([v, r]) => (
             <button
               key={v}
               type="button"
@@ -676,8 +730,21 @@ function AbaMovimentos({
             </button>
           ))}
         </div>
+        {filtro === "vendas" && linhas.length > 0 && (() => {
+          const vendido = linhas.reduce((s, l) => s + (l.valor ?? 0), 0);
+          const lucro = linhas.reduce((s, l) => s + (l.lucro ?? 0), 0);
+          return (
+            <p className="mb-3 text-sm text-ink-2">
+              Vendido <strong className="text-ink">{formatCurrency(vendido)}</strong>
+              {" · "}lucro <strong className={lucro < 0 ? "text-red-600" : "text-green-700"}>{formatCurrency(lucro)}</strong>
+              {vendido - lucro > 0 && ` (${Math.round((lucro / (vendido - lucro)) * 1000) / 10}% sobre o custo)`}
+            </p>
+          );
+        })()}
         {linhas.length === 0 ? (
-          <p className="py-6 text-center text-sm text-ink-3">Nenhuma movimentação ainda.</p>
+          <p className="py-6 text-center text-sm text-ink-3">
+            {filtro === "vendas" ? "Nenhuma venda registrada." : "Nenhuma movimentação ainda."}
+          </p>
         ) : (
           <ul className="flex flex-col divide-y divide-gray-50">
             {linhas.map((l) => {
@@ -694,6 +761,11 @@ function AbaMovimentos({
                   {l.notes && <span className="text-xs text-ink-3">· {l.notes}</span>}
                   <div className="flex-1" />
                   {l.valor !== null && l.valor > 0 && <span className="text-xs font-semibold text-ink-2">{formatCurrency(l.valor)}</span>}
+                  {l.lucro !== null && (
+                    <span className={`text-xs font-semibold ${l.lucro < 0 ? "text-red-600" : "text-green-700"}`}>
+                      lucro {formatCurrency(l.lucro)}
+                    </span>
+                  )}
                   <button
                     type="button"
                     disabled={ocupado}

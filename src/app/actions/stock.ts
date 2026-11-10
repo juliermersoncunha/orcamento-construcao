@@ -116,6 +116,31 @@ export async function devolverDaObra(input: {
   return {};
 }
 
+/**
+ * Venda a terceiro: sai do depósito pelo custo médio de agora (é o custo do
+ * que foi vendido) e guarda o preço cobrado, para o lucro sair da diferença.
+ */
+export async function registrarVenda(input: {
+  materialId: string; quantity: number; salePrice: number; buyer?: string; date?: string; notes?: string;
+}): Promise<Resultado> {
+  const s = await sessao();
+  if (!input.materialId) return { error: "Escolha o material." };
+  if (!quantidadeValida(input.quantity)) return { error: "Quantidade inválida." };
+  if (!Number.isFinite(input.salePrice) || input.salePrice < 0) return { error: "Preço de venda inválido." };
+
+  const saldo = saldosDoDeposito(await movimentosDe(input.materialId)).get(input.materialId);
+  await prisma.stockMovement.create({
+    data: {
+      kind: "VENDA", materialId: input.materialId, quantity: input.quantity,
+      unitCost: saldo?.custoMedio ?? 0, salePrice: input.salePrice,
+      buyer: input.buyer?.trim() || null, date: meioDia(input.date || hoje()),
+      notes: input.notes?.trim() || null, createdById: s.userId,
+    },
+  });
+  revalidar();
+  return {};
+}
+
 /** Contagem física: grava a diferença entre o contado e o saldo do sistema. */
 export async function registrarContagem(input: {
   materialId: string; contado: number; date?: string; notes?: string;

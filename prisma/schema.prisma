@@ -926,7 +926,8 @@ model ScheduleRevisionStage {
 model StockMovement {
   id          String   @id @default(cuid())
   // ENTRADA (compra para o deposito), ENVIO (deposito -> obra),
-  // DEVOLUCAO (obra -> deposito), AJUSTE (contagem/perda, quantidade com sinal)
+  // DEVOLUCAO (obra -> deposito), AJUSTE (contagem/perda, quantidade com sinal),
+  // VENDA (sai do deposito vendido a terceiro)
   kind        String
   materialId  String
   quantity    Float
@@ -935,6 +936,10 @@ model StockMovement {
   unitCost    Float    @default(0)
   projectId   String?
   supplierId  String?
+  // Venda: preco unitario cobrado e quem comprou. O lucro e salePrice menos
+  // unitCost (o custo medio do deposito na hora da venda).
+  salePrice   Float?
+  buyer       String?
   date        DateTime
   notes       String?
   createdById String?

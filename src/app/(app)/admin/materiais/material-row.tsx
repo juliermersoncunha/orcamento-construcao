@@ -6,6 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Check, X, Pencil, Trash2, Calculator } from "lucide-react";
 import { MATERIAL_CATEGORIES } from "@/lib/material-categories";
+import { revendaDe } from "@/lib/resale";
+import { CamposRevenda, estadoInicial, paraSalvar, type EstadoRevenda } from "./campos-revenda";
 
 export type SupplierOption = { id: string; name: string };
 
@@ -59,6 +61,7 @@ export function MaterialRow({
   // quantidade da embalagem; o preço gravado é o unitário.
   const [emPacote, setEmPacote] = useState(false);
   const [precoPacote, setPrecoPacote] = useState("");
+  const [revenda, setRevenda] = useState<EstadoRevenda>(estadoInicial(material.resalePrice, material.markupPercent));
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -75,6 +78,7 @@ export function MaterialRow({
     setSupplierId(material.supplierId ?? "");
     setEmPacote(false);
     setPrecoPacote("");
+    setRevenda(estadoInicial(material.resalePrice, material.markupPercent));
     setError(null);
     setEditing(true);
   }
@@ -125,6 +129,7 @@ export function MaterialRow({
         quantity: q,
         brand,
         supplierId: supplierId || null,
+        ...paraSalvar(revenda),
       });
       if (result?.error) {
         setError(result.error);
@@ -314,6 +319,14 @@ export function MaterialRow({
             </p>
           )}
         </td>
+        <td className="py-2 px-2 text-right">
+          <CamposRevenda
+            compacto
+            custo={emPacote && ehUn ? unitarioDoPacote ?? 0 : Number(price.replace(",", ".")) || 0}
+            estado={revenda}
+            onChange={setRevenda}
+          />
+        </td>
         <td className="py-2 px-2 text-center">
           <input
             type="date"
@@ -348,6 +361,7 @@ export function MaterialRow({
   }
 
   const shownDate = formatDate(material.priceDate);
+  const revendaAtual = revendaDe(material.currentPrice, material.resalePrice, material.markupPercent);
   const shownQty = formatQty(material.quantity);
 
   return (
@@ -424,6 +438,26 @@ export function MaterialRow({
             R$ {material.currentPrice.toFixed(2).replace(".", ",")}
           </span>
           <Pencil className="w-3 h-3 text-gray-400 group-hover:text-amber-600" />
+        </button>
+      </td>
+      <td className="py-2 px-2 text-right">
+        <button onClick={startEditing} className="ml-auto block text-right hover:text-amber-700">
+          {revendaAtual.preco !== null ? (
+            <>
+              <span className="text-gray-700">R$ {revendaAtual.preco.toFixed(2).replace(".", ",")}</span>
+              {revendaAtual.lucroPct !== null && (
+                <span
+                  className={`block text-[11px] ${revendaAtual.lucroPct < 0 ? "text-red-600" : "text-green-700"}`}
+                  title={revendaAtual.segue === "lucro" ? "Acompanha o custo" : "Preço fixo"}
+                >
+                  {revendaAtual.lucroPct > 0 ? "+" : ""}{String(revendaAtual.lucroPct).replace(".", ",")}%
+                  {revendaAtual.segue === "lucro" ? " · acompanha o custo" : ""}
+                </span>
+              )}
+            </>
+          ) : (
+            <span className="text-gray-300">—</span>
+          )}
         </button>
       </td>
       <td className="py-2 px-2 text-center">

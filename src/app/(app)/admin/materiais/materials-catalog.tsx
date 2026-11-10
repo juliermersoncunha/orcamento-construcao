@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { revendaDe } from "@/lib/resale";
 import { MaterialCategory } from "@prisma/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -23,6 +24,8 @@ type Material = {
   brand: string | null;
   supplierId: string | null;
   supplier: { id: string; name: string } | null;
+  resalePrice: number | null;
+  markupPercent: number | null;
 };
 
 type Supplier = { id: string; name: string };
@@ -158,6 +161,8 @@ export function MaterialsCatalog({ materialsByCategory, categoryLabels, supplier
           Unidade: m.unit,
           Quantidade: m.quantity ?? "",
           "Preço (R$)": m.currentPrice,
+          "Revenda (R$)": revendaDe(m.currentPrice, m.resalePrice, m.markupPercent).preco ?? "",
+          "Lucro (%)": revendaDe(m.currentPrice, m.resalePrice, m.markupPercent).lucroPct ?? "",
           "Data do preço": formatDateBR(m.priceDate),
           Status: m.active ? "Ativo" : "Inativo",
         });
@@ -167,7 +172,7 @@ export function MaterialsCatalog({ materialsByCategory, categoryLabels, supplier
     const ws = XLSX.utils.json_to_sheet(rows, {
       header: [
         "Categoria", "Material", "Marca", "Fornecedor", "Unidade",
-        "Quantidade", "Preço (R$)", "Data do preço", "Status",
+        "Quantidade", "Preço (R$)", "Revenda (R$)", "Lucro (%)", "Data do preço", "Status",
       ],
     });
     // Larguras confortáveis por coluna.
@@ -179,6 +184,8 @@ export function MaterialsCatalog({ materialsByCategory, categoryLabels, supplier
       { wch: 10 }, // Unidade
       { wch: 12 }, // Quantidade
       { wch: 12 }, // Preço
+      { wch: 13 }, // Revenda
+      { wch: 10 }, // Lucro
       { wch: 14 }, // Data
       { wch: 10 }, // Status
     ];
@@ -288,6 +295,7 @@ export function MaterialsCatalog({ materialsByCategory, categoryLabels, supplier
                   <th className="text-center font-medium text-gray-500 py-2">Unidade</th>
                   <th className="text-center font-medium text-gray-500 py-2">Qtd</th>
                   <th className="text-right font-medium text-gray-500 py-2">Preço (R$)</th>
+                  <th className="text-right font-medium text-gray-500 py-2 px-2" title="Preço de revenda e lucro sobre o custo">Revenda</th>
                   <th className="text-center font-medium text-gray-500 py-2">Data do preço</th>
                   <th className="text-center font-medium text-gray-500 py-2">Status</th>
                   <th className="py-2"></th>

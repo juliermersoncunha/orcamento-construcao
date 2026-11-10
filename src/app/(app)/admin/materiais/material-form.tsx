@@ -8,6 +8,7 @@ import { Select } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Plus, Package } from "lucide-react";
 import { MATERIAL_CATEGORIES } from "@/lib/material-categories";
+import { CamposRevenda, paraSalvar, type EstadoRevenda } from "./campos-revenda";
 
 const initialState: MaterialFormState = {};
 const CATEGORIES = MATERIAL_CATEGORIES.map((c) => ({ value: c.value, label: c.label }));
@@ -34,6 +35,10 @@ export function MaterialForm({ suppliers = [] }: { suppliers?: SupplierOption[] 
   const pacoteNum = Number((precoPacote || "").replace(",", ".")) || 0;
   const unidNum = Number((unidadesPacote || "").replace(",", ".")) || 0;
   const unitarioCalc = emPacote && pacoteNum > 0 && unidNum > 0 ? pacoteNum / unidNum : null;
+  // Revenda calculada sobre o preço por unidade que vai para o banco.
+  const custoUnit = unidadeEhUn && emPacote ? unitarioCalc ?? 0 : Number((precoUnit || "").replace(",", ".")) || 0;
+  const [revenda, setRevenda] = useState<EstadoRevenda>({ modo: null, valor: "" });
+  const revendaSalvar = paraSalvar(revenda);
 
   const supplierOptions = [
     { value: "", label: "— sem fornecedor —" },
@@ -155,6 +160,14 @@ export function MaterialForm({ suppliers = [] }: { suppliers?: SupplierOption[] 
                 />
               </div>
             )}
+          </div>
+
+          {/* Revenda (opcional): preço de venda ou lucro sobre o custo */}
+          <div className="rounded-md border border-gray-200 bg-gray-50 p-3 mb-4">
+            <p className="mb-2 text-sm font-medium text-gray-700">Revenda (opcional)</p>
+            <CamposRevenda custo={custoUnit} estado={revenda} onChange={setRevenda} />
+            <input type="hidden" name="resalePrice" value={revendaSalvar.resalePrice ?? ""} />
+            <input type="hidden" name="markupPercent" value={revendaSalvar.markupPercent ?? ""} />
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">

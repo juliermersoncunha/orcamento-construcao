@@ -78,6 +78,8 @@ export default async function MateriaisPage() {
               brand: m.brand,
               supplierId: m.supplierId,
               supplier: m.supplier,
+              resalePrice: m.resalePrice,
+              markupPercent: m.markupPercent,
             }))])}
           categoryLabels={categoryLabels}
           suppliers={suppliers}

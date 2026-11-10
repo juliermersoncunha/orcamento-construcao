@@ -47,6 +47,25 @@ const MaterialSchema = z.object({
     .trim()
     .optional()
     .transform((v) => v || null),
+  // Revenda: só um dos dois chega preenchido (ver lib/resale.ts).
+  resalePrice: z
+    .string()
+    .trim()
+    .optional()
+    .transform((v) => {
+      if (!v) return null;
+      const n = Number(v.replace(",", "."));
+      return Number.isFinite(n) && n >= 0 ? n : null;
+    }),
+  markupPercent: z
+    .string()
+    .trim()
+    .optional()
+    .transform((v) => {
+      if (!v) return null;
+      const n = Number(v.replace(",", "."));
+      return Number.isFinite(n) && n > -100 ? n : null;
+    }),
 });
 
 export type MaterialFormState = { errors?: Record<string, string[]> };
@@ -84,6 +103,8 @@ export async function updateMaterial(
     quantity?: number | null;
     brand?: string | null;
     supplierId?: string | null;
+    resalePrice?: number | null;
+    markupPercent?: number | null;
   }
 ) {
   const session = await requireAdmin();
@@ -104,6 +125,13 @@ export async function updateMaterial(
     !MATERIAL_CATEGORY_VALUES.includes(input.category as (typeof MATERIAL_CATEGORY_VALUES)[number])
   ) {
     return { error: "Categoria inválida." };
+  }
+
+  if (input.resalePrice != null && (!Number.isFinite(input.resalePrice) || input.resalePrice < 0)) {
+    return { error: "Preço de revenda inválido." };
+  }
+  if (input.markupPercent != null && (!Number.isFinite(input.markupPercent) || input.markupPercent <= -100)) {
+    return { error: "Lucro (%) inválido." };
   }
 
   const current = await prisma.material.findUnique({ where: { id: materialId } });
@@ -151,6 +179,13 @@ export async function updateMaterial(
           : input.quantity,
       brand: input.brand?.trim() || null,
       supplierId: input.supplierId || null,
+      // Só um manda: lucro definido apaga o preço fixo e vice-versa.
+      ...(input.resalePrice !== undefined || input.markupPercent !== undefined
+        ? {
+            markupPercent: input.markupPercent ?? null,
+            resalePrice: input.markupPercent != null ? null : input.resalePrice ?? null,
+          }
+        : {}),
     },
   });
 

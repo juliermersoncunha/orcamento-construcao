@@ -553,6 +553,11 @@ model Material {
   quantity     Float?
   brand        String?
   supplierId   String?
+  // Revenda: o usuario define pelo preco OU pela porcentagem de lucro sobre o
+  // custo — so um dos dois fica gravado. Pelo lucro, a revenda acompanha o
+  // custo quando o preco de compra muda; pelo preco, fica fixa.
+  resalePrice   Float?
+  markupPercent Float?
   active       Boolean          @default(true)
   createdAt    DateTime         @default(now())
   updatedAt    DateTime         @updatedAt

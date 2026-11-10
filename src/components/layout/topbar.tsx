@@ -14,11 +14,13 @@ import {
   LogOut,
   SlidersHorizontal,
   Truck,
+  Warehouse,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
   { href: "/projetos", label: "Projetos", icon: FolderOpen },
+  { href: "/estoque", label: "Estoque", icon: Warehouse },
 ];
 
 const adminItems = [

@@ -27,7 +27,7 @@ export type UsageRow = {
 
 export type QuadroLinha = {
   materialId: string; name: string; unit: string;
-  estimado: number; comprado: number; consumido: number;
+  estimado: number; comprado: number; doDeposito: number; consumido: number;
 };
 
 const inputClass =
@@ -231,7 +231,8 @@ export function ConsumoClient({
               </label>
             </div>
             <p className="text-xs text-gray-500 mb-3">
-              Comprado vem das compras marcadas na Programação. Dê baixa no que foi usado, informando a
+              Comprado vem das compras marcadas na Programação; do depósito, do que foi enviado pelo
+              Estoque (já descontadas as devoluções). Dê baixa no que foi usado, informando a
               etapa — é ela que guarda em que parte da obra o material foi consumido.
             </p>
             <div className="overflow-x-auto">
@@ -242,15 +243,16 @@ export function ConsumoClient({
                     <th className="text-center font-medium py-1 w-12">Un</th>
                     <th className="text-right font-medium py-1 w-20">Estimado</th>
                     <th className="text-right font-medium py-1 w-20">Comprado</th>
+                    <th className="text-right font-medium py-1 w-20">Do depósito</th>
                     <th className="text-right font-medium py-1 w-20">Consumido</th>
-                    <th className="text-right font-medium py-1 w-20" title="Comprado menos consumido">Na obra</th>
+                    <th className="text-right font-medium py-1 w-20" title="Comprado mais o que veio do depósito, menos o consumido">Na obra</th>
                     <th className="text-right font-medium py-1 w-24" title="Consumido menos estimado">Desvio</th>
                     <th className="text-left font-medium py-1 pl-4">Dar baixa</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {quadro.filter((q) => !soNaObra || q.comprado - q.consumido > 0).map((q) => {
-                    const naObra = q.comprado - q.consumido;
+                  {quadro.filter((q) => !soNaObra || q.comprado + q.doDeposito - q.consumido > 0).map((q) => {
+                    const naObra = q.comprado + q.doDeposito - q.consumido;
                     const desvio = q.consumido - q.estimado;
                     const pct = q.estimado > 0 ? (desvio / q.estimado) * 100 : null;
                     return (
@@ -259,6 +261,9 @@ export function ConsumoClient({
                         <td className="py-1.5 text-center text-gray-500">{q.unit}</td>
                         <td className="py-1.5 text-right text-gray-600">{fmt(q.estimado)}</td>
                         <td className="py-1.5 text-right text-gray-600">{fmt(q.comprado)}</td>
+                        <td className={`py-1.5 text-right ${q.doDeposito ? "text-brand-700" : "text-gray-300"}`}>
+                          {q.doDeposito ? fmt(q.doDeposito) : "—"}
+                        </td>
                         <td className="py-1.5 text-right font-medium text-gray-900">{fmt(q.consumido)}</td>
                         <td className={`py-1.5 text-right ${naObra < 0 ? "text-red-600" : "text-gray-600"}`}
                             title={naObra < 0 ? "Consumiu mais do que foi marcado como comprado" : undefined}>

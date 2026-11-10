@@ -217,6 +217,8 @@ model Project {
   excludedItems     ExcludedBudgetItem[]
   pauses            SchedulePause[]
   revisions         ScheduleRevision[]
+  stockMovements    StockMovement[]
+  toolMovements     ToolMovement[]
   renovationIssues   RenovationIssue[]
   renovationServices RenovationService[]
   costLines          ProjectCostLine[]
@@ -527,6 +529,7 @@ model Supplier {
   updatedAt DateTime @updatedAt
 
   materials Material[]
+  stockMovements StockMovement[]
 }
 
 model Material {
@@ -563,6 +566,7 @@ model Material {
   weekPurchases          ScheduleWeekPurchase[]
   budgetPurchases        BudgetPurchase[]
   excludedItems          ExcludedBudgetItem[]
+  stockMovements         StockMovement[]
   usages                 MaterialUsage[]
 }
 
@@ -908,6 +912,67 @@ model ScheduleRevisionStage {
   stage    ScheduleStage    @relation(fields: [stageId], references: [id], onDelete: Cascade)
 
   @@unique([revisionId, stageId])
+}
+
+// ── Estoque da empresa ──────────────────────────────────────────────────────
+// O deposito (na casa do dono) nao pertence a nenhuma obra. Saldo e custo
+// medio saem sempre da soma dos movimentos, nunca de um saldo gravado — assim
+// nao ha como o numero desencontrar do historico.
+model StockMovement {
+  id          String   @id @default(cuid())
+  // ENTRADA (compra para o deposito), ENVIO (deposito -> obra),
+  // DEVOLUCAO (obra -> deposito), AJUSTE (contagem/perda, quantidade com sinal)
+  kind        String
+  materialId  String
+  quantity    Float
+  // Na entrada, o preco pago. No envio e na devolucao, o custo medio do
+  // momento: e o valor que a obra passa a carregar.
+  unitCost    Float    @default(0)
+  projectId   String?
+  supplierId  String?
+  date        DateTime
+  notes       String?
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  material Material  @relation(fields: [materialId], references: [id])
+  project  Project?  @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  supplier Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+
+  @@index([materialId, date])
+  @@index([projectId])
+}
+
+// Ferramenta e equipamento: nao se gasta, anda entre o deposito e as obras.
+model Tool {
+  id        String   @id @default(cuid())
+  name      String
+  code      String?  // patrimonio / identificacao
+  unitValue Float    @default(0)
+  notes     String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  movements ToolMovement[]
+}
+
+// AQUISICAO entra no deposito; ENVIO e DEVOLUCAO mudam de lugar; BAIXA tira
+// de onde estiver (perda, quebra, venda) — `projectId` nulo = deposito.
+model ToolMovement {
+  id        String   @id @default(cuid())
+  toolId    String
+  kind      String
+  quantity  Int
+  projectId String?
+  date      DateTime
+  notes     String?
+  createdAt DateTime @default(now())
+
+  tool    Tool     @relation(fields: [toolId], references: [id], onDelete: Cascade)
+  project Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  @@index([toolId])
+  @@index([projectId])
 }
 
 // Material da semana ja comprado. A compra e feita para a semana, e a linha

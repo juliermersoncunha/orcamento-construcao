@@ -4,13 +4,14 @@ import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowDownToLine, ArrowUpFromLine, ClipboardCheck, PackagePlus, Trash2, Wrench, Archive, ArchiveRestore,
+  Pencil, Check, X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/utils";
 import {
   registrarEntrada, enviarParaObra, devolverDaObra, registrarContagem, excluirMovimento,
-  cadastrarFerramenta, moverFerramenta, excluirMovimentoFerramenta, arquivarFerramenta,
+  cadastrarFerramenta, moverFerramenta, excluirMovimentoFerramenta, arquivarFerramenta, editarFerramenta,
 } from "@/app/actions/stock";
 
 type Material = { id: string; name: string; unit: string; preco: number };
@@ -22,7 +23,7 @@ type MovMaterial = {
 };
 type MovFerramenta = { id: string; kind: string; quantity: number; obra: string | null; date: string; notes: string | null };
 type Ferramenta = {
-  id: string; name: string; code: string | null; unitValue: number; active: boolean;
+  id: string; name: string; code: string | null; unitValue: number; notes: string | null; active: boolean;
   total: number; deposito: number; obras: { id: string; name: string; n: number }[];
   movimentos: MovFerramenta[];
 };
@@ -367,8 +368,34 @@ function AbaFerramentas({
   const [quantidade, setQuantidade] = useState("1");
   const [valor, setValor] = useState("");
   const [arquivadas, setArquivadas] = useState(false);
+  // Lugar: "todos", "deposito" ou o id de uma obra. As obras do filtro são as
+  // que têm alguma ferramenta agora — obra sem ferramenta só faria lista vazia.
+  const [lugar, setLugar] = useState("todos");
+  const [busca, setBusca] = useState("");
 
-  const lista = ferramentas.filter((f) => arquivadas || f.active);
+  const obrasComFerramenta = new Map<string, { name: string; n: number }>();
+  for (const f of ferramentas) {
+    if (!f.active) continue;
+    for (const o of f.obras) {
+      const atual = obrasComFerramenta.get(o.id) ?? { name: o.name, n: 0 };
+      atual.n += o.n;
+      obrasComFerramenta.set(o.id, atual);
+    }
+  }
+  const noDeposito = ferramentas.filter((f) => f.active).reduce((s, f) => s + Math.max(0, f.deposito), 0);
+  const lugarValido = lugar === "todos" || lugar === "deposito" || obrasComFerramenta.has(lugar) ? lugar : "todos";
+
+  const lista = ferramentas
+    .filter((f) => arquivadas || f.active)
+    .filter((f) =>
+      lugarValido === "todos" ? true
+      : lugarValido === "deposito" ? f.deposito > 0
+      : f.obras.some((o) => o.id === lugarValido)
+    )
+    .filter((f) => {
+      const b = busca.trim().toLowerCase();
+      return !b || f.name.toLowerCase().includes(b) || (f.code ?? "").toLowerCase().includes(b);
+    });
 
   return (
     <>
@@ -382,6 +409,35 @@ function AbaFerramentas({
           mostrar arquivadas
         </label>
       </div>
+
+      {ferramentas.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap rounded-full bg-white p-1 text-xs shadow-card">
+            {[
+              { v: "todos", r: "Todos os lugares" },
+              { v: "deposito", r: `Depósito (${noDeposito})` },
+              ...[...obrasComFerramenta].map(([id, o]) => ({ v: id, r: `${o.name} (${o.n})` })),
+            ].map((o) => (
+              <button
+                key={o.v}
+                type="button"
+                onClick={() => setLugar(o.v)}
+                className={`rounded-full px-3 py-1.5 font-semibold ${
+                  lugarValido === o.v ? "grad-brand text-white" : "text-ink-2 hover:bg-surface"
+                }`}
+              >
+                {o.r}
+              </button>
+            ))}
+          </div>
+          <input
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            placeholder="buscar ferramenta"
+            className={`${campo} py-1.5 text-xs`}
+          />
+        </div>
+      )}
 
       {nova && (
         <Card>
@@ -422,7 +478,7 @@ function AbaFerramentas({
       {lista.length === 0 ? (
         <Card>
           <CardContent className="py-8 text-center text-sm text-ink-3">
-            Nenhuma ferramenta cadastrada ainda.
+            {ferramentas.length === 0 ? "Nenhuma ferramenta cadastrada ainda." : "Nenhuma ferramenta com esse filtro."}
           </CardContent>
         </Card>
       ) : (
@@ -436,6 +492,25 @@ function AbaFerramentas({
 
 function LinhaFerramenta({ f, obras, ocupado, run }: { f: Ferramenta; obras: Opcao[]; ocupado: boolean; run: Run }) {
   const [acao, setAcao] = useState<"ENVIO" | "DEVOLUCAO" | "BAIXA" | "AQUISICAO" | null>(null);
+  const [editando, setEditando] = useState(false);
+  const [nome, setNome] = useState(f.name);
+  const [codigo, setCodigo] = useState(f.code ?? "");
+  const [valor, setValor] = useState(f.unitValue ? String(f.unitValue).replace(".", ",") : "");
+  const [obs, setObs] = useState(f.notes ?? "");
+
+  function editar() {
+    setNome(f.name); setCodigo(f.code ?? "");
+    setValor(f.unitValue ? String(f.unitValue).replace(".", ",") : "");
+    setObs(f.notes ?? "");
+    setAcao(null);
+    setEditando(true);
+  }
+  function salvarEdicao() {
+    run(
+      () => editarFerramenta(f.id, { name: nome, code: codigo, unitValue: valor ? num(valor) : 0, notes: obs }),
+      () => setEditando(false)
+    );
+  }
   const [obra, setObra] = useState("");
   const [n, setN] = useState("1");
 
@@ -457,15 +532,53 @@ function LinhaFerramenta({ f, obras, ocupado, run }: { f: Ferramenta; obras: Opc
     <Card className={f.active ? "" : "opacity-60"}>
       <CardContent className="py-4">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-          <div className="min-w-[12rem] flex-1">
-            <p className="font-semibold text-ink">
-              {f.name}{f.code && <span className="ml-2 text-xs font-normal text-ink-3">#{f.code}</span>}
-            </p>
-            <p className="text-xs text-ink-3">
-              {f.total} {f.total === 1 ? "unidade" : "unidades"}
-              {f.unitValue > 0 && <> · {formatCurrency(f.unitValue)} cada</>}
-            </p>
-          </div>
+          {editando ? (
+            <div className="flex min-w-[16rem] flex-1 flex-wrap items-end gap-2">
+              <label className={`${rotulo} min-w-[12rem] flex-1`}>
+                Nome
+                <input
+                  value={nome}
+                  onChange={(e) => setNome(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") salvarEdicao(); if (e.key === "Escape") setEditando(false); }}
+                  autoFocus
+                  className={campo}
+                />
+              </label>
+              <label className={`${rotulo} w-28`}>
+                Código
+                <input value={codigo} onChange={(e) => setCodigo(e.target.value)} placeholder="opcional" className={campo} />
+              </label>
+              <label className={`${rotulo} w-28`}>
+                Valor (R$)
+                <input inputMode="decimal" value={valor} onChange={(e) => setValor(e.target.value)} placeholder="0,00" className={campo} />
+              </label>
+              <label className={`${rotulo} min-w-[10rem] flex-1`}>
+                Observação
+                <input value={obs} onChange={(e) => setObs(e.target.value)} placeholder="opcional" className={campo} />
+              </label>
+              <button type="button" disabled={ocupado || !nome.trim()} onClick={salvarEdicao} title="Salvar"
+                className="mb-1 rounded-full p-2 text-green-700 hover:bg-green-50 disabled:opacity-40">
+                <Check className="w-4 h-4" />
+              </button>
+              <button type="button" onClick={() => setEditando(false)} title="Cancelar"
+                className="mb-1 rounded-full p-2 text-ink-3 hover:bg-surface">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            <div className="min-w-[12rem] flex-1">
+              <button type="button" onClick={editar} className="group text-left" title="Editar nome, código e valor">
+                <span className="font-semibold text-ink group-hover:text-brand-700">{f.name}</span>
+                {f.code && <span className="ml-2 text-xs font-normal text-ink-3">#{f.code}</span>}
+                <Pencil className="ml-1.5 inline w-3 h-3 text-ink-3 group-hover:text-brand-700" />
+              </button>
+              <p className="text-xs text-ink-3">
+                {f.total} {f.total === 1 ? "unidade" : "unidades"}
+                {f.unitValue > 0 && <> · {formatCurrency(f.unitValue)} cada</>}
+                {f.notes && <> · {f.notes}</>}
+              </p>
+            </div>
+          )}
           <div className="flex flex-wrap gap-1.5 text-xs">
             <span className="rounded-full bg-surface px-2.5 py-1 font-semibold text-ink-2">Depósito: {f.deposito}</span>
             {f.obras.map((o) => (

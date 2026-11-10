@@ -230,3 +230,26 @@ export async function arquivarFerramenta(id: string, ativa: boolean): Promise<Re
   revalidar();
   return {};
 }
+
+export async function editarFerramenta(
+  id: string,
+  input: { name: string; code?: string; unitValue?: number; notes?: string }
+): Promise<Resultado> {
+  await sessao();
+  const nome = input.name?.trim();
+  if (!nome) return { error: "Informe o nome da ferramenta." };
+  if (input.unitValue != null && (!Number.isFinite(input.unitValue) || input.unitValue < 0)) {
+    return { error: "Valor inválido." };
+  }
+  await prisma.tool.update({
+    where: { id },
+    data: {
+      name: nome,
+      code: input.code?.trim() || null,
+      unitValue: input.unitValue ?? 0,
+      notes: input.notes?.trim() || null,
+    },
+  });
+  revalidar();
+  return {};
+}

@@ -101,6 +101,7 @@ export default async function EstoquePage() {
             name: t.name,
             code: t.code,
             unitValue: t.unitValue,
+            notes: t.notes,
             active: t.active,
             total: l?.total ?? 0,
             deposito: l?.deposito ?? 0,

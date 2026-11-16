@@ -5,11 +5,12 @@
 // (ver lib/resale.ts) — por isso o estado guarda qual campo manda.
 
 import { lucroDoPreco, precoDoLucro } from "@/lib/resale";
+import { parseNumeroBR } from "@/lib/utils";
 
 export type ModoRevenda = "preco" | "lucro" | null;
 export type EstadoRevenda = { modo: ModoRevenda; valor: string };
 
-const num = (v: string) => Number(v.replace(",", "."));
+const num = parseNumeroBR;
 const brl = (n: number) => n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 /** Estado inicial a partir do que está gravado no material. */

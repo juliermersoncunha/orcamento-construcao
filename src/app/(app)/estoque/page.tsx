@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { redirect } from "next/navigation";
 import { Warehouse } from "lucide-react";
-import { saldosDoDeposito, ondeEstaoAsFerramentas } from "@/lib/stock";
+import { saldosDoDeposito, ondeEstaoAsFerramentas, ESTOQUES } from "@/lib/stock";
 import { revendaDe } from "@/lib/resale";
 import { EstoqueClient } from "./estoque-client";
 
@@ -38,14 +38,29 @@ export default async function EstoquePage() {
     }),
   ]);
 
-  const movs = movimentos.map((m) => ({
-    id: m.id, kind: m.kind, materialId: m.materialId, quantity: m.quantity, unitCost: m.unitCost,
-    projectId: m.projectId, date: iso(m.date), createdAt: m.createdAt.toISOString(),
-  }));
-  const saldos = saldosDoDeposito(movs);
   const porId = new Map(materiais.map((m) => [m.id, m]));
   // Material inativo que ainda tem movimento continua aparecendo no saldo.
   const nomeDe = new Map(movimentos.map((m) => [m.materialId, m.material]));
+
+  // Saldo e custo médio separados por estoque virtual (construtora/assessoria).
+  const saldosPorEstoque = Object.fromEntries(ESTOQUES.map((e) => {
+    const movs = movimentos.filter((m) => m.owner === e.v).map((m) => ({
+      id: m.id, kind: m.kind, materialId: m.materialId, quantity: m.quantity, unitCost: m.unitCost,
+      projectId: m.projectId, date: iso(m.date), createdAt: m.createdAt.toISOString(),
+    }));
+    const lista = [...saldosDoDeposito(movs).values()].map((s) => {
+      const mat = porId.get(s.materialId) ?? nomeDe.get(s.materialId);
+      return {
+        materialId: s.materialId,
+        name: mat?.name ?? "?",
+        unit: mat?.unit ?? "",
+        quantidade: s.quantidade,
+        custoMedio: s.custoMedio,
+        valor: s.valor,
+      };
+    }).sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+    return [e.v, lista];
+  }));
 
   const locais = ondeEstaoAsFerramentas(
     ferramentas.flatMap((t) => t.movements.map((m) => ({
@@ -74,20 +89,11 @@ export default async function EstoquePage() {
         }))}
         fornecedores={fornecedores}
         obras={obras}
-        saldos={[...saldos.values()].map((s) => {
-          const mat = porId.get(s.materialId) ?? nomeDe.get(s.materialId);
-          return {
-            materialId: s.materialId,
-            name: mat?.name ?? "?",
-            unit: mat?.unit ?? "",
-            quantidade: s.quantidade,
-            custoMedio: s.custoMedio,
-            valor: s.valor,
-          };
-        }).sort((a, b) => a.name.localeCompare(b.name, "pt-BR"))}
+        saldosPorEstoque={saldosPorEstoque}
         movimentos={movimentos.map((m) => ({
           id: m.id,
           kind: m.kind,
+          owner: m.owner,
           materialId: m.materialId,
           material: m.material.name,
           unit: m.material.unit,
@@ -105,6 +111,7 @@ export default async function EstoquePage() {
           const l = locais.get(t.id);
           return {
             id: t.id,
+            owner: t.owner,
             name: t.name,
             code: t.code,
             unitValue: t.unitValue,

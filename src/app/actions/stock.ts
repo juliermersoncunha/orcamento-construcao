@@ -8,7 +8,9 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
-import { recebidoPelaObra, saldosDoDeposito, ondeEstaoAsFerramentas } from "@/lib/stock";
+import {
+  recebidoPelaObra, saldosDoDeposito, ondeEstaoAsFerramentas, custosRecalculados, ehEstoque,
+} from "@/lib/stock";
 
 type Resultado = { error?: string };
 
@@ -32,13 +34,35 @@ function revalidar(projectId?: string | null) {
   if (projectId) revalidatePath(`/projetos/${projectId}/consumo`);
 }
 
-/** Movimentos de um material, no formato do cálculo de saldo. */
-async function movimentosDe(materialId: string) {
-  const rows = await prisma.stockMovement.findMany({ where: { materialId } });
+/** Estoque virtual válido; o padrão é a construtora. */
+function dono(owner?: string | null) {
+  return owner && ehEstoque(owner) ? owner : "CONSTRUTORA";
+}
+
+/** Movimentos de um material num estoque, no formato do cálculo de saldo. */
+async function movimentosDe(materialId: string, owner: string) {
+  const rows = await prisma.stockMovement.findMany({ where: { materialId, owner } });
   return rows.map((r) => ({
     id: r.id, kind: r.kind, materialId: r.materialId, quantity: r.quantity, unitCost: r.unitCost,
     projectId: r.projectId, date: iso(r.date), createdAt: r.createdAt.toISOString(),
   }));
+}
+
+/**
+ * Refaz o custo dos movimentos derivados (envio, venda, devolução, ajuste)
+ * de um material num estoque. Depois de qualquer lançamento ou correção: uma
+ * entrada com data antiga ou um preço corrigido muda o médio de tudo que
+ * veio depois, e a obra precisa carregar o valor certo.
+ */
+async function recalcular(materialId: string, owner: string) {
+  const movs = await movimentosDe(materialId, owner);
+  const certos = custosRecalculados(movs);
+  const atual = new Map(movs.map((m) => [m.id, m.unitCost]));
+  const mudar = [...certos].filter(([id, c]) => Math.abs((atual.get(id) ?? 0) - c) > 1e-6);
+  if (mudar.length === 0) return;
+  await prisma.$transaction(
+    mudar.map(([id, unitCost]) => prisma.stockMovement.update({ where: { id }, data: { unitCost } }))
+  );
 }
 
 function quantidadeValida(q: number) {
@@ -48,7 +72,7 @@ function quantidadeValida(q: number) {
 // ── Materiais ───────────────────────────────────────────────────────────────
 
 export async function registrarEntrada(input: {
-  materialId: string; quantity: number; unitCost: number; supplierId?: string | null; date?: string; notes?: string;
+  materialId: string; quantity: number; unitCost: number; supplierId?: string | null; date?: string; notes?: string; owner?: string;
 }): Promise<Resultado> {
   const s = await sessao();
   if (!input.materialId) return { error: "Escolha o material." };
@@ -57,17 +81,18 @@ export async function registrarEntrada(input: {
 
   await prisma.stockMovement.create({
     data: {
-      kind: "ENTRADA", materialId: input.materialId, quantity: input.quantity, unitCost: input.unitCost,
+      kind: "ENTRADA", owner: dono(input.owner), materialId: input.materialId, quantity: input.quantity, unitCost: input.unitCost,
       supplierId: input.supplierId || null, date: meioDia(input.date || hoje()),
       notes: input.notes?.trim() || null, createdById: s.userId,
     },
   });
+  await recalcular(input.materialId, dono(input.owner));
   revalidar();
   return {};
 }
 
 export async function enviarParaObra(input: {
-  materialId: string; quantity: number; projectId: string; date?: string; notes?: string;
+  materialId: string; quantity: number; projectId: string; date?: string; notes?: string; owner?: string;
 }): Promise<Resultado> {
   const s = await sessao();
   if (!input.materialId) return { error: "Escolha o material." };
@@ -76,20 +101,21 @@ export async function enviarParaObra(input: {
   await assertObra(input.projectId, s.userId);
 
   // Sai pelo custo médio de agora — é o que a obra passa a carregar.
-  const saldo = saldosDoDeposito(await movimentosDe(input.materialId)).get(input.materialId);
+  const saldo = saldosDoDeposito(await movimentosDe(input.materialId, dono(input.owner))).get(input.materialId);
   await prisma.stockMovement.create({
     data: {
-      kind: "ENVIO", materialId: input.materialId, quantity: input.quantity,
+      kind: "ENVIO", owner: dono(input.owner), materialId: input.materialId, quantity: input.quantity,
       unitCost: saldo?.custoMedio ?? 0, projectId: input.projectId,
       date: meioDia(input.date || hoje()), notes: input.notes?.trim() || null, createdById: s.userId,
     },
   });
+  await recalcular(input.materialId, dono(input.owner));
   revalidar(input.projectId);
   return {};
 }
 
 export async function devolverDaObra(input: {
-  materialId: string; quantity: number; projectId: string; date?: string; notes?: string;
+  materialId: string; quantity: number; projectId: string; date?: string; notes?: string; owner?: string;
 }): Promise<Resultado> {
   const s = await sessao();
   if (!input.materialId) return { error: "Escolha o material." };
@@ -99,7 +125,7 @@ export async function devolverDaObra(input: {
 
   // Volta pelo custo com que saiu para essa obra; se a obra não recebeu
   // nada do depósito (comprou direto), pelo médio do depósito.
-  const movs = await movimentosDe(input.materialId);
+  const movs = await movimentosDe(input.materialId, dono(input.owner));
   const recebido = recebidoPelaObra(movs, input.projectId).get(input.materialId);
   const custo = recebido && recebido.quantidade > 0
     ? recebido.valor / recebido.quantidade
@@ -107,11 +133,12 @@ export async function devolverDaObra(input: {
 
   await prisma.stockMovement.create({
     data: {
-      kind: "DEVOLUCAO", materialId: input.materialId, quantity: input.quantity, unitCost: custo,
+      kind: "DEVOLUCAO", owner: dono(input.owner), materialId: input.materialId, quantity: input.quantity, unitCost: custo,
       projectId: input.projectId, date: meioDia(input.date || hoje()),
       notes: input.notes?.trim() || null, createdById: s.userId,
     },
   });
+  await recalcular(input.materialId, dono(input.owner));
   revalidar(input.projectId);
   return {};
 }
@@ -121,45 +148,47 @@ export async function devolverDaObra(input: {
  * que foi vendido) e guarda o preço cobrado, para o lucro sair da diferença.
  */
 export async function registrarVenda(input: {
-  materialId: string; quantity: number; salePrice: number; buyer?: string; date?: string; notes?: string;
+  materialId: string; quantity: number; salePrice: number; buyer?: string; date?: string; notes?: string; owner?: string;
 }): Promise<Resultado> {
   const s = await sessao();
   if (!input.materialId) return { error: "Escolha o material." };
   if (!quantidadeValida(input.quantity)) return { error: "Quantidade inválida." };
   if (!Number.isFinite(input.salePrice) || input.salePrice < 0) return { error: "Preço de venda inválido." };
 
-  const saldo = saldosDoDeposito(await movimentosDe(input.materialId)).get(input.materialId);
+  const saldo = saldosDoDeposito(await movimentosDe(input.materialId, dono(input.owner))).get(input.materialId);
   await prisma.stockMovement.create({
     data: {
-      kind: "VENDA", materialId: input.materialId, quantity: input.quantity,
+      kind: "VENDA", owner: dono(input.owner), materialId: input.materialId, quantity: input.quantity,
       unitCost: saldo?.custoMedio ?? 0, salePrice: input.salePrice,
       buyer: input.buyer?.trim() || null, date: meioDia(input.date || hoje()),
       notes: input.notes?.trim() || null, createdById: s.userId,
     },
   });
+  await recalcular(input.materialId, dono(input.owner));
   revalidar();
   return {};
 }
 
 /** Contagem física: grava a diferença entre o contado e o saldo do sistema. */
 export async function registrarContagem(input: {
-  materialId: string; contado: number; date?: string; notes?: string;
+  materialId: string; contado: number; date?: string; notes?: string; owner?: string;
 }): Promise<Resultado> {
   const s = await sessao();
   if (!input.materialId) return { error: "Escolha o material." };
   if (!Number.isFinite(input.contado) || input.contado < 0) return { error: "Quantidade contada inválida." };
 
-  const saldo = saldosDoDeposito(await movimentosDe(input.materialId)).get(input.materialId);
+  const saldo = saldosDoDeposito(await movimentosDe(input.materialId, dono(input.owner))).get(input.materialId);
   const diferenca = Math.round((input.contado - (saldo?.quantidade ?? 0)) * 1000) / 1000;
   if (diferenca === 0) return { error: "A contagem bate com o saldo — nada a ajustar." };
 
   await prisma.stockMovement.create({
     data: {
-      kind: "AJUSTE", materialId: input.materialId, quantity: diferenca, unitCost: saldo?.custoMedio ?? 0,
+      kind: "AJUSTE", owner: dono(input.owner), materialId: input.materialId, quantity: diferenca, unitCost: saldo?.custoMedio ?? 0,
       date: meioDia(input.date || hoje()),
       notes: input.notes?.trim() || `Contagem: ${input.contado}`, createdById: s.userId,
     },
   });
+  await recalcular(input.materialId, dono(input.owner));
   revalidar();
   return {};
 }
@@ -168,12 +197,58 @@ export async function excluirMovimento(id: string): Promise<Resultado> {
   const s = await sessao();
   const m = await prisma.stockMovement.findUnique({
     where: { id },
-    select: { id: true, projectId: true, project: { select: { userId: true } } },
+    select: { id: true, projectId: true, materialId: true, owner: true, project: { select: { userId: true } } },
   });
   if (!m) return {};
   // Movimento de obra só por quem é dono da obra.
   if (m.project && m.project.userId !== s.userId) redirect("/estoque");
   await prisma.stockMovement.delete({ where: { id } });
+  await recalcular(m.materialId, m.owner);
+  revalidar(m.projectId);
+  return {};
+}
+
+/**
+ * Corrige um lançamento: quantidade, preço (na entrada), preço de venda (na
+ * venda) ou o estoque dono. O custo de envio, devolução e ajuste não é
+ * editável — sai do médio e é refeito aqui, nos dois estoques se o dono mudou.
+ */
+export async function editarMovimento(
+  id: string,
+  input: { quantity?: number; unitCost?: number; salePrice?: number; owner?: string }
+): Promise<Resultado> {
+  const s = await sessao();
+  const m = await prisma.stockMovement.findUnique({
+    where: { id },
+    select: { id: true, kind: true, projectId: true, materialId: true, owner: true, project: { select: { userId: true } } },
+  });
+  if (!m) return { error: "Lançamento não encontrado." };
+  if (m.project && m.project.userId !== s.userId) redirect("/estoque");
+
+  const data: { quantity?: number; unitCost?: number; salePrice?: number; owner?: string } = {};
+  if (input.quantity !== undefined) {
+    const ok = m.kind === "AJUSTE" ? Number.isFinite(input.quantity) && input.quantity !== 0 : quantidadeValida(input.quantity);
+    if (!ok) return { error: "Quantidade inválida." };
+    data.quantity = input.quantity;
+  }
+  if (input.unitCost !== undefined) {
+    if (m.kind !== "ENTRADA") return { error: "Só o preço da entrada é editável; os outros saem do custo médio." };
+    if (!Number.isFinite(input.unitCost) || input.unitCost < 0) return { error: "Preço inválido." };
+    data.unitCost = input.unitCost;
+  }
+  if (input.salePrice !== undefined) {
+    if (m.kind !== "VENDA") return { error: "Preço de venda só existe na venda." };
+    if (!Number.isFinite(input.salePrice) || input.salePrice < 0) return { error: "Preço de venda inválido." };
+    data.salePrice = input.salePrice;
+  }
+  if (input.owner !== undefined) {
+    if (!ehEstoque(input.owner)) return { error: "Estoque inválido." };
+    data.owner = input.owner;
+  }
+
+  await prisma.stockMovement.update({ where: { id }, data });
+  await recalcular(m.materialId, m.owner);
+  if (data.owner && data.owner !== m.owner) await recalcular(m.materialId, data.owner);
   revalidar(m.projectId);
   return {};
 }
@@ -181,7 +256,7 @@ export async function excluirMovimento(id: string): Promise<Resultado> {
 // ── Ferramentas ─────────────────────────────────────────────────────────────
 
 export async function cadastrarFerramenta(input: {
-  name: string; code?: string; quantity: number; unitValue?: number; notes?: string;
+  name: string; code?: string; quantity: number; unitValue?: number; notes?: string; owner?: string;
 }): Promise<Resultado> {
   await sessao();
   const nome = input.name?.trim();
@@ -191,7 +266,7 @@ export async function cadastrarFerramenta(input: {
   await prisma.tool.create({
     data: {
       name: nome, code: input.code?.trim() || null, unitValue: input.unitValue ?? 0,
-      notes: input.notes?.trim() || null,
+      notes: input.notes?.trim() || null, owner: dono(input.owner),
       movements: { create: { kind: "AQUISICAO", quantity: input.quantity, date: meioDia(hoje()) } },
     },
   });
@@ -258,7 +333,7 @@ export async function arquivarFerramenta(id: string, ativa: boolean): Promise<Re
 
 export async function editarFerramenta(
   id: string,
-  input: { name: string; code?: string; unitValue?: number; notes?: string }
+  input: { name: string; code?: string; unitValue?: number; notes?: string; owner?: string }
 ): Promise<Resultado> {
   await sessao();
   const nome = input.name?.trim();
@@ -273,6 +348,7 @@ export async function editarFerramenta(
       code: input.code?.trim() || null,
       unitValue: input.unitValue ?? 0,
       notes: input.notes?.trim() || null,
+      ...(input.owner && ehEstoque(input.owner) ? { owner: input.owner } : {}),
     },
   });
   revalidar();

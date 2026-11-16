@@ -76,6 +76,63 @@ export function recebidoPelaObra(movs: Movimento[], projectId: string) {
   return out;
 }
 
+// ── Estoques virtuais ───────────────────────────────────────────────────────
+// O depósito físico é um só, mas o material e a ferramenta têm dono: a
+// construtora ou a assessoria. Cada um tem saldo e custo médio próprios.
+
+export const ESTOQUES = [
+  { v: "CONSTRUTORA", rotulo: "JCunha Construtora" },
+  { v: "STRATEGI", rotulo: "Assessoria Strategi" },
+] as const;
+export type Estoque = (typeof ESTOQUES)[number]["v"];
+export const ehEstoque = (v: string): v is Estoque => ESTOQUES.some((e) => e.v === v);
+
+/**
+ * Custo unitário que cada movimento derivado deveria ter, refazendo a
+ * história de UM material num estoque. Entrada guarda o preço pago; envio,
+ * venda e ajuste saem pelo médio do momento; devolução volta pelo custo com
+ * que o material tinha ido para aquela obra.
+ *
+ * Usado depois de corrigir ou apagar um lançamento: um preço errado numa
+ * entrada antiga contamina o médio de tudo que veio depois.
+ */
+export function custosRecalculados(movs: Movimento[]): Map<string, number> {
+  const out = new Map<string, number>();
+  let qtd = 0;
+  let medio = 0;
+  const naObra = new Map<string, { q: number; v: number }>();
+  const entra = (q: number, c: number) => {
+    const base = Math.max(0, qtd);
+    const nova = base + q;
+    medio = nova > 0 ? (base * medio + q * c) / nova : c;
+    qtd += q;
+  };
+  for (const m of emOrdem(movs)) {
+    if (m.kind === "ENTRADA") {
+      entra(m.quantity, m.unitCost);
+    } else if (m.kind === "ENVIO" || m.kind === "VENDA") {
+      out.set(m.id, medio);
+      qtd -= m.quantity;
+      if (m.kind === "ENVIO" && m.projectId) {
+        const r = naObra.get(m.projectId) ?? { q: 0, v: 0 };
+        r.q += m.quantity; r.v += m.quantity * medio;
+        naObra.set(m.projectId, r);
+      }
+    } else if (m.kind === "DEVOLUCAO") {
+      const r = m.projectId ? naObra.get(m.projectId) : undefined;
+      const custo = r && r.q > 0 ? r.v / r.q : medio;
+      out.set(m.id, custo);
+      if (r) { r.q -= m.quantity; r.v -= m.quantity * custo; }
+      entra(m.quantity, custo);
+    } else if (m.kind === "AJUSTE") {
+      out.set(m.id, medio);
+      if (m.quantity > 0) entra(m.quantity, medio);
+      else qtd += m.quantity;
+    }
+  }
+  return out;
+}
+
 // ── Ferramentas ─────────────────────────────────────────────────────────────
 
 export type MovimentoFerramenta = {

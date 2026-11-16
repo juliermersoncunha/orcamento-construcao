@@ -929,6 +929,9 @@ model StockMovement {
   // DEVOLUCAO (obra -> deposito), AJUSTE (contagem/perda, quantidade com sinal),
   // VENDA (sai do deposito vendido a terceiro)
   kind        String
+  // Estoque virtual dono do movimento: CONSTRUTORA (JCunha) ou STRATEGI
+  // (Assessoria). O deposito fisico e um so; o dono e quem pagou o material.
+  owner       String   @default("CONSTRUTORA")
   materialId  String
   quantity    Float
   // Na entrada, o preco pago. No envio e na devolucao, o custo medio do
@@ -956,6 +959,8 @@ model StockMovement {
 // Ferramenta e equipamento: nao se gasta, anda entre o deposito e as obras.
 model Tool {
   id        String   @id @default(cuid())
+  // Estoque virtual dono da ferramenta (ver StockMovement.owner).
+  owner     String   @default("CONSTRUTORA")
   name      String
   code      String?  // patrimonio / identificacao
   unitValue Float    @default(0)

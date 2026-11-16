@@ -83,10 +83,15 @@ export function EstoqueClient({
     });
   };
 
-  const valorTotal = saldos.reduce((s, x) => s + Math.max(0, x.valor), 0);
+  // Valores do estoque em vista: material pelo custo médio, ferramenta pelo
+  // valor unitário cadastrado. Ferramenta em obra continua sendo patrimônio.
+  const valorMateriais = saldos.reduce((s, x) => s + Math.max(0, x.valor), 0);
   const comSaldo = saldos.filter((s) => s.quantidade > 0).length;
   const ferramentasAtivas = ferramentas.filter((f) => f.active);
+  const unidadesFerr = ferramentasAtivas.reduce((s, f) => s + f.total, 0);
   const emObras = ferramentasAtivas.reduce((s, f) => s + f.obras.reduce((a, o) => a + o.n, 0), 0);
+  const valorFerramentas = ferramentasAtivas.reduce((s, f) => s + f.total * f.unitValue, 0);
+  const valorFerrEmObras = ferramentasAtivas.reduce((s, f) => s + f.obras.reduce((a, o) => a + o.n, 0) * f.unitValue, 0);
 
   return (
     <div className="flex flex-col gap-4">
@@ -107,10 +112,27 @@ export function EstoqueClient({
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <Indicador rotulo="Valor no depósito" valor={formatCurrency(valorTotal)} destaque />
-        <Indicador rotulo="Materiais com saldo" valor={String(comSaldo)} />
-        <Indicador rotulo="Ferramentas" valor={String(ferramentasAtivas.reduce((s, f) => s + f.total, 0))} />
-        <Indicador rotulo="Ferramentas em obras" valor={String(emObras)} />
+        <Indicador
+          rotulo="Valor total"
+          valor={formatCurrency(valorMateriais + valorFerramentas)}
+          sub="materiais + ferramentas"
+          destaque
+        />
+        <Indicador
+          rotulo="Materiais no depósito"
+          valor={formatCurrency(valorMateriais)}
+          sub={`${comSaldo} ${comSaldo === 1 ? "material com saldo" : "materiais com saldo"}`}
+        />
+        <Indicador
+          rotulo="Ferramentas"
+          valor={formatCurrency(valorFerramentas)}
+          sub={`${unidadesFerr} ${unidadesFerr === 1 ? "unidade" : "unidades"}`}
+        />
+        <Indicador
+          rotulo="Ferramentas em obras"
+          valor={formatCurrency(valorFerrEmObras)}
+          sub={`${emObras} ${emObras === 1 ? "unidade" : "unidades"}`}
+        />
       </div>
 
       <div className="flex w-fit rounded-full bg-white p-1 text-sm shadow-card">
@@ -152,11 +174,12 @@ export function EstoqueClient({
   );
 }
 
-function Indicador({ rotulo, valor, destaque }: { rotulo: string; valor: string; destaque?: boolean }) {
+function Indicador({ rotulo, valor, sub, destaque }: { rotulo: string; valor: string; sub?: string; destaque?: boolean }) {
   return (
     <div className={`rounded-2xl p-4 shadow-card ${destaque ? "grad-brand text-white" : "bg-white"}`}>
       <p className={`text-[10px] font-bold uppercase tracking-wide ${destaque ? "text-white/80" : "text-ink-3"}`}>{rotulo}</p>
       <p className={`mt-1 text-xl font-bold ${destaque ? "" : "text-ink"}`}>{valor}</p>
+      {sub && <p className={`text-xs ${destaque ? "text-white/75" : "text-ink-3"}`}>{sub}</p>}
     </div>
   );
 }
@@ -286,6 +309,18 @@ function AbaMateriais({
                     </Fragment>
                   ))}
                 </tbody>
+                <tfoot>
+                  <tr className="border-t-2 border-line">
+                    <td className="pt-2 font-bold text-ink">
+                      Total {busca ? "da busca" : ""} ({visiveis.length} {visiveis.length === 1 ? "material" : "materiais"})
+                    </td>
+                    <td colSpan={3} />
+                    <td className="pt-2 text-right font-bold text-ink">
+                      {formatCurrency(visiveis.reduce((t, s) => t + Math.max(0, s.valor), 0))}
+                    </td>
+                    <td />
+                  </tr>
+                </tfoot>
               </table>
             </div>
           )}
@@ -516,6 +551,16 @@ function AbaFerramentas({
       return !b || f.name.toLowerCase().includes(b) || (f.code ?? "").toLowerCase().includes(b);
     });
 
+  // Quantas unidades e quanto valem NO LUGAR filtrado: no depósito conta só o
+  // que está lá; numa obra, só o que está naquela obra.
+  const unidadesNoLugar = (f: Ferramenta) =>
+    lugarValido === "todos" ? f.total
+    : lugarValido === "deposito" ? Math.max(0, f.deposito)
+    : f.obras.find((o) => o.id === lugarValido)?.n ?? 0;
+  const totalUnidades = lista.reduce((s, f) => s + unidadesNoLugar(f), 0);
+  const totalValor = lista.reduce((s, f) => s + unidadesNoLugar(f) * f.unitValue, 0);
+  const semValor = lista.filter((f) => !f.unitValue).length;
+
   return (
     <>
       <div className="flex flex-wrap items-center gap-3">
@@ -555,6 +600,18 @@ function AbaFerramentas({
             placeholder="buscar ferramenta"
             className={`${campo} py-1.5 text-xs`}
           />
+          <span className="ml-auto rounded-full bg-white px-3 py-1.5 text-sm shadow-card">
+            <span className="text-ink-3">
+              {totalUnidades} {totalUnidades === 1 ? "unidade" : "unidades"}
+              {lugarValido === "deposito" ? " no depósito" : lugarValido !== "todos" ? " nesta obra" : ""} ·{" "}
+            </span>
+            <strong className="text-ink">{formatCurrency(totalValor)}</strong>
+            {semValor > 0 && (
+              <span className="text-xs text-amber-700" title="Ferramentas sem valor cadastrado não entram no total">
+                {" "}· {semValor} sem valor
+              </span>
+            )}
+          </span>
         </div>
       )}
 

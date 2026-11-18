@@ -363,8 +363,8 @@ export default async function OrcamentoPage({
           <p className="text-xl font-bold text-ink mt-1">
             {totalGestao > 0 ? formatCurrency(totalGestao) : <span className="text-sm text-gray-400">Não config.</span>}
           </p>
-          {resumo.gestao.find((g) => g.percent) && (
-            <p className="text-xs text-gray-400 mt-0.5">inclui BDI de {resumo.gestao.find((g) => g.percent)!.percent!.toLocaleString("pt-BR")}%</p>
+          {resumo.gestao.find((g) => g.key === "bdi" && g.percent) && (
+            <p className="text-xs text-gray-400 mt-0.5">inclui BDI de {resumo.gestao.find((g) => g.key === "bdi")!.percent!.toLocaleString("pt-BR")}%</p>
           )}
         </div>
         <div className="p-4 rounded-2xl bg-white shadow-card">

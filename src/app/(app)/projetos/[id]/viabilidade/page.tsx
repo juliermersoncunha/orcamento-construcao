@@ -39,7 +39,7 @@ export default async function ViabilidadePage({
 
   // Mão de obra por função e gestão da obra, no mesmo cálculo do orçamento.
   const resumo = montarResumoCustos(totalMaterials, project.laborLines, project.costLines, project.type);
-  const bdiGestao = resumo.gestao.find((g) => g.percent)?.percent ?? null;
+  const bdiGestao = resumo.gestao.find((g) => g.key === "bdi")?.percent ?? null;
 
   const totalIndirect = project.indirectCosts.reduce((sum, c) => sum + c.value, 0);
   const v = project.viability;

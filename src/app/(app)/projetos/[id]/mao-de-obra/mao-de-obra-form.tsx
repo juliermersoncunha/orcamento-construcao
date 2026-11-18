@@ -10,6 +10,7 @@ import {
 } from "@/app/actions/labor-lines";
 import { setProjectCostLine } from "@/app/actions/renovation";
 import { calcularBdi } from "@/lib/cost-summary";
+import { parseNumeroBR } from "@/lib/utils";
 
 type Linha = { id: string; role: string; label: string | null; value: number };
 
@@ -49,10 +50,15 @@ export function MaoDeObraForm({
   }
 
   const totalMO = linhas.reduce((s, l) => s + l.value, 0);
-  // BDI incide sobre o custo direto: material + MO + itens fixos de gestão.
-  const fixos = gestao.filter((g) => !g.percentual).reduce((s, g) => s + g.amount, 0);
   // Reforma: adicional sobre o material, que também é base do BDI.
   const adicional = (materiais * adicionalPct) / 100;
+  // Base dos itens de gestão em %: material + adicional + mão de obra (o
+  // mesmo cálculo de lib/cost-summary.ts).
+  const baseGestao = materiais + adicional + totalMO;
+  const valorDoItem = (g: GestaoLinha) =>
+    g.percent && g.percent > 0 ? (baseGestao * g.percent) / 100 : g.amount;
+  // BDI incide sobre o custo direto: material + MO + itens de gestão.
+  const fixos = gestao.filter((g) => !g.percentual).reduce((s, g) => s + valorDoItem(g), 0);
   const custoDireto = materiais + adicional + totalMO + fixos;
   const bdiItem = gestao.find((g) => g.percentual);
   const bdiValor = calcularBdi(custoDireto, bdiItem?.percent);
@@ -115,6 +121,7 @@ export function MaoDeObraForm({
                 key={g.key}
                 g={g}
                 custoDireto={custoDireto}
+                baseGestao={baseGestao}
                 isPending={isPending}
                 run={run}
                 projectId={projectId}
@@ -162,7 +169,7 @@ function LinhaMO({
   const [salvo, setSalvo] = useState(false);
 
   function salvarValor() {
-    const v = Number(valor.replace(/\./g, "").replace(",", ".")) || 0;
+    const v = parseNumeroBR(valor) || 0;
     if (v !== l.value) {
       run(async () => {
         const r = await setLaborLineValue(l.id, v);
@@ -224,50 +231,85 @@ function LinhaMO({
 }
 
 function LinhaGestao({
-  g, custoDireto, isPending, run, projectId,
+  g, custoDireto, baseGestao, isPending, run, projectId,
 }: {
   g: GestaoLinha;
   custoDireto: number;
+  baseGestao: number;
   isPending: boolean;
   run: (fn: () => Promise<{ error?: string } | void>) => void;
   projectId: string;
 }) {
+  // BDI é sempre %. Os outros itens escolhem: valor fixo ou % da base
+  // (material + mão de obra). O modo nasce do que está gravado.
+  const emPctGravado = g.percentual || (g.percent != null && g.percent > 0);
+  const [emPct, setEmPct] = useState(emPctGravado);
   const [txt, setTxt] = useState(
-    g.percentual
+    emPctGravado
       ? (g.percent ? String(g.percent).replace(".", ",") : "")
       : (g.amount ? String(g.amount).replace(".", ",") : "")
   );
-  const calculado = g.percentual ? ((Number((g.percent ?? 0))) * custoDireto) / 100 : g.amount;
+  const base = g.percentual ? custoDireto : baseGestao;
+  const digitado = parseNumeroBR(txt);
+  const pctAtual = Number.isFinite(digitado) ? digitado : g.percent ?? 0;
+  const calculado = emPct ? (pctAtual * base) / 100 : g.amount;
 
-  function salvar() {
-    const n = Number(txt.replace(/\./g, "").replace(",", ".")) || 0;
-    if (g.percentual) {
-      if (n !== (g.percent ?? 0)) run(() => setProjectCostLine(projectId, { kind: "GESTAO", key: g.key, amount: 0, percent: n }));
-    } else {
-      if (n !== g.amount) run(() => setProjectCostLine(projectId, { kind: "GESTAO", key: g.key, amount: n }));
+  function salvar(pct = emPct, texto = txt) {
+    const n = parseNumeroBR(texto) || 0;
+    if (pct) {
+      if (n !== (g.percent ?? 0) || g.amount !== 0) {
+        run(() => setProjectCostLine(projectId, { kind: "GESTAO", key: g.key, amount: 0, percent: n }));
+      }
+    } else if (n !== g.amount || g.percent) {
+      run(() => setProjectCostLine(projectId, { kind: "GESTAO", key: g.key, amount: n, percent: null }));
     }
+  }
+
+  // Trocar o modo zera o campo: R$ 3.000 não vira 3.000%.
+  function trocar(pct: boolean) {
+    if (pct === emPct) return;
+    setEmPct(pct);
+    setTxt("");
+    if (g.amount || g.percent) salvar(pct, "");
   }
 
   return (
     <li className="flex flex-wrap items-center gap-2 py-2.5">
       <span className="flex-1 min-w-[8rem] text-sm text-gray-700">
         {g.label}
-        {g.percentual && (
-          <span className="text-xs text-gray-400"> — sobre {brl(custoDireto)}</span>
+        {emPct && (
+          <span className="text-xs text-gray-400"> — sobre {brl(base)}{!g.percentual && " (material + mão de obra)"}</span>
         )}
       </span>
+      {!g.percentual && (
+        <div className="flex rounded-full bg-surface p-0.5 text-[11px] font-semibold">
+          {([[false, "R$"], [true, "%"]] as const).map(([v, r]) => (
+            <button
+              key={r}
+              type="button"
+              disabled={isPending}
+              onClick={() => trocar(v)}
+              className={`rounded-full px-2.5 py-0.5 ${emPct === v ? "grad-brand text-white" : "text-ink-2"}`}
+              aria-pressed={emPct === v}
+              title={v ? "Percentual sobre material + mão de obra" : "Valor fixo em reais"}
+            >
+              {r}
+            </button>
+          ))}
+        </div>
+      )}
       <input
         value={txt}
         onChange={(e) => setTxt(e.target.value)}
-        onBlur={salvar}
+        onBlur={() => salvar()}
         onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
         inputMode="decimal"
-        placeholder={g.percentual ? "0" : "0,00"}
+        placeholder={emPct ? "0" : "0,00"}
         disabled={isPending}
         className="w-24 text-right rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
       />
-      <span className="text-xs text-gray-500 w-6">{g.percentual ? "%" : "R$"}</span>
-      {g.percentual && (
+      <span className="text-xs text-gray-500 w-6">{emPct ? "%" : "R$"}</span>
+      {emPct && (
         <span className="text-sm font-medium text-gray-700 w-28 text-right">{brl(calculado)}</span>
       )}
     </li>

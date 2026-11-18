@@ -1,5 +1,6 @@
 "use client";
 
+import { parseNumeroBR } from "@/lib/utils";
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { PackagePlus, Plus, Trash2, ChevronRight, Wrench, AlertTriangle, Pencil, Check, X, Home } from "lucide-react";
@@ -514,7 +515,7 @@ function LinhaManual({
   const campo = "rounded border border-gray-300 bg-white px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500";
 
   function salvar() {
-    const q = Number(qtd.replace(/\./g, "").replace(",", "."));
+    const q = parseNumeroBR(qtd);
     if (!(q > 0)) { onErro("Quantidade inválida."); return; }
     iniciar(async () => {
       const resp = await updateManualPhaseItem(projectId, r.materialId, { quantity: q, phase: fase, usage: onde });

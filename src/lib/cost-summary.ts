@@ -57,9 +57,18 @@ export function montarResumoCustos(
   const totalMO = maoDeObra.reduce((s, l) => s + l.valor, 0);
 
   const linha = (key: string) => gestaoLines.find((g) => g.key === key);
-  const fixos = MANAGEMENT_ITEMS.filter((i) => !i.percentual).map((i) => ({
-    key: i.key, label: i.label, percent: null, valor: linha(i.key)?.amount ?? 0,
-  }));
+  // Mobilização, logística e gestão: em reais ou em % do custo antes da
+  // gestão (material + adicional + mão de obra). O BDI vem depois e incide
+  // sobre tudo isso somado aos itens de gestão.
+  const baseGestao = materiais + adicionalMaterial + totalMO;
+  const fixos = MANAGEMENT_ITEMS.filter((i) => !i.percentual).map((i) => {
+    const l = linha(i.key);
+    const percent = l?.percent && l.percent > 0 ? l.percent : null;
+    return {
+      key: i.key, label: i.label, percent,
+      valor: percent ? (baseGestao * percent) / 100 : l?.amount ?? 0,
+    };
+  });
   const totalFixos = fixos.reduce((s, g) => s + g.valor, 0);
   const custoDireto = materiais + adicionalMaterial + totalMO + totalFixos;
 
